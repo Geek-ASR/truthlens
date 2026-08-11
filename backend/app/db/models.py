@@ -220,6 +220,9 @@ class Reel(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     media_storage_key: Mapped[str | None] = mapped_column(Text, nullable=True)
     media_content_hash: Mapped[str | None] = mapped_column(String(128), index=True, nullable=True)
     thumbnail_storage_key: Mapped[str | None] = mapped_column(Text, nullable=True)
+    auto_fetched: Mapped[bool] = mapped_column(
+        Boolean, default=False
+    )  # media fetched via yt-dlp rather than manual upload; see docs/ARCHITECTURE.md §2a
 
     transcript: Mapped[str | None] = mapped_column(Text, nullable=True)
     transcript_segments: Mapped[list | None] = mapped_column(JSONB, nullable=True)

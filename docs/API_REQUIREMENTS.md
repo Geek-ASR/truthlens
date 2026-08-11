@@ -102,13 +102,34 @@ These are documented now so the schema has the right hooks
 | Fact-check orgs (PolitiFact, Snopes, AFP, BOOM, Alt News, etc.) | corroboration, Tier 3 sourcing | most publish RSS/sitemaps; a few offer the Google Fact Check Claim Search API (free, requires a Google Cloud API key) |
 | Google Fact Check Claim Search API | structured search over existing fact-checks worldwide | free, standard Google Cloud API key |
 
-## 7. What cannot be automated at all (documented per product spec §36.6)
+## 6a. yt-dlp — opt-in auto-fetch (ARCHITECTURE §2a)
 
-- **Arbitrary third-party Instagram reel discovery/download.** No
-  compliant API exists for this. Permanent human-in-the-loop step (see
-  ARCHITECTURE §2). This is a legal/ToS constraint (Instagram's terms
-  prohibit scraping and automated data collection outside the API), not
-  a temporary technical gap.
+- **Used for:** downloading the video and reading source-page metadata
+  (caption, uploader, counts) directly from a pasted URL, as an opt-in
+  alternative to manual upload (`ReelCreate.auto_fetch=true`).
+- **Approval required:** No signup, no key — it's a local library, not a
+  hosted API.
+- **Cost:** free, runs on the API server's own compute/bandwidth.
+- **The exception to this document's "official APIs only" rule:** for
+  most `yt-dlp`-supported sites (YouTube, X/Twitter, TikTok, general
+  public web pages) this has no meaningful ToS conflict for a tool like
+  this. **For Instagram specifically it is not an official, sanctioned
+  API** — see ARCHITECTURE §2a for the full risk tradeoff (ban/rate-limit
+  risk to the connected account, no stability guarantee). It is off by
+  default and was enabled at the operator's explicit, informed request.
+- **No env var** — nothing to configure; it's always available once the
+  package is installed, gated only by the per-request `auto_fetch` flag.
+
+## 7. What cannot be automated in a Terms-of-Service-compliant way (documented per product spec §36.6)
+
+- **Arbitrary third-party Instagram reel discovery/download, via an
+  official/compliant path.** No compliant API exists for this — the
+  default ingestion path is still the human-in-the-loop model in
+  ARCHITECTURE §2. An opt-in, explicitly non-compliant exception exists
+  (§2a / §6a above) for operators who choose to accept that ToS and
+  account-risk tradeoff themselves; it does not change the underlying
+  legal reality that Instagram's terms prohibit this kind of automated
+  access outside their API.
 - **Publishing on behalf of an Instagram account the operator does not
   control**, before Meta App Review is granted for the relevant scopes.
 - **Verifying a speaker's subjective intent or private knowledge** (e.g.

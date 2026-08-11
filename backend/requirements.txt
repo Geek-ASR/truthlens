@@ -25,6 +25,7 @@ boto3==1.35.86
 tenacity==9.0.0
 python-slugify==8.0.4
 python-dateutil==2.9.0.post0
+yt-dlp==2026.7.4
 structlog==24.4.0
 pytest==8.3.4
 pytest-asyncio==0.25.0

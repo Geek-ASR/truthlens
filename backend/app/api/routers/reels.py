@@ -33,10 +33,15 @@ async def create_reel(
     share_count: int | None = Form(None),
     hashtags: str | None = Form(None, description="comma-separated"),
     pasted_transcript: str | None = Form(None),
+    auto_fetch: bool = Form(False),
     video: UploadFile | None = File(None),
 ):
-    """Phase 1 manual ingestion (docs/ARCHITECTURE.md §2). `video` is the
-    operator-supplied media file — this endpoint never scrapes Instagram."""
+    """Two ways to supply media (docs/ARCHITECTURE.md §2/§2a):
+    upload `video` / paste `pasted_transcript` yourself (default, fully
+    compliant), or set `auto_fetch=true` to have the backend download the
+    video/caption from `source_url` itself via yt-dlp — for Instagram
+    URLs this runs outside Instagram's Terms of Service and is only
+    attempted when explicitly requested."""
     payload = ReelCreate(
         source_url=source_url,
         platform=platform,
@@ -49,6 +54,7 @@ async def create_reel(
         share_count=share_count,
         hashtags=[h.strip() for h in hashtags.split(",")] if hashtags else [],
         pasted_transcript=pasted_transcript,
+        auto_fetch=auto_fetch,
     )
 
     video_bytes = None
@@ -61,6 +67,9 @@ async def create_reel(
         reel = await ingest_reel(db, payload, video_bytes, current_user.id)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
+    except ProviderError as exc:
+        await db.rollback()
+        raise HTTPException(502, f"auto_fetch failed: {exc}") from exc
     await db.commit()
     await db.refresh(reel)
     return reel

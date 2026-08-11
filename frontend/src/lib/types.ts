@@ -100,6 +100,7 @@ export interface ReelOut {
   share_count: number | null;
   hashtags: string[] | null;
   thumbnail_storage_key: string | null;
+  auto_fetched: boolean;
   transcript: string | null;
   transcript_segments: unknown[] | null;
   ocr_text: { frame_ts?: number; text?: string; confidence?: number }[] | null;

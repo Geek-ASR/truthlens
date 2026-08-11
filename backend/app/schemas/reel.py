@@ -7,10 +7,17 @@ from app.schemas.common import DiscoverySource, IngestionStatus, Platform
 
 
 class ReelCreate(BaseModel):
-    """Phase 1 manual ingestion (docs/ARCHITECTURE.md §2): the operator
-    supplies the URL for attribution/citation, and the actual media is
-    uploaded as a separate multipart file on the same request. At least
-    one of the video file or a pasted transcript must be provided."""
+    """Two ingestion paths (docs/ARCHITECTURE.md §2, §2a):
+
+    1. Manual (default): the operator uploads the video file and/or
+       pastes a transcript themselves. Fully compliant, no platform ToS
+       exposure.
+    2. auto_fetch=True: the backend downloads the video/caption itself
+       from source_url via yt-dlp. For Instagram URLs this is outside
+       Instagram's Terms of Service — off by default, opt-in per reel.
+
+    At least one of {uploaded video file, pasted transcript, auto_fetch}
+    must be provided/true."""
 
     source_url: HttpUrl
     platform: Platform = Platform.instagram
@@ -23,6 +30,14 @@ class ReelCreate(BaseModel):
     share_count: int | None = Field(default=None, ge=0)
     hashtags: list[str] = Field(default_factory=list)
     pasted_transcript: str | None = None
+    auto_fetch: bool = Field(
+        default=False,
+        description=(
+            "Fetch the video/caption automatically from source_url via yt-dlp instead of "
+            "requiring a manual upload. For Instagram URLs this operates outside Instagram's "
+            "Terms of Service — see docs/ARCHITECTURE.md §2a. Off by default."
+        ),
+    )
 
 
 class ReelOut(BaseModel):
@@ -38,6 +53,7 @@ class ReelOut(BaseModel):
     share_count: int | None
     hashtags: list[str] | None
     thumbnail_storage_key: str | None
+    auto_fetched: bool
     transcript: str | None
     transcript_segments: list | None
     ocr_text: list | None

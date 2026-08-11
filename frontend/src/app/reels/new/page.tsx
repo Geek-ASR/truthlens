@@ -47,6 +47,7 @@ const EMPTY_FORM: FormState = {
 export default function NewReelPage() {
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [autoFetch, setAutoFetch] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -76,9 +77,9 @@ export default function NewReelPage() {
       setValidationError("A source URL is required.");
       return;
     }
-    if (!videoFile && !form.pastedTranscript.trim()) {
+    if (!videoFile && !form.pastedTranscript.trim() && !autoFetch) {
       setValidationError(
-        "Provide at least one media source: upload the reel's video file, or paste a transcript."
+        "Provide at least one media source: upload the reel's video file, paste a transcript, or enable auto-fetch."
       );
       return;
     }
@@ -97,6 +98,7 @@ export default function NewReelPage() {
         share_count: parseIntOrUndefined(form.shareCount),
         hashtags: form.hashtags.trim() || undefined,
         pasted_transcript: form.pastedTranscript.trim() || undefined,
+        auto_fetch: autoFetch,
         video: videoFile,
       });
       setReel(created);
@@ -276,6 +278,7 @@ export default function NewReelPage() {
               id="video"
               type="file"
               accept="video/*"
+              disabled={autoFetch}
               onChange={(e) => setVideoFile(e.target.files?.[0] ?? null)}
             />
             <span className="hint">Up to 200MB. Or paste a transcript below instead.</span>
@@ -287,14 +290,43 @@ export default function NewReelPage() {
               id="pastedTranscript"
               rows={6}
               placeholder="Paste a transcript if no video file is available…"
+              disabled={autoFetch}
               value={form.pastedTranscript}
               onChange={(e) => update("pastedTranscript", e.target.value)}
             />
           </div>
 
+          <div className="hint" style={{ textAlign: "center", margin: "4px 0" }}>
+            — or —
+          </div>
+
+          <div className="field">
+            <label className="checkbox-row" htmlFor="autoFetch">
+              <input
+                id="autoFetch"
+                type="checkbox"
+                checked={autoFetch}
+                onChange={(e) => setAutoFetch(e.target.checked)}
+              />
+              Auto-fetch video, caption &amp; metadata from the URL above (skip manual upload)
+            </label>
+            {autoFetch ? (
+              <InfoBanner
+                message={
+                  form.platform === "instagram"
+                    ? "For Instagram URLs, auto-fetch works outside Instagram's Terms of Service (no official API exists for downloading arbitrary posts) and can flag or rate-limit the account. Off by default — you've explicitly enabled it. See docs/ARCHITECTURE.md §2a."
+                    : `Auto-fetch will download the video and read whatever metadata ${form.platform} exposes for this URL. This runs server-side and may take a minute.`
+                }
+              />
+            ) : null}
+          </div>
+
           <button type="submit" className="btn btn-primary" disabled={submitting}>
-            {submitting ? "Submitting…" : "Submit Reel"}
+            {submitting ? (autoFetch ? "Fetching…" : "Submitting…") : "Submit Reel"}
           </button>
+          {submitting && autoFetch ? (
+            <Spinner label="Downloading video and reading metadata from the source URL — this can take a minute." />
+          ) : null}
         </form>
       ) : (
         <div>
@@ -316,6 +348,12 @@ export default function NewReelPage() {
               <dd>{reel.platform}</dd>
               <dt>Ingestion status</dt>
               <dd>{reel.ingestion_status}</dd>
+              {reel.auto_fetched ? (
+                <>
+                  <dt>Media source</dt>
+                  <dd>Auto-fetched via yt-dlp</dd>
+                </>
+              ) : null}
             </dl>
 
             <hr className="divider" />

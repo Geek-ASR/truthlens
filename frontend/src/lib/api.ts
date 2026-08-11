@@ -147,6 +147,7 @@ export interface CreateReelInput {
   share_count?: number;
   hashtags?: string;
   pasted_transcript?: string;
+  auto_fetch?: boolean;
   video?: File | null;
 }
 
@@ -167,6 +168,7 @@ export async function createReel(input: CreateReelInput): Promise<ReelOut> {
     form.set("share_count", String(input.share_count));
   if (input.hashtags) form.set("hashtags", input.hashtags);
   if (input.pasted_transcript) form.set("pasted_transcript", input.pasted_transcript);
+  if (input.auto_fetch) form.set("auto_fetch", "true");
   if (input.video) form.set("video", input.video);
 
   return request<ReelOut>("/api/reels", { method: "POST", body: form });

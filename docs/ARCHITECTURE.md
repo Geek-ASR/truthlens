@@ -51,6 +51,47 @@ viral, the system still needs a human to supply the reel media, per above.
 This limitation is documented, not hidden, in the product itself (see
 §15 "Limitations" in the methodology doc).
 
+## 2a. Opt-in auto-fetch (`auto_fetch=true`)
+
+The manual path in §2 is still the default and the only ToS-compliant
+one. Alongside it, `POST /api/reels` also accepts `auto_fetch=true`: when
+set, and no video/transcript was supplied, the backend downloads the
+video and reads whatever caption/metadata the source page exposes itself
+via `yt-dlp` (`app/services/url_downloader.py`), instead of requiring a
+manual upload.
+
+This is a deliberate, operator-requested exception to the "no
+unauthorized scraping" rule stated above, scoped as narrowly as the
+product allows:
+
+- **Off by default**, opt-in per reel — the manual path is untouched and
+  remains the compliant default for every other call site.
+- **For most platforms this is uncontroversial.** `yt-dlp` covers
+  hundreds of sites; for YouTube, X/Twitter, TikTok, and general public
+  web/news pages, fetching a public page's own declared metadata this way
+  carries no meaningful ToS conflict for a tool like this.
+- **For Instagram specifically, this is a knowing ToS exception, not a
+  gap that was missed.** `yt-dlp`'s Instagram support works by calling
+  Instagram's private web endpoints rather than an official, sanctioned
+  API — Instagram's Terms of Service prohibit exactly this. It carries
+  real operational risk: rate limiting, the extractor breaking whenever
+  Instagram changes its internal API (no SLA, no notice), and — the one
+  that matters most here — the connected account being flagged or banned,
+  which is the same account this product publishes fact-checks from. This
+  was enabled after that tradeoff was explained and the operator chose to
+  accept it for their own product; it is not this system's default
+  recommendation for a production deployment, and disabling it again is a
+  one-line change (stop passing `auto_fetch=true` from the client — no
+  backend changes needed).
+- **Never silently fills in what it can't confirm.** Every field on the
+  resulting `Reel` is either something `yt-dlp`'s extractor actually
+  reported for that URL or left null — same "no invented facts" standard
+  the rest of the pipeline holds evidence to (docs/FACT_CHECK_METHODOLOGY.md).
+  Manually-supplied fields always take precedence over fetched ones.
+- **Auditable.** `reels.auto_fetched` records which path produced each
+  reel, and the ingestion audit log entry records `auto_fetch` explicitly,
+  so this is always inspectable after the fact, per §25.
+
 ## 3. High-level pipeline (as implemented)
 
 ```
