@@ -64,9 +64,20 @@ swapped.
   Anthropic pricing page for current per-model rates.
   `LLM_MODEL_<STAGE>` env vars set the model per stage for either
   provider, so cost/quality can be tuned without a code change.
+- **Optional automatic fallback (`GEMINI_API_KEY`, works alongside
+  `LLM_PROVIDER=ollama`):** free Google AI Studio signup (no card
+  required for the free tier). When set, `FallbackLLMProvider`
+  (ARCHITECTURE §8) retries any call Ollama fails on against Gemini
+  before giving up — Ollama stays primary/default, Gemini only fires on
+  failure. Free tier is generous enough at this project's volume to cost
+  $0 in practice, but is still subject to Google's rate limits and ToS —
+  not "no restrictions." Uses the `google-genai` SDK's newer Interactions
+  API, not the classic `generateContent` REST endpoint (deprecated for
+  new API keys as of Aug 2026).
 - **Env vars:** `LLM_PROVIDER`, `OLLAMA_BASE_URL` (default
   `http://localhost:11434`); `ANTHROPIC_API_KEY` only if
-  `LLM_PROVIDER=anthropic`.
+  `LLM_PROVIDER=anthropic`; `GEMINI_API_KEY` / `LLM_MODEL_GEMINI_FALLBACK`
+  (default `gemini-flash-latest`) to enable the fallback.
 
 ## 3. Transcription — local `faster-whisper` by default, OpenAI Whisper API optional (Phase 1)
 

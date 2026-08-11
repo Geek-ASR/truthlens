@@ -13,6 +13,8 @@ x-backend-env: &backend-env
   # the container (Docker Desktop only) — override if Ollama runs elsewhere.
   OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
   ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+  GEMINI_API_KEY: ${GEMINI_API_KEY}
+  LLM_MODEL_GEMINI_FALLBACK: ${LLM_MODEL_GEMINI_FALLBACK:-gemini-flash-latest}
   OPENAI_API_KEY: ${OPENAI_API_KEY}
   SEARCH_API_KEY: ${SEARCH_API_KEY}
   SEARCH_PROVIDER: ${SEARCH_PROVIDER:-tavily}

@@ -337,3 +337,45 @@ pulled (`ollama pull llama3.2 && ollama pull llava-phi3`). Inside Docker
 Compose, `OLLAMA_BASE_URL` defaults to `http://host.docker.internal:11434`
 to reach the host's Ollama server from within the `api`/`worker`
 containers (Docker Desktop only — override for other setups).
+
+**Automatic Gemini fallback (`GEMINI_API_KEY`, optional).** Set this and
+`LLM_PROVIDER=ollama` still keeps Ollama as primary, but
+`FallbackLLMProvider` (`backend/app/services/ai/factory.py`) retries any
+call Ollama fails on against Gemini (`LLM_MODEL_GEMINI_FALLBACK`, default
+`gemini-flash-latest`) before giving up. This isn't hypothetical
+belt-and-suspenders: run live against a real Instagram reel (Hindi/English
+code-switched transcript), `llama3.2`'s claim extraction produced garbled,
+hallucinated claim text — nonsense mixing Latin/Cyrillic/Arabic/Tamil
+script fragments, not a schema violation but genuinely wrong output that
+happened to be schema-valid. Gemini handled the same input correctly.
+Ollama's own retry-on-validation-failure (above) catches the
+schema-shaped failures; this fallback is the safety net for the case
+Ollama can't self-correct — a small model being confidently wrong.
+
+Two real gotchas hit building this, worth knowing if `gemini_provider.py`
+ever needs touching again:
+- Google deprecated the `generateContent` REST endpoint for API keys
+  created around Aug 2026 ("no longer available to new users") in favor
+  of a new **Interactions API** (`google-genai` SDK ≥2.3.0,
+  `client.aio.interactions.create`). Pinned model names like
+  `gemini-2.5-flash` also 404 for new keys even via the new API — only
+  `-latest` aliases and `gemini-3.x` names work, which is why
+  `LLM_MODEL_GEMINI_FALLBACK` uses `gemini-flash-latest` rather than a
+  pinned version (avoids going stale the same way again).
+- Gemini's `responseSchema` is an OpenAPI-3.0-flavored *subset* of JSON
+  Schema — no `$ref`/`$defs` (must be fully inlined) and only a few
+  `format` values are recognized. `_to_gemini_schema()` converts a
+  Pydantic `model_json_schema()` output into that shape.
+- Installing `google-genai` force-upgraded `pydantic` 2.10.3 → 2.13.4
+  across the whole venv (it's a hard dependency floor). Full test suite
+  passed unchanged after the bump, but it's worth knowing this wasn't a
+  deliberate, isolated choice — `requirements.txt` reflects the
+  now-installed version.
+
+This tradeoff is different from Ollama's: Gemini's free tier is generous
+enough for this project's volume (12 posts/day) to cost $0 in practice,
+but it's still a real external API key subject to Google's rate limits
+and ToS — not "no restrictions whatsoever." It only ever fires when
+Ollama already failed, so the $0/no-key/offline default holds for the
+common case; this is deliberately an escape hatch, not a silent primary
+swap.

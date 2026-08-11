@@ -1,6 +1,6 @@
 fastapi==0.115.6
 uvicorn[standard]==0.32.1
-pydantic==2.10.3
+pydantic==2.13.4
 pydantic-settings==2.7.0
 email-validator==2.2.0
 SQLAlchemy==2.0.36
@@ -14,6 +14,7 @@ celery==5.4.0
 httpx==0.28.1
 anthropic==0.40.0
 ollama==0.6.2
+google-genai==2.17.0
 openai==1.58.1
 faster-whisper==1.1.0
 requests==2.34.2

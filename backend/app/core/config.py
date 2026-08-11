@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     # llama3/mistral models on this hardware, so bigger was not better here.
     # Set to "anthropic" (and provide ANTHROPIC_API_KEY) for higher-quality
     # reasoning when local-only isn't required.
-    LLM_PROVIDER: Literal["ollama", "anthropic"] = "ollama"
+    LLM_PROVIDER: Literal["ollama", "anthropic", "gemini"] = "ollama"
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     ANTHROPIC_API_KEY: str = ""
     LLM_MODEL_CLAIM_EXTRACTION: str = "llama3.2"
@@ -42,6 +42,22 @@ class Settings(BaseSettings):
     LLM_MODEL_VERDICT: str = "llama3.2"
     LLM_MODEL_CONTENT_GENERATION: str = "llama3.2"
     LLM_MODEL_VISION: str = "llava-phi3"
+    # Gemini: used as an automatic fallback whenever LLM_PROVIDER="ollama"
+    # and a call fails (see FallbackLLMProvider in services/ai/factory.py)
+    # — observed live to recover cases where the small local model
+    # produces garbled output on real, longer, code-switched content that
+    # a short synthetic test never surfaces. Fallback is skipped entirely
+    # (Ollama's own error just propagates) if this key isn't set. Gemini's
+    # free tier is generous enough for this project's volume but is still
+    # a real external API key subject to Google's rate limits/ToS, unlike
+    # Ollama — see docs/ARCHITECTURE.md §8.
+    GEMINI_API_KEY: str = ""
+    # "-latest" alias rather than a pinned version: pinned "gemini-2.5-*"
+    # model names were found live to 404 ("no longer available to new
+    # users") for an API key created around Aug 2026 — Google had already
+    # moved new signups to newer models. The alias tracks whatever Google
+    # currently recommends instead of going stale the same way again.
+    LLM_MODEL_GEMINI_FALLBACK: str = "gemini-flash-latest"
 
     # Transcription — "local" (faster-whisper, CPU, no key) is the default
     # to match LLM_PROVIDER's $0/no-key stance; set "openai" for Whisper
