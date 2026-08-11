@@ -91,13 +91,3 @@ class AnthropicProvider(LLMProvider):
             cache_creation_input_tokens=getattr(usage, "cache_creation_input_tokens", 0) or 0,
             cache_read_input_tokens=getattr(usage, "cache_read_input_tokens", 0) or 0,
         )
-
-
-_provider: LLMProvider | None = None
-
-
-def get_llm_provider() -> LLMProvider:
-    global _provider
-    if _provider is None:
-        _provider = AnthropicProvider()
-    return _provider

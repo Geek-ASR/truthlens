@@ -24,13 +24,24 @@ class Settings(BaseSettings):
     FIELD_ENCRYPTION_KEY: str = ""  # Fernet key, required in production for token encryption
 
     # LLM providers
+    # Default is "ollama": every pipeline stage runs on local models with no
+    # API key, no per-token cost, and no vendor usage limits. Empirically
+    # picked from the 3 pre-pulled local models (see
+    # backend/scripts/estimate_costs.py's local-cost notes and
+    # docs/ARCHITECTURE.md §8) — llama3.2:3b passed schema-conformance on
+    # every real pipeline schema tested and was ~3x faster than the larger
+    # llama3/mistral models on this hardware, so bigger was not better here.
+    # Set to "anthropic" (and provide ANTHROPIC_API_KEY) for higher-quality
+    # reasoning when local-only isn't required.
+    LLM_PROVIDER: Literal["ollama", "anthropic"] = "ollama"
+    OLLAMA_BASE_URL: str = "http://localhost:11434"
     ANTHROPIC_API_KEY: str = ""
-    LLM_MODEL_CLAIM_EXTRACTION: str = "claude-sonnet-5"
-    LLM_MODEL_RESEARCH_PLANNING: str = "claude-sonnet-5"
-    LLM_MODEL_EVIDENCE_ANALYSIS: str = "claude-sonnet-5"
-    LLM_MODEL_VERDICT: str = "claude-opus-5"
-    LLM_MODEL_CONTENT_GENERATION: str = "claude-sonnet-5"
-    LLM_MODEL_VISION: str = "claude-sonnet-5"
+    LLM_MODEL_CLAIM_EXTRACTION: str = "llama3.2"
+    LLM_MODEL_RESEARCH_PLANNING: str = "llama3.2"
+    LLM_MODEL_EVIDENCE_ANALYSIS: str = "llama3.2"
+    LLM_MODEL_VERDICT: str = "llama3.2"
+    LLM_MODEL_CONTENT_GENERATION: str = "llama3.2"
+    LLM_MODEL_VISION: str = "llava-phi3"
 
     # Transcription
     TRANSCRIPTION_PROVIDER: Literal["openai", "local"] = "openai"

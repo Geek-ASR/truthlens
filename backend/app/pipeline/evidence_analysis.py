@@ -12,7 +12,7 @@ from app.db.models import ActorType, Claim, Evidence, Source
 from app.pipeline.audit import record_audit
 from app.pipeline.source_scoring import update_after_evidence
 from app.schemas.evidence import EvidenceAnalysisItem
-from app.services.ai.anthropic_provider import get_llm_provider
+from app.services.ai.factory import get_llm_provider
 from app.services.ai.prompts import (
     EVIDENCE_ANALYSIS_PROMPT_VERSION,
     EVIDENCE_ANALYSIS_SYSTEM_PROMPT,

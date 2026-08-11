@@ -7,7 +7,7 @@ from app.core.config import get_settings
 from app.db.models import ActorType, Claim, Evidence, Reel, Source, Verdict
 from app.pipeline.audit import record_audit
 from app.schemas.content import ContentGenerationResult
-from app.services.ai.anthropic_provider import get_llm_provider
+from app.services.ai.factory import get_llm_provider
 from app.services.ai.prompts import CONTENT_GENERATION_PROMPT_VERSION, CONTENT_GENERATION_SYSTEM_PROMPT
 
 _MAX_CAPTION_SOURCES = 5

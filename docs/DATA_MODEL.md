@@ -79,7 +79,7 @@ The source media being fact-checked. Ingested manually in Phase 1–4;
 | transcript | text nullable | Whisper output |
 | transcript_segments | jsonb nullable | timestamped segments `[{start,end,text}]` |
 | ocr_text | jsonb nullable | `[{frame_ts, text, confidence}]` |
-| vision_context | jsonb nullable | Claude vision scene descriptions, advisory only, never cited as evidence |
+| vision_context | jsonb nullable | LLM vision scene descriptions (provider per `LLM_PROVIDER`, ARCHITECTURE §8), advisory only, never cited as evidence |
 | discovery_source | enum(`manual`,`rss`,`youtube`,`x`,`news`,`factcheck_org`,`tip`) default `manual` | |
 | virality_score | float nullable | see METHODOLOGY §Virality |
 | ingestion_status | enum(`uploaded`,`transcribing`,`transcribed`,`failed`) | |

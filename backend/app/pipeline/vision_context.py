@@ -8,7 +8,7 @@ from app.core.config import get_settings
 from app.db.models import ActorType, Reel
 from app.pipeline.audit import record_audit
 from app.schemas.vision import VisionContextResult
-from app.services.ai.anthropic_provider import get_llm_provider
+from app.services.ai.factory import get_llm_provider
 from app.services.ai.prompts import VISION_CONTEXT_PROMPT_VERSION, VISION_CONTEXT_SYSTEM_PROMPT
 
 _MAX_FRAMES_FOR_VISION = 4

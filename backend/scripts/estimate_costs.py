@@ -44,6 +44,12 @@ _UNKNOWN_MODEL_NOTE = (
     "no pricing entry for this model in this script — add one from "
     "platform.claude.com/pricing before trusting the $ total"
 )
+# Any model name that isn't a Claude model is assumed to be a local Ollama
+# model (LLM_PROVIDER=ollama, app/services/ai/ollama_provider.py) — those
+# really do cost $0, so they're excluded from the "undercount" warning
+# below rather than treated as an unpriced Claude model.
+def _is_claude_model(model: str) -> bool:
+    return model.startswith("claude-")
 
 _AI_STAGE_ACTIONS = {
     "claim_extraction",
@@ -122,8 +128,9 @@ async def main(days: int, daily_target: int) -> None:
         model = _model_from_actor(row.actor)
         cost = _cost_usd(model, tokens)
         if cost is None:
-            unknown_model_seen.add(model)
             cost = 0.0
+            if _is_claude_model(model):
+                unknown_model_seen.add(model)
 
         bucket = by_stage[row.action]
         bucket["calls"] += 1
@@ -141,6 +148,8 @@ async def main(days: int, daily_target: int) -> None:
     for stage, b in sorted(by_stage.items(), key=lambda kv: -kv[1]["cost_usd"]):
         print(f"{stage:<22}{b['calls']:>8}{b['input_tokens']:>12}{b['output_tokens']:>12}{b['cost_usd']:>10.4f}")
     print(f"\nTotal cost this window: ${total_cost:.4f}")
+    if settings.LLM_PROVIDER == "ollama":
+        print("(LLM_PROVIDER=ollama — this $0 is real, not a missing-pricing artifact.)")
     print(f"Fact-checks (reels analyzed) this window: {len(fact_check_count)}")
 
     if unknown_model_seen:

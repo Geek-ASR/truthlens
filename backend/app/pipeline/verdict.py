@@ -20,7 +20,7 @@ from app.db.models import (
 from app.pipeline.audit import record_audit
 from app.pipeline.validation import validate_verdict
 from app.schemas.verdict import VerdictProposal
-from app.services.ai.anthropic_provider import get_llm_provider
+from app.services.ai.factory import get_llm_provider
 from app.services.ai.prompts import VERDICT_PROMPT_VERSION, VERDICT_SYSTEM_PROMPT
 
 

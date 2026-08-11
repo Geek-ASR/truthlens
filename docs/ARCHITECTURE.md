@@ -188,18 +188,21 @@ product spec). Stage → model mapping used in this codebase
 |---|---|---|---|
 | `transcribe` | audio → text | Whisper (`whisper-1` via OpenAI, or local `faster-whisper`) | swappable via `TRANSCRIPTION_PROVIDER` |
 | `ocr` | on-screen text | Tesseract (local, free) | swappable to cloud OCR later |
-| `vision_context` | describe sampled frames | Claude (vision) | only used to aid claim extraction, never cited as evidence |
-| `claim_extraction` | decompose transcript into atomic claims | Claude | structured JSON, see DATA_MODEL |
-| `research_planning` | claim → search queries | Claude | must emit queries only, no verdicts |
-| `evidence_analysis` | passage + claim → stance | Claude | forbidden from introducing facts not in the passage |
-| `verdict` | evidence matrix → verdict + confidence | Claude | must cite `source_id`s used |
+| `vision_context` | describe sampled frames | Ollama `llava-phi3` (local) | only used to aid claim extraction, never cited as evidence |
+| `claim_extraction` | decompose transcript into atomic claims | Ollama `llama3.2` (local) | structured JSON, see DATA_MODEL |
+| `research_planning` | claim → search queries | Ollama `llama3.2` (local) | must emit queries only, no verdicts |
+| `evidence_analysis` | passage + claim → stance | Ollama `llama3.2` (local) | forbidden from introducing facts not in the passage |
+| `verdict` | evidence matrix → verdict + confidence | Ollama `llama3.2` (local) | must cite `source_id`s used |
 | `validation` | deterministic code, not an LLM | — | see §17 of product spec |
-| `content_generation` | evidence matrix → slide text + caption | Claude | must only restate validated content |
+| `content_generation` | evidence matrix → slide text + caption | Ollama `llama3.2` (local) | must only restate validated content |
 
-All Claude calls use Anthropic's structured/tool-output mode (forced JSON
-schema) rather than free text parsing, and every call is persisted to
-`audit_logs` with prompt version, inputs, and output before the pipeline
-advances to the next stage.
+`LLM_PROVIDER` (default `ollama`) selects between the local Ollama
+provider and Anthropic Claude — see §8 for why Ollama is the default and
+what that costs in reasoning quality. Both providers use forced
+schema-conformant structured output (Anthropic's tool-forced JSON;
+Ollama's `format=<json schema>` API) rather than free-text parsing, and
+every call is persisted to `audit_logs` with prompt version, inputs, and
+output before the pipeline advances to the next stage.
 
 ## 5. Why this stack (cheapest-practical reasoning)
 
@@ -210,7 +213,7 @@ advances to the next stage.
 | ORM/migrations | SQLAlchemy 2.0 (async) + Alembic | standard, typed, migration history is itself part of the audit story |
 | Queue/scheduler | Redis + Celery + Celery Beat | mirrors the product spec's explicit "Redis + Celery" suggestion; Beat covers the cron-like discovery/research/publish schedule in §32 |
 | Frontend | Next.js 14 + TypeScript + Tailwind | admin dashboard + public fact-check pages from one codebase; SSR is useful for the public page (needs to be crawlable/shareable) |
-| LLM | Anthropic Claude (Sonnet 5 default, Opus 5 for verdict/validation-adjacent steps if quality demands it) | structured outputs, long context for evidence passages |
+| LLM | Ollama running local models by default (`LLM_PROVIDER=ollama`); Anthropic Claude as an opt-in swap (`LLM_PROVIDER=anthropic`) | zero cost, no API key, no vendor usage limits — see §8 for the reasoning-quality tradeoff this default accepts, and for how to switch to Claude |
 | Transcription | OpenAI Whisper API by default; `faster-whisper` local as a cost-reduction swap | MVP simplicity first, self-hosting is a documented Phase-2 optimization |
 | OCR | Tesseract via `pytesseract` | free, local, no API key required for MVP |
 | Web search | Tavily API | built for LLM/agentic research, returns cleaned page content (reduces a separate scraping step), has a source-domain filter useful for tiering |
@@ -268,3 +271,69 @@ stub endpoints. The DB schema and API already have the hooks for these
 (`reels.discovery_source`, `reels.virality_score`, `publishing_jobs`,
 `analytics` tables exist from day one) so Phase 5+ is additive, not a
 rewrite. See `/docs/ROADMAP.md` for the milestone breakdown.
+
+## 8. Local-only LLM mode (Ollama)
+
+`LLM_PROVIDER=ollama` (the default) routes every LLM-backed pipeline stage
+through a local [Ollama](https://ollama.com) server instead of Anthropic's
+API — `backend/app/services/ai/ollama_provider.py`, selected by
+`backend/app/services/ai/factory.py`. This means: no `ANTHROPIC_API_KEY`,
+$0 per-token cost regardless of `MAX_POSTS_PER_DAY`, and no vendor rate
+limit — the only limits are this machine's own hardware.
+
+**Model choice was measured, not assumed.** The dev machine this default
+was picked on has 8GB RAM (Apple M1), which rules out anything past a
+small (3-8B, quantized) model. All 3 already-pulled models were run
+against the actual pipeline Pydantic schemas (`ClaimExtractionResult`,
+`ResearchPlan`, `EvidenceAnalysisItem`, `VerdictProposal`,
+`ContentGenerationResult`) with Ollama's structured-output API
+(`format=<json schema>`), not toy prompts:
+
+| Model | Size | Schema-valid | Avg latency/call |
+|---|---|---|---|
+| `llama3.2` | 3B, 2.0GB | 5/5 | 9.1s |
+| `llama3` | 8B, 4.7GB | 4/5 (failed `importance` bound) | 28.1s |
+| `mistral` | 7B, 4.1GB | 4/5 (same failure) | 21.4s |
+
+`llama3.2` won on both axes — the two larger models weren't just slower,
+they were *less* schema-reliable, both failing the same way (emitting an
+integer 1-3 "importance" ranking instead of the schema's `0.0-1.0` float).
+Bigger local models are not automatically better at strict structured
+output. For vision, `moondream` (1.7GB) was tried first and rejected: it
+hallucinated the test image's contents entirely and looped into a
+non-terminating repetition that broke JSON output. `llava-phi3` (3.8B,
+2.9GB) replaced it — schema-valid and roughly on-topic, good enough given
+`vision_context` is advisory-only and never cited as evidence for a
+verdict (§4, DATA_MODEL's `reels.vision_context` note).
+
+**What this default actually costs.** A 3B local model is a materially
+weaker reasoner than Claude at the parts of this pipeline that are not
+just JSON formatting — claim decomposition judgment, evidence-stance
+nuance, and verdict calibration on ambiguous evidence. The deterministic
+anti-hallucination validator (`app/pipeline/validation.py`) still catches
+citations that don't trace to real evidence rows, but it cannot catch a
+verdict that cites real evidence and still reasons about it poorly. This
+tradeoff is accepted deliberately for a $0-cost, no-API-key, no-rate-limit
+default — not hidden. Switch back with `LLM_PROVIDER=anthropic` (plus
+`ANTHROPIC_API_KEY`) any time higher-quality reasoning matters more than
+running for free; both providers implement the same `LLMProvider`
+interface (§4), so nothing else in the pipeline changes.
+
+**Only the LLM is local by default.** `TRANSCRIPTION_PROVIDER` still
+defaults to `openai` (Whisper API, costs money, needs `OPENAI_API_KEY`) —
+a local `faster-whisper` path already exists
+(`backend/app/services/transcription/local_whisper.py`) but its default
+hasn't been flipped. `SEARCH_PROVIDER=tavily` is unchanged and still
+needs `SEARCH_API_KEY`: it is not an "AI" API in the LLM sense, and there
+is no local substitute for it — the research stage needs to retrieve real,
+current web sources to check claims against, which a local (or any) LLM
+cannot do on its own without hallucinating. Going further toward "fully
+free" would mean flipping transcription's default too; Tavily's free tier
+(1,000 requests/month) is the practical floor for the research stage
+regardless of LLM provider.
+
+Requires `ollama serve` running locally with `llama3.2` and `llava-phi3`
+pulled (`ollama pull llama3.2 && ollama pull llava-phi3`). Inside Docker
+Compose, `OLLAMA_BASE_URL` defaults to `http://host.docker.internal:11434`
+to reach the host's Ollama server from within the `api`/`worker`
+containers (Docker Desktop only — override for other setups).

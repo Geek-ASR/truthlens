@@ -8,6 +8,10 @@ x-backend-env: &backend-env
   S3_PUBLIC_BASE_URL: ${S3_PUBLIC_BASE_URL:-http://localhost:9000/truthlens-media}
   JWT_SECRET_KEY: ${JWT_SECRET_KEY}
   FIELD_ENCRYPTION_KEY: ${FIELD_ENCRYPTION_KEY}
+  LLM_PROVIDER: ${LLM_PROVIDER:-ollama}
+  # host.docker.internal reaches the Mac host's `ollama serve` from inside
+  # the container (Docker Desktop only) — override if Ollama runs elsewhere.
+  OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
   ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
   OPENAI_API_KEY: ${OPENAI_API_KEY}
   SEARCH_API_KEY: ${SEARCH_API_KEY}

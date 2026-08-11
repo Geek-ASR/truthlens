@@ -9,7 +9,7 @@ from app.core.config import get_settings
 from app.db.models import ActorType, Claim, ClaimStatus, SearchQuery
 from app.pipeline.audit import record_audit
 from app.schemas.research import ResearchPlan
-from app.services.ai.anthropic_provider import get_llm_provider
+from app.services.ai.factory import get_llm_provider
 from app.services.ai.prompts import RESEARCH_PLANNING_PROMPT_VERSION, RESEARCH_PLANNING_SYSTEM_PROMPT
 
 

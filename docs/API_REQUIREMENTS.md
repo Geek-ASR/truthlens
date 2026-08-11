@@ -48,18 +48,25 @@ swapped.
   not expose that for arbitrary third parties, and this project does not
   attempt to work around that (see ARCHITECTURE §2).
 
-## 2. Anthropic Claude API (required for Phase 1)
+## 2. LLM provider — Ollama by default, Anthropic Claude optional (Phase 1)
 
 - **Used for:** claim extraction, research planning, evidence analysis,
   verdict generation, content generation, vision context on frames.
-- **Approval required:** No — standard API key signup.
-- **Cost:** token metered; see `claude-api` skill / Anthropic pricing page
-  for current per-model rates. Verdict/validation-adjacent stages should
-  default to a stronger model; high-volume/low-risk stages (OCR cleanup,
-  simple formatting) can use a cheaper model — configurable per stage via
-  `LLM_MODEL_<STAGE>` env vars so cost/quality can be tuned without a
-  code change.
-- **Env vars:** `ANTHROPIC_API_KEY`.
+- **Default (`LLM_PROVIDER=ollama`): no key, no approval, $0 cost.** Runs
+  entirely on a local [Ollama](https://ollama.com) install
+  (`ollama pull llama3.2 && ollama pull llava-phi3`, then `ollama serve`).
+  Model choice and its reasoning-quality tradeoff vs. Claude are documented
+  in ARCHITECTURE §8 — short version: reliable at schema-conformant JSON,
+  meaningfully weaker at claim/evidence judgment than Claude, by design
+  acceptable for a free/local deployment.
+- **Optional (`LLM_PROVIDER=anthropic`):** standard Anthropic API key
+  signup, no approval process. Token metered; see `claude-api` skill /
+  Anthropic pricing page for current per-model rates.
+  `LLM_MODEL_<STAGE>` env vars set the model per stage for either
+  provider, so cost/quality can be tuned without a code change.
+- **Env vars:** `LLM_PROVIDER`, `OLLAMA_BASE_URL` (default
+  `http://localhost:11434`); `ANTHROPIC_API_KEY` only if
+  `LLM_PROVIDER=anthropic`.
 
 ## 3. OpenAI Whisper API (default transcription provider, Phase 1)
 
