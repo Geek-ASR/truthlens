@@ -13,7 +13,7 @@ from app.schemas.claim import ClaimOut
 from app.schemas.evidence import EvidenceOut
 from app.schemas.fact_check import FactCheckDetail
 from app.schemas.verdict import VerdictOut
-from app.services.search.tavily import get_search_provider
+from app.services.search.factory import get_search_provider
 
 router = APIRouter()
 

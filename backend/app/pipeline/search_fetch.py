@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from dateutil import parser as date_parser
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.exceptions import ResearchFailedError
 from app.db.models import ActorType, Claim, Source
 from app.pipeline.audit import record_audit
 from app.pipeline.source_scoring import TIER3_FACTCHECK_DOMAINS, classify_source_tier, score_source
@@ -24,6 +25,13 @@ async def fetch_evidence_sources(
     storage = get_storage_client()
     sources: list[Source] = []
     seen_urls: set[str] = set()
+    # Distinguishes "the search infrastructure itself is broken" (every
+    # query errored — RESEARCH_FAILED, must never masquerade as a
+    # publishable UNVERIFIED) from "search worked but genuinely turned up
+    # little/nothing" (a real, honest UNVERIFIED outcome). Conflating
+    # these was the actual bug behind every fact-check coming back with
+    # an empty evidence section — see docs/CURRENT_ARCHITECTURE.md §10.
+    queries_errored = 0
 
     for query in queries:
         if len(sources) >= _MAX_SOURCES_PER_CLAIM:
@@ -37,6 +45,7 @@ async def fetch_evidence_sources(
                 query.query_text, include_domains=include_domains, max_results=_RESULTS_PER_QUERY
             )
         except Exception as exc:  # noqa: BLE001 — a single failed query must not abort the whole claim
+            queries_errored += 1
             await record_audit(
                 db,
                 entity_type="search_query",
@@ -94,6 +103,22 @@ async def fetch_evidence_sources(
             sources.append(source)
 
     await db.flush()
+
+    if queries and queries_errored == len(queries):
+        await record_audit(
+            db,
+            entity_type="claim",
+            entity_id=claim.id,
+            actor_type=ActorType.system,
+            actor="search_fetch",
+            action="research_failed",
+            input_summary={"query_count": len(queries)},
+            output_summary={"queries_errored": queries_errored},
+        )
+        raise ResearchFailedError(
+            f"All {len(queries)} search queries for claim {claim.id} failed at the infrastructure "
+            f"level (search provider unavailable/misconfigured) — no query actually executed."
+        )
 
     await record_audit(
         db,

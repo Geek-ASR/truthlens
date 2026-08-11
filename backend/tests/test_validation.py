@@ -90,6 +90,47 @@ def test_downgrades_when_reasoning_cites_a_number_not_in_any_passage():
     assert outcome.verdict == VerdictLabel.UNVERIFIED
 
 
+def test_ignores_numbers_that_are_only_part_of_a_cited_url():
+    # Real failure observed live (docs/CURRENT_ARCHITECTURE.md §10): a
+    # model cited a source inline as "(https://site.com/article-3065258.html)"
+    # and the URL's own numeric ID got flagged as an unsupported statistic,
+    # downgrading an otherwise well-evidenced TRUE verdict to UNVERIFIED.
+    source = _make_source(relevant_passage="Kejriwal criticized the new takedown rule in a public statement.")
+    evidence_id = uuid.uuid4()
+    proposal = VerdictProposal(
+        verdict=VerdictLabel.TRUE,
+        confidence=0.9,
+        reasoning_summary=(
+            "Kejriwal criticized the rule (https://zeenews.india.com/india/"
+            "kejriwal-slams-centre-3065258.html)."
+        ),
+        cited_evidence_ids=[evidence_id],
+    )
+
+    outcome = validate_verdict(proposal, {evidence_id: object()}, {evidence_id: source})
+
+    assert outcome.status == ValidationStatus.passed
+    assert outcome.verdict == VerdictLabel.TRUE
+
+
+def test_still_catches_a_real_hallucinated_number_next_to_a_url():
+    source = _make_source(relevant_passage="Kejriwal criticized the new takedown rule.")
+    evidence_id = uuid.uuid4()
+    proposal = VerdictProposal(
+        verdict=VerdictLabel.TRUE,
+        confidence=0.9,
+        reasoning_summary=(
+            "47% of the public opposed the rule (https://zeenews.india.com/india/"
+            "kejriwal-slams-centre-3065258.html)."
+        ),
+        cited_evidence_ids=[evidence_id],
+    )
+
+    outcome = validate_verdict(proposal, {evidence_id: object()}, {evidence_id: source})
+
+    assert outcome.status == ValidationStatus.downgraded_unsupported_stat
+
+
 def test_ignores_small_meta_numbers_that_dont_need_source_support():
     source = _make_source(relevant_passage="General discussion with no specific figures.")
     evidence_id = uuid.uuid4()

@@ -12,8 +12,8 @@ audit trail stays easy to follow end to end."""
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import DuplicateFactCheckError
-from app.db.models import Claim, Evidence, FactCheck, FactCheckStatus, Reel, Source, Verdict
+from app.core.exceptions import DuplicateFactCheckError, ResearchFailedError
+from app.db.models import Claim, ClaimStatus, Evidence, FactCheck, FactCheckStatus, Reel, Source, Verdict
 from app.pipeline import (
     claim_extraction,
     content_generation,
@@ -28,7 +28,7 @@ from app.pipeline import (
     verdict as verdict_stage,
     vision_context,
 )
-from app.services.search.tavily import get_search_provider
+from app.services.search.factory import get_search_provider
 from app.services.storage.s3 import get_storage_client
 
 
@@ -51,7 +51,17 @@ async def analyze_reel(db: AsyncSession, reel: Reel) -> Reel:
         queries = await research_planning.plan_research(db, claim)
         if not queries:
             continue
-        sources = await search_fetch.fetch_evidence_sources(db, claim, queries, search_provider)
+        try:
+            sources = await search_fetch.fetch_evidence_sources(db, claim, queries, search_provider)
+        except ResearchFailedError:
+            # Infrastructure-level research failure (every query errored) —
+            # NEVER silently treated as UNVERIFIED. No Verdict row is
+            # created; the claim is marked distinctly so build_fact_check()
+            # refuses to build a publishable fact-check from it until
+            # research is retried and actually succeeds (docs/CURRENT_ARCHITECTURE.md §10).
+            claim.status = ClaimStatus.research_failed
+            await db.flush()
+            continue
         evidence_rows = await evidence_analysis.analyze_evidence(db, claim, sources) if sources else []
         await verdict_stage.propose_verdict(db, claim, evidence_rows, sources)
 
@@ -59,6 +69,20 @@ async def analyze_reel(db: AsyncSession, reel: Reel) -> Reel:
 
 
 async def build_fact_check(db: AsyncSession, claim: Claim) -> FactCheck:
+    # Publication gate: research infrastructure failure must never reach a
+    # publishable fact-check, even indirectly. This claim has no Verdict
+    # row at all (analyze_reel skipped verdict generation on
+    # ResearchFailedError) — "no verdict yet" below would already catch
+    # it, but checking status explicitly gives a much clearer error than
+    # a generic "no verdict" message when the real problem is
+    # infrastructure, not an unresearched claim.
+    if claim.status == ClaimStatus.research_failed:
+        raise ValueError(
+            "Research failed for this claim (search infrastructure error) — cannot build a "
+            "fact-check from it. This is not the same as UNVERIFIED. Retry research (fix the "
+            "search backend, then re-run analyze) before building a fact-check."
+        )
+
     reel_result = await db.execute(select(Reel).where(Reel.id == claim.reel_id))
     reel = reel_result.scalar_one()
 

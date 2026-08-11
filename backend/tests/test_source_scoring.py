@@ -14,6 +14,17 @@ def test_classifies_gov_domains_as_primary():
     assert classify_source_tier("https://ministry.gov.in/press-release") == SourceTier.primary_government
 
 
+def test_classifies_major_established_outlets_beyond_the_original_hardcoded_few():
+    # Regression test for a real gap found live (docs/CURRENT_ARCHITECTURE.md
+    # §10): genuinely major, established outlets and a primary case-law
+    # database were falling through to "other" simply because they weren't
+    # US/UK names, understating their reliability score for no real reason.
+    assert classify_source_tier("https://timesofindia.indiatimes.com/india/x") == SourceTier.established_news
+    assert classify_source_tier("https://www.thehindu.com/news/national/x") == SourceTier.established_news
+    assert classify_source_tier("https://indiankanoon.org/doc/167974121/") == SourceTier.primary_legal
+    assert classify_source_tier("https://www.nytimes.com/2026/x") == SourceTier.established_news
+
+
 def test_primary_government_scores_higher_than_random_blog():
     now = datetime.now(timezone.utc)
     gov_score, _ = score_source(source_type=SourceTier.primary_government, publication_date=now, author="Ministry")

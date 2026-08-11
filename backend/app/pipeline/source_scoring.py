@@ -26,12 +26,39 @@ _WEIGHTS = {
 }
 
 _TIER1_HINTS = (".gov", ".gov.", "parliament", "legislature", "election-commission", "eci.gov")
+_TIER1_LEGAL_DOMAINS = {
+    # Case-law / primary legal-text databases — hosts the actual judgment
+    # or statute text, not commentary about it.
+    "indiankanoon.org": SourceTier.primary_legal,
+}
 _TIER2_DOMAINS = {
     "reuters.com": SourceTier.news_wire,
     "apnews.com": SourceTier.news_wire,
     "bbc.com": SourceTier.established_news,
     "bbc.co.uk": SourceTier.established_news,
     "ft.com": SourceTier.established_news,
+    "nytimes.com": SourceTier.established_news,
+    "wsj.com": SourceTier.established_news,
+    "theguardian.com": SourceTier.established_news,
+    "washingtonpost.com": SourceTier.established_news,
+    "economist.com": SourceTier.established_news,
+    # Major established Indian outlets — real, on-topic evidence for
+    # India-focused claims kept landing here and getting classified
+    # "other" (docs/CURRENT_ARCHITECTURE.md §10 live test), which
+    # understated their reliability score relative to what they actually
+    # are: mainstream, editorially-staffed national newspapers, the exact
+    # category "major established newspapers" already names in the spec —
+    # just not US/UK ones.
+    "thehindu.com": SourceTier.established_news,
+    "indianexpress.com": SourceTier.established_news,
+    "timesofindia.indiatimes.com": SourceTier.established_news,
+    "hindustantimes.com": SourceTier.established_news,
+    "ndtv.com": SourceTier.established_news,
+    "economictimes.indiatimes.com": SourceTier.established_news,
+    "livemint.com": SourceTier.established_news,
+    "thewire.in": SourceTier.established_news,
+    "scroll.in": SourceTier.established_news,
+    "theprint.in": SourceTier.established_news,
 }
 TIER3_FACTCHECK_DOMAINS = {
     "snopes.com": SourceTier.factcheck_org,
@@ -71,6 +98,8 @@ def classify_source_tier(url: str) -> SourceTier:
     domain = urlparse(url).netloc.lower().removeprefix("www.")
     if any(hint in domain for hint in _TIER1_HINTS):
         return SourceTier.primary_government
+    if domain in _TIER1_LEGAL_DOMAINS:
+        return _TIER1_LEGAL_DOMAINS[domain]
     if domain in _TIER2_DOMAINS:
         return _TIER2_DOMAINS[domain]
     if domain in TIER3_FACTCHECK_DOMAINS:

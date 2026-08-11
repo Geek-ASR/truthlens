@@ -65,8 +65,15 @@ class Settings(BaseSettings):
     TRANSCRIPTION_PROVIDER: Literal["openai", "local"] = "local"
     OPENAI_API_KEY: str = ""
 
-    # Search
-    SEARCH_PROVIDER: Literal["tavily"] = "tavily"
+    # Search — "duckduckgo" (default) is free/keyless: DuckDuckGo search +
+    # this process directly fetching and extracting each result page's
+    # text (services/search/duckduckgo.py). Without this, the research
+    # stage had ZERO working search backends when SEARCH_API_KEY was
+    # unset, which is why every fact-check came back UNVERIFIED with an
+    # empty evidence section (docs/CURRENT_ARCHITECTURE.md §4) — not a
+    # reasoning failure, a missing-input failure. Set SEARCH_PROVIDER=tavily
+    # (+ SEARCH_API_KEY) for a generally more reliable paid alternative.
+    SEARCH_PROVIDER: Literal["duckduckgo", "tavily"] = "duckduckgo"
     SEARCH_API_KEY: str = ""
 
     # Object storage (S3-compatible)

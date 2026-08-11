@@ -10,6 +10,7 @@ from app.schemas.verdict import VerdictProposal
 
 _NUMBER_PATTERN = re.compile(r"\b\d+(?:,\d{3})*(?:\.\d+)?%?")
 _MIN_DIGITS_TO_CHECK = 2  # ignore single-digit numbers (e.g. "3 sources") to avoid false-positive failures
+_URL_PATTERN = re.compile(r"https?://\S+")
 
 _CAPPED_CONFIDENCE = 0.4
 
@@ -23,7 +24,14 @@ class ValidationOutcome:
 
 
 def _numbers_needing_support(text: str) -> list[str]:
-    found = _NUMBER_PATTERN.findall(text)
+    # Strip URLs first — observed live: a model that cites a source
+    # inline as "(https://example.com/article-3065258.html)" was getting
+    # flagged for an "unsupported number" on the URL's own numeric ID,
+    # which is never a factual claim needing evidence support. Citation
+    # is already handled structurally via cited_evidence_ids; a URL
+    # appearing in the prose is incidental, not a statistic.
+    text_without_urls = _URL_PATTERN.sub("", text)
+    found = _NUMBER_PATTERN.findall(text_without_urls)
     return [n for n in found if len(re.sub(r"[,.%]", "", n)) >= _MIN_DIGITS_TO_CHECK]
 
 

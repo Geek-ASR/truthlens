@@ -19,9 +19,19 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import yt_dlp
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from app.core.exceptions import ProviderError
 from app.core.url_safety import require_public_http_url
+
+# Instagram's CDN intermittently returns an empty media response under
+# rate-limiting even for fully public, accessible posts — observed live
+# during regression testing (docs/CURRENT_ARCHITECTURE.md): a post that
+# failed on the first attempt succeeded immediately on retry with no
+# other change. This is a transient-download problem, not an
+# access-denied problem, so it's worth a few quick retries before
+# surfacing ProviderError to the caller.
+_RETRYABLE_MESSAGES = ("empty media response", "timed out", "connection reset", "temporary failure")
 
 
 @dataclass
@@ -45,27 +55,7 @@ def fetch_from_url(url: str, output_dir: str) -> UrlFetchResult:
     "no invented facts" standard applying to reel metadata too, not just
     evidence)."""
     require_public_http_url(url)
-
-    outtmpl = str(Path(output_dir) / "download.%(ext)s")
-    ydl_opts = {
-        "outtmpl": outtmpl,
-        "format": "mp4/best",
-        "writethumbnail": True,
-        "noplaylist": True,
-        "quiet": True,
-        "no_warnings": True,
-        "socket_timeout": 30,
-    }
-
-    try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-    except yt_dlp.utils.DownloadError as exc:
-        raise ProviderError(
-            f"Could not fetch media from {url}. The source site may require login, "
-            f"have rate-limited this request, or yt-dlp's extractor for it may be "
-            f"out of date. Underlying error: {exc}"
-        ) from exc
+    info = _download_with_retry(url, output_dir)
 
     video_path = _find_downloaded_file(output_dir, exclude_suffixes=(".jpg", ".jpeg", ".png", ".webp"))
     thumbnail_path = _find_downloaded_file(output_dir, include_suffixes=(".jpg", ".jpeg", ".png", ".webp"))
@@ -89,6 +79,41 @@ def fetch_from_url(url: str, output_dir: str) -> UrlFetchResult:
         comment_count=info.get("comment_count"),
         hashtags=hashtags,
     )
+
+
+class _RetryableDownloadError(Exception):
+    pass
+
+
+@retry(
+    reraise=True,
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=2, max=10),
+    retry=retry_if_exception_type(_RetryableDownloadError),
+)
+def _download_with_retry(url: str, output_dir: str) -> dict:
+    outtmpl = str(Path(output_dir) / "download.%(ext)s")
+    ydl_opts = {
+        "outtmpl": outtmpl,
+        "format": "mp4/best",
+        "writethumbnail": True,
+        "noplaylist": True,
+        "quiet": True,
+        "no_warnings": True,
+        "socket_timeout": 30,
+    }
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            return ydl.extract_info(url, download=True)
+    except yt_dlp.utils.DownloadError as exc:
+        message = str(exc).lower()
+        if any(marker in message for marker in _RETRYABLE_MESSAGES):
+            raise _RetryableDownloadError(str(exc)) from exc
+        raise ProviderError(
+            f"Could not fetch media from {url}. The source site may require login, "
+            f"have rate-limited this request, or yt-dlp's extractor for it may be "
+            f"out of date. Underlying error: {exc}"
+        ) from exc
 
 
 def _find_downloaded_file(

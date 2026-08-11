@@ -77,6 +77,12 @@ class ClaimStatus(str, enum.Enum):
     researching = "researching"
     researched = "researched"
     skipped_not_verifiable = "skipped_not_verifiable"
+    # Every research query failed at the infrastructure level (search
+    # provider down/misconfigured) — distinct from "researched" with zero
+    # evidence, which is a legitimate, publishable UNVERIFIED outcome.
+    # A claim in this state has no Verdict row and build_fact_check()
+    # refuses to build a fact-check from it (docs/CURRENT_ARCHITECTURE.md §10).
+    research_failed = "research_failed"
 
 
 class SourceTier(str, enum.Enum):

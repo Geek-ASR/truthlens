@@ -87,13 +87,3 @@ class TavilySearchProvider(SearchProvider):
                 )
             )
         return results
-
-
-_provider: SearchProvider | None = None
-
-
-def get_search_provider() -> SearchProvider:
-    global _provider
-    if _provider is None:
-        _provider = TavilySearchProvider()
-    return _provider
