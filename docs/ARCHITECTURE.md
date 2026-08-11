@@ -186,7 +186,7 @@ product spec). Stage → model mapping used in this codebase
 
 | Stage | Purpose | Default model | Notes |
 |---|---|---|---|
-| `transcribe` | audio → text | Whisper (`whisper-1` via OpenAI, or local `faster-whisper`) | swappable via `TRANSCRIPTION_PROVIDER` |
+| `transcribe` | audio → text | local `faster-whisper` (CPU, no key) | swappable to OpenAI `whisper-1` via `TRANSCRIPTION_PROVIDER=openai` |
 | `ocr` | on-screen text | Tesseract (local, free) | swappable to cloud OCR later |
 | `vision_context` | describe sampled frames | Ollama `llava-phi3` (local) | only used to aid claim extraction, never cited as evidence |
 | `claim_extraction` | decompose transcript into atomic claims | Ollama `llama3.2` (local) | structured JSON, see DATA_MODEL |
@@ -214,7 +214,7 @@ output before the pipeline advances to the next stage.
 | Queue/scheduler | Redis + Celery + Celery Beat | mirrors the product spec's explicit "Redis + Celery" suggestion; Beat covers the cron-like discovery/research/publish schedule in §32 |
 | Frontend | Next.js 14 + TypeScript + Tailwind | admin dashboard + public fact-check pages from one codebase; SSR is useful for the public page (needs to be crawlable/shareable) |
 | LLM | Ollama running local models by default (`LLM_PROVIDER=ollama`); Anthropic Claude as an opt-in swap (`LLM_PROVIDER=anthropic`) | zero cost, no API key, no vendor usage limits — see §8 for the reasoning-quality tradeoff this default accepts, and for how to switch to Claude |
-| Transcription | OpenAI Whisper API by default; `faster-whisper` local as a cost-reduction swap | MVP simplicity first, self-hosting is a documented Phase-2 optimization |
+| Transcription | `faster-whisper` local by default (no key, CPU); OpenAI Whisper API as a speed/quality swap | matches the $0/no-key default posture; see §8 |
 | OCR | Tesseract via `pytesseract` | free, local, no API key required for MVP |
 | Web search | Tavily API | built for LLM/agentic research, returns cleaned page content (reduces a separate scraping step), has a source-domain filter useful for tiering |
 | Image generation | Pillow, deterministic templates | avoids a headless-browser dependency; fully deterministic (same input → same pixels), which matters for an evidence-preserving product |
@@ -319,18 +319,18 @@ default — not hidden. Switch back with `LLM_PROVIDER=anthropic` (plus
 running for free; both providers implement the same `LLMProvider`
 interface (§4), so nothing else in the pipeline changes.
 
-**Only the LLM is local by default.** `TRANSCRIPTION_PROVIDER` still
-defaults to `openai` (Whisper API, costs money, needs `OPENAI_API_KEY`) —
-a local `faster-whisper` path already exists
-(`backend/app/services/transcription/local_whisper.py`) but its default
-hasn't been flipped. `SEARCH_PROVIDER=tavily` is unchanged and still
-needs `SEARCH_API_KEY`: it is not an "AI" API in the LLM sense, and there
-is no local substitute for it — the research stage needs to retrieve real,
-current web sources to check claims against, which a local (or any) LLM
-cannot do on its own without hallucinating. Going further toward "fully
-free" would mean flipping transcription's default too; Tavily's free tier
-(1,000 requests/month) is the practical floor for the research stage
-regardless of LLM provider.
+**Transcription is local by default too.** `TRANSCRIPTION_PROVIDER=local`
+(`backend/app/services/transcription/local_whisper.py`, `faster-whisper`
+"base" model, CPU, no `OPENAI_API_KEY`) — verified against a real spoken
+clip: correct transcript, ~35s including one-time model download on first
+run, seconds after that. `openai` (Whisper API) remains available for
+speed/quality if `OPENAI_API_KEY` is set. `SEARCH_PROVIDER=tavily` is the
+one remaining paid-if-scaled dependency and is deliberately unchanged: it
+is not an "AI" API in the LLM sense, and there is no local substitute for
+it — the research stage needs to retrieve real, current web sources to
+check claims against, which a local (or any) LLM cannot do on its own
+without hallucinating. Tavily's free tier (1,000 requests/month) is the
+practical floor for the research stage regardless of LLM provider.
 
 Requires `ollama serve` running locally with `llama3.2` and `llava-phi3`
 pulled (`ollama pull llama3.2 && ollama pull llava-phi3`). Inside Docker

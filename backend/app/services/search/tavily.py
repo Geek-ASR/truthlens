@@ -2,7 +2,7 @@
 already-extracted page content, which becomes the archived
 `sources.full_text_storage_key` payload — never a hallucinated summary."""
 import httpx
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from app.core.config import get_settings
 from app.core.exceptions import ProviderError
@@ -16,7 +16,6 @@ class TavilySearchProvider(SearchProvider):
         settings = get_settings()
         self._api_key = settings.SEARCH_API_KEY
 
-    @retry(reraise=True, stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=15))
     async def search(
         self,
         query: str,
@@ -25,9 +24,39 @@ class TavilySearchProvider(SearchProvider):
         exclude_domains: list[str] | None = None,
         max_results: int = 5,
     ) -> list[SearchResult]:
+        # Missing key is a permanent misconfiguration, not a transient
+        # failure — fail immediately rather than let it eat 3 retries'
+        # worth of backoff per query (it will never succeed no matter how
+        # many times we ask). Observed live: with SEARCH_API_KEY unset,
+        # this alone accounted for most of the wall-clock time on a
+        # multi-claim reel before this fix.
         if not self._api_key:
             raise ProviderError("SEARCH_API_KEY is not set; cannot execute research queries.")
 
+        try:
+            return await self._call_with_retry(
+                query, include_domains=include_domains, exclude_domains=exclude_domains, max_results=max_results
+            )
+        except httpx.HTTPError as exc:
+            raise ProviderError(f"Tavily search failed for query {query!r}: {exc}") from exc
+
+    @retry(
+        reraise=True,
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=15),
+        # Only real transient network/HTTP failures are worth retrying —
+        # anything else (auth, bad request) will just fail the same way
+        # again immediately.
+        retry=retry_if_exception_type(httpx.HTTPError),
+    )
+    async def _call_with_retry(
+        self,
+        query: str,
+        *,
+        include_domains: list[str] | None,
+        exclude_domains: list[str] | None,
+        max_results: int,
+    ) -> list[SearchResult]:
         payload = {
             "api_key": self._api_key,
             "query": query,
@@ -41,11 +70,8 @@ class TavilySearchProvider(SearchProvider):
             payload["exclude_domains"] = exclude_domains
 
         async with httpx.AsyncClient(timeout=30) as client:
-            try:
-                response = await client.post(_TAVILY_URL, json=payload)
-                response.raise_for_status()
-            except httpx.HTTPError as exc:
-                raise ProviderError(f"Tavily search failed for query {query!r}: {exc}") from exc
+            response = await client.post(_TAVILY_URL, json=payload)
+            response.raise_for_status()
 
         data = response.json()
         results = []

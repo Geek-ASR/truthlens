@@ -1,5 +1,5 @@
-"""OpenAI Whisper API transcription (default provider,
-docs/API_REQUIREMENTS.md §3)."""
+"""OpenAI Whisper API transcription (opt-in via TRANSCRIPTION_PROVIDER=openai;
+local faster-whisper is the default — docs/API_REQUIREMENTS.md §3)."""
 from openai import AsyncOpenAI
 
 from app.core.config import get_settings

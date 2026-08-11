@@ -64,6 +64,31 @@ async def test_structured_call_raises_provider_error_on_schema_violation():
 
 
 @pytest.mark.asyncio
+async def test_structured_call_retries_and_recovers_from_a_transient_schema_violation():
+    """Real behavior observed against a real Instagram reel: llama3.2 emitted
+    an out-of-range `importance` on the first attempt but valid JSON on a
+    re-roll. The provider should recover rather than fail the whole stage."""
+    provider = OllamaProvider()
+    provider._client.chat = AsyncMock(
+        side_effect=[
+            _chat_response('{"verdict": "NOT_A_REAL_LABEL"}'),
+            _chat_response(_valid_verdict_json()),
+        ]
+    )
+
+    result = await provider.structured_call(
+        model="llama3.2",
+        system_prompt="sys",
+        user_content="user",
+        output_schema=VerdictProposal,
+        prompt_version="verdict.v1",
+    )
+
+    assert result.parsed.verdict == "TRUE"
+    assert provider._client.chat.await_count == 2
+
+
+@pytest.mark.asyncio
 async def test_structured_call_raises_helpful_error_when_model_not_pulled():
     provider = OllamaProvider()
     provider._client.chat = AsyncMock(side_effect=ollama.ResponseError("model 'x' not found", status_code=404))
@@ -76,6 +101,9 @@ async def test_structured_call_raises_helpful_error_when_model_not_pulled():
             output_schema=VerdictProposal,
             prompt_version="verdict.v1",
         )
+    # A missing model won't fix itself by retrying — ResponseError must not
+    # be retried the way a schema violation is.
+    assert provider._client.chat.await_count == 1
 
 
 @pytest.mark.asyncio

@@ -43,8 +43,10 @@ class Settings(BaseSettings):
     LLM_MODEL_CONTENT_GENERATION: str = "llama3.2"
     LLM_MODEL_VISION: str = "llava-phi3"
 
-    # Transcription
-    TRANSCRIPTION_PROVIDER: Literal["openai", "local"] = "openai"
+    # Transcription — "local" (faster-whisper, CPU, no key) is the default
+    # to match LLM_PROVIDER's $0/no-key stance; set "openai" for Whisper
+    # API quality/speed instead.
+    TRANSCRIPTION_PROVIDER: Literal["openai", "local"] = "local"
     OPENAI_API_KEY: str = ""
 
     # Search

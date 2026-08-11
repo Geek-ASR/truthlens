@@ -68,14 +68,18 @@ swapped.
   `http://localhost:11434`); `ANTHROPIC_API_KEY` only if
   `LLM_PROVIDER=anthropic`.
 
-## 3. OpenAI Whisper API (default transcription provider, Phase 1)
+## 3. Transcription — local `faster-whisper` by default, OpenAI Whisper API optional (Phase 1)
 
 - **Used for:** audio → timestamped transcript.
-- **Approval required:** No.
-- **Cost:** per-minute metered. A self-hosted `faster-whisper` fallback
-  (no per-minute cost, needs a GPU or patient CPU) is supported via
-  `TRANSCRIPTION_PROVIDER=local` for cost-sensitive deployments.
-- **Env vars:** `OPENAI_API_KEY`.
+- **Default (`TRANSCRIPTION_PROVIDER=local`): no key, $0 cost, CPU-only.**
+  Runs the `faster-whisper` "base" model locally — verified against a real
+  clip at ~35s including a one-time model download, seconds after. No GPU
+  required (uses `ctranslate2`'s int8 CPU path).
+- **Optional (`TRANSCRIPTION_PROVIDER=openai`):** no approval required,
+  per-minute metered, generally faster/higher-quality than the local base
+  model.
+- **Env vars:** `TRANSCRIPTION_PROVIDER`; `OPENAI_API_KEY` only if
+  `TRANSCRIPTION_PROVIDER=openai`.
 
 ## 4. Search API — Tavily (default, Phase 1)
 

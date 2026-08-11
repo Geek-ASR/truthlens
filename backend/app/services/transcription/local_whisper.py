@@ -1,7 +1,8 @@
-"""Self-hosted transcription fallback (TRANSCRIPTION_PROVIDER=local),
-avoids per-minute API cost at the expense of needing local compute
-(docs/ARCHITECTURE.md §5). Requires the optional `faster-whisper` package
-— not installed by default; see requirements-local-whisper.txt."""
+"""Self-hosted transcription (TRANSCRIPTION_PROVIDER=local, the default —
+see docs/ARCHITECTURE.md §8): no per-minute API cost, no OPENAI_API_KEY,
+at the expense of local CPU time. `faster-whisper` is a regular
+requirements.txt dependency (no torch — ctranslate2 + onnxruntime only),
+so it's installed by default rather than opt-in."""
 from app.core.exceptions import ProviderError
 from app.services.transcription.base import TranscriptionProvider, TranscriptionResult, TranscriptSegment
 
@@ -18,8 +19,8 @@ class LocalWhisperProvider(TranscriptionProvider):
                 from faster_whisper import WhisperModel
             except ImportError as exc:
                 raise ProviderError(
-                    "TRANSCRIPTION_PROVIDER=local requires `pip install -r "
-                    "requirements-local-whisper.txt` (faster-whisper)."
+                    "TRANSCRIPTION_PROVIDER=local requires the `faster-whisper` package "
+                    "(pip install -r requirements.txt)."
                 ) from exc
             self._model = WhisperModel(_MODEL_SIZE, device="cpu", compute_type="int8")
         return self._model
