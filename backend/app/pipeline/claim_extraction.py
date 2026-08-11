@@ -76,5 +76,6 @@ async def extract_claims(db: AsyncSession, reel: Reel) -> list[Claim]:
         input_summary={"content_length": len(user_content)},
         output_summary={"claim_count": len(claims)},
         prompt_version=result.prompt_version,
+        tokens=result.token_usage_dict(),
     )
     return claims

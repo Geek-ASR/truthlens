@@ -109,6 +109,7 @@ async def propose_verdict(
             "validation_status": outcome.status.value,
         },
         prompt_version=result.prompt_version,
+        tokens=result.token_usage_dict(),
     )
     return verdict
 

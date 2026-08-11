@@ -55,7 +55,7 @@ class Settings(BaseSettings):
     INSTAGRAM_ACCESS_TOKEN: str = ""
 
     # Product configuration
-    MAX_POSTS_PER_DAY: int = 3
+    MAX_POSTS_PER_DAY: int = 12
     HUMAN_APPROVAL_MODE: bool = True  # default per product spec §20 — must be explicitly disabled
     MIN_CONFIDENCE_FOR_AUTO_PUBLISH: float = 0.90  # only relevant if HUMAN_APPROVAL_MODE is ever False
     PUBLIC_SITE_BASE_URL: str = "https://truthlens.example"

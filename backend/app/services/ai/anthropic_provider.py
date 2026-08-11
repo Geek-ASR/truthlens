@@ -80,7 +80,17 @@ class AnthropicProvider(LLMProvider):
                 f"Anthropic output for {output_schema.__name__} failed schema validation: {exc}"
             ) from exc
 
-        return LLMCallResult(parsed=parsed, raw_output=raw_output, model=model, prompt_version=prompt_version)
+        usage = response.usage
+        return LLMCallResult(
+            parsed=parsed,
+            raw_output=raw_output,
+            model=model,
+            prompt_version=prompt_version,
+            input_tokens=usage.input_tokens,
+            output_tokens=usage.output_tokens,
+            cache_creation_input_tokens=getattr(usage, "cache_creation_input_tokens", 0) or 0,
+            cache_read_input_tokens=getattr(usage, "cache_read_input_tokens", 0) or 0,
+        )
 
 
 _provider: LLMProvider | None = None

@@ -117,5 +117,6 @@ async def generate_content(
         input_summary={"cited_evidence_count": len(cited_evidence)},
         output_summary=result.raw_output,
         prompt_version=result.prompt_version,
+        tokens=result.token_usage_dict(),
     )
     return result.parsed, caption, caption_sources

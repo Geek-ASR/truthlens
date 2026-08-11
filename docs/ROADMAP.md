@@ -60,7 +60,12 @@ reel.
 Deliverables: Celery Beat schedules matching product spec §32 (discovery
 every 6h, research every 1h for high-priority candidates, daily
 generation, `MAX_POSTS_PER_DAY` enforcement, configurable posting
-windows).
+windows). Operating target is `MAX_POSTS_PER_DAY = 12` (see
+`docs/API_REQUIREMENTS.md` §1 for why that's a real fraction of Meta's
+publish-rate budget, not a trivial margin) — until Phase 6 ships, this
+number is a ceiling Human Approval Mode enforces implicitly (nothing
+publishes without a reviewer clicking Approve), not something the system
+paces on its own.
 
 ## Phase 7 — Analytics
 Deliverables: Instagram Insights polling job → `analytics_snapshots`;

@@ -32,8 +32,14 @@ swapped.
      for why the MVP defaults to an image (thumbnail/keyframe) for slide 2
      rather than a native video child.
   7. Rate limits are per Instagram Business Account, roughly 25
-     content-publish calls per 24h (subject to change by Meta) — this
-     comfortably covers `MAX_POSTS_PER_DAY = 3`.
+     content-publish calls per 24h (subject to change by Meta — verify
+     against current Meta docs before relying on this number). At
+     `MAX_POSTS_PER_DAY = 12` that's under the limit but using roughly
+     half of it, not a trivial margin — each carousel publish is one
+     `media_publish` call, separate from the 4 per-slide container-creation
+     calls that precede it (those draw from a much higher-limit surface).
+     If the daily target is raised further, re-check this budget rather
+     than assuming it still holds.
 - **Cost:** Free (subject to standard Meta platform terms).
 - **Env vars:** `META_APP_ID`, `META_APP_SECRET`, `INSTAGRAM_ACCESS_TOKEN`
   (long-lived, encrypted at rest per SECURITY.md), `META_GRAPH_API_VERSION`.

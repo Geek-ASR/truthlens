@@ -30,6 +30,12 @@ async def analyze_evidence(db: AsyncSession, claim: Claim, sources: list[Source]
 
     evidence_rows: list[Evidence] = []
     now = datetime.now(timezone.utc)
+    total_tokens = {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+    }
 
     for source in sources:
         full_text = storage.get_bytes(source.full_text_storage_key).decode("utf-8", errors="ignore")
@@ -49,6 +55,9 @@ async def analyze_evidence(db: AsyncSession, claim: Claim, sources: list[Source]
             output_schema=EvidenceAnalysisItem,
             prompt_version=EVIDENCE_ANALYSIS_PROMPT_VERSION,
         )
+
+        for key, value in result.token_usage_dict().items():
+            total_tokens[key] += value
 
         analysis = result.parsed
         evidence = Evidence(
@@ -114,5 +123,6 @@ async def analyze_evidence(db: AsyncSession, claim: Claim, sources: list[Source]
             "stances": {str(e.source_id): e.stance.value for e in evidence_rows}
         },
         prompt_version=EVIDENCE_ANALYSIS_PROMPT_VERSION,
+        tokens=total_tokens,
     )
     return evidence_rows

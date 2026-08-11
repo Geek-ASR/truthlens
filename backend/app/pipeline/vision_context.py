@@ -46,5 +46,6 @@ async def analyze_vision_context(db: AsyncSession, reel: Reel, frame_paths: list
         input_summary={"frame_count": len(selected)},
         output_summary=result.raw_output,
         prompt_version=result.prompt_version,
+        tokens=result.token_usage_dict(),
     )
     return reel

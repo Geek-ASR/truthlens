@@ -63,5 +63,6 @@ async def plan_research(db: AsyncSession, claim: Claim) -> list[SearchQuery]:
         input_summary={"claim_text": claim.text},
         output_summary={"query_count": len(queries)},
         prompt_version=result.prompt_version,
+        tokens=result.token_usage_dict(),
     )
     return queries

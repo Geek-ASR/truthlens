@@ -10,11 +10,39 @@ SchemaT = TypeVar("SchemaT", bound=BaseModel)
 
 
 class LLMCallResult:
-    def __init__(self, parsed: BaseModel, raw_output: dict, model: str, prompt_version: str):
+    def __init__(
+        self,
+        parsed: BaseModel,
+        raw_output: dict,
+        model: str,
+        prompt_version: str,
+        *,
+        input_tokens: int = 0,
+        output_tokens: int = 0,
+        cache_creation_input_tokens: int = 0,
+        cache_read_input_tokens: int = 0,
+    ):
         self.parsed = parsed
         self.raw_output = raw_output
         self.model = model
         self.prompt_version = prompt_version
+        # Real usage from the provider response — this is what
+        # scripts/estimate_costs.py sums from audit_logs to answer "is this
+        # actually affordable at MAX_POSTS_PER_DAY volume", instead of
+        # guessing (docs/FACT_CHECK_METHODOLOGY.md's "no invented facts"
+        # standard applies to our own cost accounting too).
+        self.input_tokens = input_tokens
+        self.output_tokens = output_tokens
+        self.cache_creation_input_tokens = cache_creation_input_tokens
+        self.cache_read_input_tokens = cache_read_input_tokens
+
+    def token_usage_dict(self) -> dict:
+        return {
+            "input_tokens": self.input_tokens,
+            "output_tokens": self.output_tokens,
+            "cache_creation_input_tokens": self.cache_creation_input_tokens,
+            "cache_read_input_tokens": self.cache_read_input_tokens,
+        }
 
 
 class LLMProvider(ABC):
