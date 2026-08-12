@@ -12,7 +12,7 @@ import pytest
 from app.core.exceptions import ResearchFailedError
 from app.db.models import Claim, ClaimStatus, ClaimType, Platform, Reel, SearchQuery, TargetTier
 from app.db.session import AsyncSessionLocal
-from app.pipeline.orchestrator import build_fact_check
+from app.pipeline.orchestrator import build_reel_fact_check
 from app.pipeline.search_fetch import fetch_evidence_sources
 from app.services.search.base import SearchProvider, SearchResult
 
@@ -112,12 +112,12 @@ async def test_partial_query_failure_does_not_raise_research_failed():
 
 
 @pytest.mark.asyncio
-async def test_build_fact_check_refuses_to_publish_a_research_failed_claim():
+async def test_build_reel_fact_check_refuses_when_every_verifiable_claim_research_failed():
     async with AsyncSessionLocal() as db:
         reel, claim = await _make_claim(db)
         claim.status = ClaimStatus.research_failed
         await db.flush()
 
         with pytest.raises(ValueError, match="[Rr]esearch failed"):
-            await build_fact_check(db, claim)
+            await build_reel_fact_check(db, reel)
         await db.rollback()

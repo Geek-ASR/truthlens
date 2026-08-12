@@ -1,19 +1,19 @@
-"""Stage 9: render the 4-slide carousel from validated content
-(product spec §2-5) and persist `Slide` rows."""
+"""Stage 9: render the 4-slide carousel from validated, evidence-backed
+content (product spec §2-5) and persist `Slide` rows."""
 from datetime import datetime, timezone
 from io import BytesIO
 
 from PIL import Image
 
-from app.db.models import Claim, FactCheck, Reel, Slide, SlideType, Source, Verdict
-from app.schemas.content import ContentGenerationResult
+from app.db.models import FactCheck, Reel, Slide, SlideType
+from app.pipeline.reel_content import ClaimTableRow, EvidenceCard, ReelFactCheckContent, SourceCitation
 from app.services.storage.s3 import get_storage_client
 from app.templates.slides import (
     TEMPLATE_VERSION,
     render_conclusion_slide,
     render_evidence_slide,
-    render_original_reel_slide,
     render_poster_slide,
+    render_reel_claims_slide,
 )
 
 _PLATFORM_LABELS = {
@@ -33,79 +33,103 @@ def _load_thumbnail(reel: Reel) -> Image.Image | None:
     return Image.open(BytesIO(data))
 
 
+def _citation_json(c: SourceCitation | None) -> dict | None:
+    if c is None:
+        return None
+    return {"label": c.label, "url": c.url, "date_str": c.date_str, "excerpt": c.excerpt}
+
+
+def _evidence_card_json(card: EvidenceCard) -> dict:
+    return {
+        "claim_text": card.claim_text,
+        "verdict_label": card.verdict_label,
+        "answer_text": card.answer_text,
+        "primary_source": _citation_json(card.primary_source),
+        "independent_source": _citation_json(card.independent_source),
+    }
+
+
+def _claim_row_json(row: ClaimTableRow) -> dict:
+    return {"claim_text": row.claim_text, "verdict_label": row.verdict_label}
+
+
 async def generate_slides(
     db,
     *,
     fact_check: FactCheck,
-    claim: Claim,
-    verdict: Verdict,
     reel: Reel,
-    generated: ContentGenerationResult,
-    caption_sources: list[Source],
+    content: ReelFactCheckContent,
 ) -> list[Slide]:
     storage = get_storage_client()
     thumbnail = _load_thumbnail(reel)
     now = datetime.now(timezone.utc)
     date_str = now.strftime("%b %d, %Y")
     platform_label = _PLATFORM_LABELS.get(reel.platform.value, "Social media")
-
-    evidence_bullets = [s.publisher or s.title or s.url for s in caption_sources[:4]]
+    key_fact = content.evidence_cards[0].answer_text[:140] if content.evidence_cards else content.why_paragraph[:140]
 
     renders = [
         (
             SlideType.poster,
             render_poster_slide(
-                claim_summary=generated.slide1_claim_summary,
-                verdict_label=verdict.verdict.value,
+                headline=content.headline,
+                highlight_phrases=content.highlight_phrases,
+                verdict_label=content.overall_verdict_label,
                 date_str=date_str,
                 platform_label=platform_label,
+                creator_handle=reel.creator_handle,
+                source_url=reel.source_url,
                 thumbnail=thumbnail,
             ),
             {
-                "claim_summary": generated.slide1_claim_summary,
-                "verdict_label": verdict.verdict.value,
+                "headline": content.headline,
+                "highlight_phrases": content.highlight_phrases,
+                "verdict_label": content.overall_verdict_label,
                 "date_str": date_str,
                 "platform_label": platform_label,
             },
         ),
         (
             SlideType.original_reel,
-            render_original_reel_slide(
+            render_reel_claims_slide(
+                quote=content.quote,
+                speaker_name=content.speaker_name,
+                key_points=content.key_points,
                 creator_handle=reel.creator_handle,
-                caption_excerpt=(reel.caption_text or "")[:220] or None,
                 source_url=reel.source_url,
                 thumbnail=thumbnail,
             ),
             {
-                "creator_handle": reel.creator_handle,
-                "caption_excerpt": (reel.caption_text or "")[:220],
+                "quote": content.quote,
+                "speaker_name": content.speaker_name,
+                "key_points": content.key_points,
                 "source_url": reel.source_url,
             },
         ),
         (
             SlideType.evidence,
-            render_evidence_slide(
-                claim_text=claim.text,
-                evidence_explanation=generated.slide3_evidence_explanation,
-                evidence_bullets=evidence_bullets,
-                key_fact=generated.slide3_key_fact,
-            ),
+            render_evidence_slide(evidence_cards=content.evidence_cards, key_fact=key_fact),
             {
-                "claim_text": claim.text,
-                "evidence_explanation": generated.slide3_evidence_explanation,
-                "evidence_bullets": evidence_bullets,
-                "key_fact": generated.slide3_key_fact,
+                "evidence_cards": [_evidence_card_json(c) for c in content.evidence_cards],
+                "key_fact": key_fact,
             },
         ),
         (
             SlideType.conclusion,
             render_conclusion_slide(
-                verdict_label=verdict.verdict.value,
-                conclusion_paragraph=generated.slide4_conclusion_paragraph,
+                verdict_label=content.overall_verdict_label,
+                why_paragraph=content.why_paragraph,
+                claim_table=content.claim_table,
+                primary_sources=content.primary_sources,
+                independent_sources=content.independent_sources,
+                source_url=reel.source_url,
+                date_str=date_str,
             ),
             {
-                "verdict_label": verdict.verdict.value,
-                "conclusion_paragraph": generated.slide4_conclusion_paragraph,
+                "verdict_label": content.overall_verdict_label,
+                "why_paragraph": content.why_paragraph,
+                "claim_table": [_claim_row_json(r) for r in content.claim_table],
+                "primary_sources": [_citation_json(s) for s in content.primary_sources],
+                "independent_sources": [_citation_json(s) for s in content.independent_sources],
             },
         ),
     ]

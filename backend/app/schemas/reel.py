@@ -40,6 +40,17 @@ class ReelCreate(BaseModel):
     )
 
 
+class QuickFactCheckRequest(BaseModel):
+    """The one-box "just paste a URL" flow: ingest (auto_fetch) -> analyze
+    -> build the reel-level fact-check, all in one call. Equivalent to the
+    3-step manual flow (POST /reels, POST /reels/{id}/analyze, POST
+    /claims/{id}/build-fact-check) with auto_fetch always on, since
+    there's no separate step to upload a video or paste a transcript."""
+
+    source_url: HttpUrl
+    platform: Platform = Platform.instagram
+
+
 class ReelOut(BaseModel):
     id: uuid.UUID
     source_url: str

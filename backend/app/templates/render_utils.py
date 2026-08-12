@@ -44,6 +44,87 @@ def draw_wrapped_text(
     return y
 
 
+def _highlight_mask(text: str, phrases: list[str]) -> list[bool]:
+    mask = [False] * len(text)
+    for phrase in phrases:
+        if not phrase:
+            continue
+        start = text.find(phrase)
+        if start == -1:
+            continue
+        for i in range(start, start + len(phrase)):
+            mask[i] = True
+    return mask
+
+
+def draw_wrapped_text_with_highlights(
+    draw: ImageDraw.ImageDraw,
+    xy: tuple[int, int],
+    text: str,
+    highlight_phrases: list[str],
+    font: ImageFont.FreeTypeFont,
+    max_width: int,
+    base_color: str,
+    highlight_color: str,
+    line_spacing: int = 10,
+    max_lines: int | None = None,
+) -> int:
+    """Like draw_wrapped_text, but colors any word that's majority-covered
+    by one of `highlight_phrases` (exact substrings of `text`, already
+    validated by the caller — see schemas/content.py HeadlineResult)
+    differently. Falls back to plain draw_wrapped_text if there's nothing
+    to highlight."""
+    if not highlight_phrases:
+        return draw_wrapped_text(draw, xy, text, font, max_width, base_color, line_spacing, max_lines)
+
+    mask = _highlight_mask(text, highlight_phrases)
+    words = text.split(" ")
+    # Reconstruct each word's (text, is_highlighted) by walking the same
+    # split the mask was built against.
+    tagged_words: list[tuple[str, bool]] = []
+    cursor = 0
+    for word in words:
+        start = cursor
+        end = start + len(word)
+        span = mask[start:end] if end <= len(mask) else mask[start:]
+        is_highlighted = bool(span) and sum(span) > len(span) / 2
+        tagged_words.append((word, is_highlighted))
+        cursor = end + 1  # +1 for the space
+
+    # Greedy wrap using plain text width (matches wrap_to_width's model).
+    lines: list[list[tuple[str, bool]]] = []
+    current: list[tuple[str, bool]] = []
+    current_text = ""
+    for word, hl in tagged_words:
+        candidate = f"{current_text} {word}".strip()
+        if not current or draw.textlength(candidate, font=font) <= max_width:
+            current.append((word, hl))
+            current_text = candidate
+        else:
+            lines.append(current)
+            current = [(word, hl)]
+            current_text = word
+    if current:
+        lines.append(current)
+
+    truncated = False
+    if max_lines and len(lines) > max_lines:
+        lines = lines[:max_lines]
+        truncated = True
+
+    x0, y = xy
+    line_height = font.size + line_spacing
+    for line_idx, line in enumerate(lines):
+        x = x0
+        for word_idx, (word, hl) in enumerate(line):
+            suffix = "…" if truncated and line_idx == len(lines) - 1 and word_idx == len(line) - 1 else ""
+            draw_text = word + suffix
+            draw.text((x, y), draw_text, font=font, fill=(highlight_color if hl else base_color))
+            x += draw.textlength(word + " ", font=font)
+        y += line_height
+    return y
+
+
 def to_png_bytes(image: Image.Image) -> bytes:
     buf = BytesIO()
     image.save(buf, format="PNG")

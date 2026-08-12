@@ -5,13 +5,15 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import DbSession, RequireReviewer
-from app.core.exceptions import ProviderError
+from app.api.routers.fact_checks import _load_fact_check_detail
+from app.core.exceptions import DuplicateFactCheckError, ProviderError
 from app.db.models import Reel
-from app.pipeline.orchestrator import analyze_reel
+from app.pipeline.orchestrator import analyze_reel, build_reel_fact_check
 from app.pipeline.ingestion import ingest_reel
 from app.schemas.claim import ClaimOut
 from app.schemas.common import Platform
-from app.schemas.reel import ReelCreate, ReelOut
+from app.schemas.fact_check import FactCheckDetail
+from app.schemas.reel import QuickFactCheckRequest, ReelCreate, ReelOut
 
 router = APIRouter()
 
@@ -93,6 +95,54 @@ async def analyze(reel_id: str, db: DbSession, current_user: RequireReviewer):
     await db.commit()
     await db.refresh(reel)
     return reel
+
+
+@router.post("/quick", response_model=FactCheckDetail, status_code=201)
+async def quick_fact_check(payload: QuickFactCheckRequest, db: DbSession, current_user: RequireReviewer):
+    """The one-box flow: paste a URL, get back a finished fact-check —
+    ingest (auto_fetch) -> analyze -> build the reel-level fact-check, all
+    in one call. Equivalent to running the 3-step manual flow yourself.
+    Takes 1-3+ minutes on local models; this is a long synchronous call,
+    not a background job, matching how /analyze already behaves.
+
+    If a later stage fails, whatever the earlier stages already committed
+    (the reel, its transcript, extracted claims, verdicts) is NOT lost —
+    each stage commits before the next begins, so the normal multi-step
+    dashboard flow (RequireReviewer > /reels/{id}) can pick up from
+    wherever this left off."""
+    create_payload = ReelCreate(source_url=payload.source_url, platform=payload.platform, auto_fetch=True)
+    try:
+        reel = await ingest_reel(db, create_payload, None, current_user.id)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    except ProviderError as exc:
+        await db.rollback()
+        raise HTTPException(502, f"Could not fetch this reel: {exc}") from exc
+    await db.commit()
+    await db.refresh(reel)
+
+    try:
+        reel = await analyze_reel(db, reel)
+    except ProviderError as exc:
+        await db.rollback()
+        raise HTTPException(502, f"Analysis failed: {exc}") from exc
+    await db.commit()
+
+    try:
+        fact_check = await build_reel_fact_check(db, reel)
+    except DuplicateFactCheckError as exc:
+        await db.commit()
+        raise HTTPException(409, f"DUPLICATE — DO NOT PUBLISH: {exc}") from exc
+    except (ValueError, ProviderError) as exc:
+        await db.rollback()
+        raise HTTPException(
+            400,
+            f"{exc} The reel and its research were still saved (id={reel.id}) — "
+            f"you can retry research or build a fact-check for it manually from the dashboard.",
+        ) from exc
+
+    await db.commit()
+    return await _load_fact_check_detail(db, fact_check.id)
 
 
 @router.get("/{reel_id}", response_model=ReelOut)

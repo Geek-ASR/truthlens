@@ -18,3 +18,24 @@ class ContentGenerationResult(BaseModel):
     )
     caption_what_we_found: str = Field(max_length=600)
     caption_why: str = Field(max_length=800)
+
+
+class HeadlineResult(BaseModel):
+    """Structured output for the headline-generation LLM stage (slide 1).
+    highlight_phrases are validated as real substrings of `headline` by
+    the caller (app/pipeline/reel_content.py) — any phrase that isn't a
+    verbatim substring is dropped rather than trusted, so a model that
+    ignores the instruction just loses highlighting, not correctness."""
+
+    headline: str = Field(max_length=180)
+    highlight_phrases: list[str] = Field(default_factory=list, max_length=3)
+
+
+class OverallWhyResult(BaseModel):
+    """Structured output for the overall-verdict-explanation LLM stage
+    (slide 4 / caption WHY). The overall verdict label itself is NOT part
+    of this schema — it's computed deterministically
+    (app/pipeline/overall_verdict.py) and only handed to this stage to
+    explain, never to decide."""
+
+    why_paragraph: str = Field(max_length=700)

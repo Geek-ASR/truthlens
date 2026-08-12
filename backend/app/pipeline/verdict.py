@@ -1,11 +1,13 @@
 """Stage 6b/7: propose a verdict from the evidence matrix, then run it
 through deterministic anti-hallucination validation before persisting
 (product spec §16 Model 5 + §17)."""
+import re
 from datetime import datetime, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
+from app.core.logging import get_logger
 from app.db.models import (
     ActorType,
     Claim,
@@ -20,8 +22,29 @@ from app.db.models import (
 from app.pipeline.audit import record_audit
 from app.pipeline.validation import validate_verdict
 from app.schemas.verdict import VerdictProposal
+from app.services.ai.base import LLMCallResult
 from app.services.ai.factory import get_llm_provider
 from app.services.ai.prompts import VERDICT_PROMPT_VERSION, VERDICT_SYSTEM_PROMPT
+
+logger = get_logger(__name__)
+
+# Same "schema-valid but substantively empty" failure already found and
+# fixed in claim_extraction.py and content_generation.py
+# (docs/CURRENT_ARCHITECTURE.md), found here too via live testing: a real
+# verdict's reasoning_summary was made ENTIRELY of
+# "[[evidence_id=... | source=...]]" citation markup — no actual prose —
+# which passed schema validation (it's a non-empty string) but explains
+# nothing to a reader. Checked after stripping that markup, not before,
+# so a reasoning_summary that's real prose PLUS an inline citation still
+# passes normally.
+_INTERNAL_MARKUP_PATTERN = re.compile(r"\[\[.*?\]\]", re.DOTALL)
+_MIN_REASONING_WORDS = 6
+
+
+def _reasoning_looks_substantive(text: str) -> bool:
+    stripped = _INTERNAL_MARKUP_PATTERN.sub("", text)
+    words = re.findall(r"[A-Za-z]{2,}", stripped)
+    return len(words) >= _MIN_REASONING_WORDS
 
 
 def confidence_to_band(confidence: float) -> ConfidenceBand:
@@ -71,6 +94,37 @@ async def propose_verdict(
         output_schema=VerdictProposal,
         prompt_version=VERDICT_PROMPT_VERSION,
     )
+
+    if (
+        settings.LLM_PROVIDER == "ollama"
+        and settings.GEMINI_API_KEY
+        and not _reasoning_looks_substantive(result.parsed.reasoning_summary)
+    ):
+        logger.warning(
+            "verdict_reasoning_not_substantive_retrying_via_gemini",
+            claim_id=str(claim.id),
+            model=result.model,
+        )
+        from app.services.ai.gemini_provider import GeminiProvider
+
+        retry_result: LLMCallResult = await GeminiProvider().structured_call(
+            model=settings.LLM_MODEL_GEMINI_FALLBACK,
+            system_prompt=VERDICT_SYSTEM_PROMPT,
+            user_content=user_content,
+            output_schema=VerdictProposal,
+            prompt_version=VERDICT_PROMPT_VERSION,
+        )
+        await record_audit(
+            db,
+            entity_type="claim",
+            entity_id=claim.id,
+            actor_type=ActorType.system,
+            actor="verdict_stage",
+            action="verdict_reasoning_quality_retry",
+            input_summary={"original_model": result.model},
+            output_summary={"retry_model": retry_result.model},
+        )
+        result = retry_result
 
     evidence_by_id = {e.id: e for e in evidence_rows}
     source_by_evidence_id = {e.id: sources_by_id[e.source_id] for e in evidence_rows}

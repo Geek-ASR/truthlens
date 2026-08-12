@@ -5,10 +5,10 @@ from sqlalchemy.orm import selectinload
 from app.api.deps import DbSession, RequireReviewer
 from app.api.routers.fact_checks import _load_fact_check_detail
 from app.core.exceptions import DuplicateFactCheckError, ProviderError
-from app.db.models import Claim, Evidence, Verdict
+from app.db.models import Claim, Evidence, Reel, Verdict
 from app.pipeline import evidence_analysis, research_planning, search_fetch
 from app.pipeline import verdict as verdict_stage
-from app.pipeline.orchestrator import build_fact_check
+from app.pipeline.orchestrator import build_reel_fact_check
 from app.schemas.claim import ClaimOut
 from app.schemas.evidence import EvidenceOut
 from app.schemas.fact_check import FactCheckDetail
@@ -82,15 +82,19 @@ async def research_again(claim_id: str, db: DbSession, current_user: RequireRevi
 
 @router.post("/{claim_id}/build-fact-check", response_model=FactCheckDetail)
 async def build_fact_check_endpoint(claim_id: str, db: DbSession, current_user: RequireReviewer):
-    """Phase 2 (product spec §35): generate the 4-slide carousel + caption
-    for this claim's current verdict, after duplicate-checking."""
+    """Phase 2 (product spec §35): generate the 4-slide carousel + caption.
+    Builds ONE fact-check covering every verifiable claim on this claim's
+    reel (app/pipeline/orchestrator.build_reel_fact_check) — not just this
+    single claim — with one overall verdict derived from all of them."""
     result = await db.execute(select(Claim).where(Claim.id == claim_id))
     claim = result.scalar_one_or_none()
     if claim is None:
         raise HTTPException(404, "Claim not found")
+    reel_result = await db.execute(select(Reel).where(Reel.id == claim.reel_id))
+    reel = reel_result.scalar_one()
 
     try:
-        fact_check = await build_fact_check(db, claim)
+        fact_check = await build_reel_fact_check(db, reel)
     except DuplicateFactCheckError as exc:
         await db.commit()  # persist the rejected/duplicate-flagged fact_check row
         raise HTTPException(409, f"DUPLICATE — DO NOT PUBLISH: {exc}") from exc

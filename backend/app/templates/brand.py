@@ -13,6 +13,11 @@ ACCENT = "#1B4B43"  # deep neutral green — not tied to any party color
 ACCENT_LIGHT = "#E7F0EC"
 MUTED = "#6B7280"
 BORDER = "#D8D8D2"
+HIGHLIGHT = "#E8A33D"  # warm amber for emphasized phrases within poster headline text
+CARD_BG = "#F4F1EA"  # warm off-white for evidence/source cards, distinct from PAPER
+TAG_BG = "#B23A2E"  # muted brick red for the "VIRAL CLAIM" tag — not a party color, just an alert tone
+PRIMARY_SOURCE_TAG = "#1B4B43"
+INDEPENDENT_SOURCE_TAG = "#4A5A6A"
 
 VERDICT_COLORS = {
     "TRUE": "#1B6E3C",

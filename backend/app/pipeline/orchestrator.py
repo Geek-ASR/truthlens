@@ -9,6 +9,8 @@ API exposes (docs/ROADMAP.md Phase 1 & 2):
 
 Kept as plain function composition (no hidden framework) so each stage's
 audit trail stays easy to follow end to end."""
+from datetime import datetime, timezone
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,11 +18,11 @@ from app.core.exceptions import DuplicateFactCheckError, ResearchFailedError
 from app.db.models import Claim, ClaimStatus, Evidence, FactCheck, FactCheckStatus, Reel, Source, Verdict
 from app.pipeline import (
     claim_extraction,
-    content_generation,
     duplicate_detection,
     evidence_analysis,
     ingestion,
     ocr,
+    reel_content,
     research_planning,
     search_fetch,
     slide_generation,
@@ -28,6 +30,7 @@ from app.pipeline import (
     verdict as verdict_stage,
     vision_context,
 )
+from app.pipeline.overall_verdict import derive_overall_verdict
 from app.services.search.factory import get_search_provider
 from app.services.storage.s3 import get_storage_client
 
@@ -68,46 +71,67 @@ async def analyze_reel(db: AsyncSession, reel: Reel) -> Reel:
     return reel
 
 
-async def build_fact_check(db: AsyncSession, claim: Claim) -> FactCheck:
-    # Publication gate: research infrastructure failure must never reach a
-    # publishable fact-check, even indirectly. This claim has no Verdict
-    # row at all (analyze_reel skipped verdict generation on
-    # ResearchFailedError) — "no verdict yet" below would already catch
-    # it, but checking status explicitly gives a much clearer error than
-    # a generic "no verdict" message when the real problem is
-    # infrastructure, not an unresearched claim.
-    if claim.status == ClaimStatus.research_failed:
+async def build_reel_fact_check(db: AsyncSession, reel: Reel) -> FactCheck:
+    """Builds ONE fact-check covering every verifiable claim on this reel
+    — not just a single claim. Overall verdict is derived deterministically
+    from the individual (already-validated) claim verdicts
+    (app/pipeline/overall_verdict.py), and the carousel is assembled from
+    real claim/verdict/source rows (app/pipeline/reel_content.py), not a
+    single free-text LLM blob."""
+    claims_result = await db.execute(select(Claim).where(Claim.reel_id == reel.id))
+    all_claims = list(claims_result.scalars().all())
+    verifiable_claims = [c for c in all_claims if c.verifiable]
+
+    if not verifiable_claims:
+        raise ValueError("This reel has no verifiable factual claims to build a fact-check from.")
+
+    if all(c.status == ClaimStatus.research_failed for c in verifiable_claims):
         raise ValueError(
-            "Research failed for this claim (search infrastructure error) — cannot build a "
-            "fact-check from it. This is not the same as UNVERIFIED. Retry research (fix the "
-            "search backend, then re-run analyze) before building a fact-check."
+            "Research failed for every verifiable claim on this reel (search infrastructure "
+            "error) — cannot build a fact-check. This is not the same as UNVERIFIED. Fix the "
+            "search backend and re-run analyze before building a fact-check."
         )
 
-    reel_result = await db.execute(select(Reel).where(Reel.id == claim.reel_id))
-    reel = reel_result.scalar_one()
+    claim_verdict_pairs: list[tuple[Claim, Verdict | None]] = []
+    for claim in verifiable_claims:
+        verdict_result = await db.execute(
+            select(Verdict)
+            .where(Verdict.claim_id == claim.id, Verdict.is_current.is_(True))
+            .order_by(Verdict.created_at.desc())
+        )
+        claim_verdict_pairs.append((claim, verdict_result.scalars().first()))
 
-    verdict_result = await db.execute(
-        select(Verdict).where(Verdict.claim_id == claim.id).order_by(Verdict.created_at.desc())
-    )
-    current_verdict = verdict_result.scalars().first()
-    if current_verdict is None:
-        raise ValueError("Claim has no verdict yet; run analyze_reel/research first.")
+    if all(v is None for _, v in claim_verdict_pairs):
+        raise ValueError("No claim on this reel has a verdict yet; run analyze_reel/research first.")
 
-    duplicate = await duplicate_detection.find_duplicate(db, reel, claim)
+    overall = derive_overall_verdict(claim_verdict_pairs)
+    primary_claim = max((c for c, v in claim_verdict_pairs if v is not None), key=lambda c: c.importance)
 
-    evidence_result = await db.execute(select(Evidence).where(Evidence.claim_id == claim.id))
-    evidence_rows = list(evidence_result.scalars().all())
-    source_ids = [e.source_id for e in evidence_rows]
-    sources: list[Source] = []
+    duplicate = await duplicate_detection.find_duplicate(db, reel, primary_claim)
+
+    claim_ids = [c.id for c, v in overall.claim_verdicts]
+    evidence_result = await db.execute(select(Evidence).where(Evidence.claim_id.in_(claim_ids)))
+    all_evidence = list(evidence_result.scalars().all())
+    evidence_by_claim: dict = {}
+    for e in all_evidence:
+        evidence_by_claim.setdefault(e.claim_id, []).append(e)
+
+    source_ids = {e.source_id for e in all_evidence}
+    sources_by_id: dict = {}
     if source_ids:
         sources_result = await db.execute(select(Source).where(Source.id.in_(source_ids)))
-        sources = list(sources_result.scalars().all())
+        sources_by_id = {s.id: s for s in sources_result.scalars().all()}
+
+    # is_current verdict per claim -> current_verdict_id on FactCheck is the primary claim's.
+    primary_verdict = next(v for c, v in claim_verdict_pairs if c.id == primary_claim.id)
 
     fact_check = FactCheck(
         reel_id=reel.id,
-        primary_claim_id=claim.id,
-        covered_claim_ids=[],
-        current_verdict_id=current_verdict.id,
+        primary_claim_id=primary_claim.id,
+        covered_claim_ids=[c.id for c, _ in overall.claim_verdicts],
+        current_verdict_id=primary_verdict.id if primary_verdict else None,
+        overall_verdict_label=overall.label.value,
+        overall_verdict_reasoning=overall.reasoning,
         status=FactCheckStatus.researching,
     )
     db.add(fact_check)
@@ -120,20 +144,51 @@ async def build_fact_check(db: AsyncSession, claim: Claim) -> FactCheck:
         await db.flush()
         raise DuplicateFactCheckError(str(duplicate.fact_check_id), duplicate.reason)
 
-    generated, caption, caption_sources = await content_generation.generate_content(
-        db, claim=claim, verdict=current_verdict, reel=reel, evidence_rows=evidence_rows, sources=sources
+    content = await reel_content.assemble_reel_content(
+        reel_creator_handle=reel.creator_handle,
+        overall=overall,
+        evidence_by_claim=evidence_by_claim,
+        sources_by_id=sources_by_id,
     )
-    await slide_generation.generate_slides(
-        db,
-        fact_check=fact_check,
-        claim=claim,
-        verdict=current_verdict,
-        reel=reel,
-        generated=generated,
-        caption_sources=caption_sources,
-    )
+    await slide_generation.generate_slides(db, fact_check=fact_check, reel=reel, content=content)
 
-    fact_check.caption_text = caption
+    all_sources_cited = list({s.url: s for s in sources_by_id.values()}.values())
+    caption_sources = [
+        s for s in all_sources_cited if any(e.stance.value in ("supports", "contradicts") for e in all_evidence if e.source_id == s.id)
+    ]
+    fact_check.caption_text = _build_reel_caption(reel=reel, content=content, caption_sources=caption_sources)
     fact_check.status = FactCheckStatus.ready_for_review
     await db.flush()
     return fact_check
+
+
+def _build_reel_caption(*, reel: Reel, content, caption_sources: list[Source]) -> str:
+    claim_by_claim = "\n".join(
+        f"{'✓' if row.icon == '✓' else ('✗' if row.icon == '✗' else '⚠')} {row.claim_text} — "
+        f"{row.verdict_label.replace('_', ' ')}"
+        for row in content.claim_table
+    )
+    sources_block = "\n".join(
+        f"{i + 1}. {s.publisher or s.title or s.url}\n   {s.url}" for i, s in enumerate(caption_sources[:8])
+    ) or "No corroborating sources were found at the time of publication."
+    date_str = datetime.now(timezone.utc).strftime("%b %d, %Y")
+    return (
+        "🔎 FACT CHECK\n\n"
+        "CLAIM:\n"
+        f'"{content.headline}"\n\n'
+        "VERDICT:\n"
+        f"{content.overall_verdict_label.replace('_', ' ')}\n\n"
+        "WHY:\n"
+        f"{content.why_paragraph}\n\n"
+        "CLAIM-BY-CLAIM:\n"
+        f"{claim_by_claim}\n\n"
+        "SOURCES:\n"
+        f"{sources_block}\n\n"
+        "ORIGINAL REEL:\n"
+        f"{reel.source_url}\n\n"
+        f"FACT-CHECKED: {date_str}\n\n"
+        "IMPORTANT:\n"
+        "This fact-check evaluates the specific claims made in the referenced reel based on "
+        "evidence available at the time of publication.\n\n"
+        "#FactCheck #MediaLiteracy #TruthLens"
+    )

@@ -46,6 +46,13 @@ class FactCheckDetail(BaseModel):
     covered_claims: list[ClaimOut]
     evidence: list[EvidenceOut]
     current_verdict: VerdictOut | None
+    # The verdict actually shown on the carousel/caption, derived from
+    # every covered claim (app/pipeline/overall_verdict.py) — NOT the
+    # same thing as current_verdict, which is one single claim's own
+    # verdict. Always prefer this field for display; current_verdict is
+    # kept for claim-level traceability, not as the headline verdict.
+    overall_verdict_label: str | None
+    overall_verdict_reasoning: str | None
     caption_text: str | None
     methodology_note: str | None
     slides: list[SlideOut]

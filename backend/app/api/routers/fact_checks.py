@@ -54,12 +54,16 @@ async def _load_fact_check_detail(db: AsyncSession, fact_check_id) -> FactCheckD
             (await db.execute(select(Claim).where(Claim.id.in_(fact_check.covered_claim_ids)))).scalars()
         )
 
+    # Evidence for every claim this fact-check covers, not just the
+    # primary one — a reel-level fact-check can rest on several claims'
+    # worth of evidence (app/pipeline/orchestrator.build_reel_fact_check).
+    evidence_claim_ids = {c.id for c in covered_claims} | {primary_claim.id}
     evidence_rows = list(
         (
             await db.execute(
                 select(Evidence)
                 .options(selectinload(Evidence.source))
-                .where(Evidence.claim_id == primary_claim.id)
+                .where(Evidence.claim_id.in_(evidence_claim_ids))
             )
         ).scalars()
     )

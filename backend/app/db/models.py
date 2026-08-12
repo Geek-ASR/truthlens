@@ -366,6 +366,18 @@ class FactCheck(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         UUID(as_uuid=True), ForeignKey("fact_checks.id"), nullable=True
     )
     public_page_published: Mapped[bool] = mapped_column(Boolean, default=False)
+    # The verdict actually shown on the carousel/caption — derived from
+    # ALL covered claims (app/pipeline/overall_verdict.py), which can
+    # legitimately differ from current_verdict (one single claim's own
+    # verdict, e.g. the primary/highest-importance claim). Storing it
+    # explicitly, rather than only on the rendered slide's content_json,
+    # is what keeps the dashboard and the published carousel from ever
+    # disagreeing about what verdict this fact-check actually asserts —
+    # a real bug found live (docs/CURRENT_ARCHITECTURE.md): the dashboard
+    # showed one claim's UNVERIFIED while the carousel showed the reel's
+    # overall MOSTLY_TRUE.
+    overall_verdict_label: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    overall_verdict_reasoning: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     slides: Mapped[list["Slide"]] = relationship(back_populates="fact_check", cascade="all, delete-orphan")
 

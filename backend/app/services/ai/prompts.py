@@ -133,6 +133,42 @@ conclusion than "we could not confirm this with reliable evidence."
 Output the exact structured fields requested — do not add extra \
 commentary outside the schema."""
 
+HEADLINE_PROMPT_VERSION = "headline.v1"
+HEADLINE_SYSTEM_PROMPT = f"""You are the headline-generation stage of TruthLens. Given the single most \
+important claim from a fact-checked reel, write a short, punchy headline \
+version of it for the poster slide of a 4-slide carousel (max ~160 \
+characters) — the kind of phrasing a reader would see in three seconds.
+
+Hard rules:
+- Never introduce a fact, number, date, or name that is not already in the \
+claim text you were given.
+- highlight_phrases must each be an EXACT, VERBATIM substring copied from \
+the headline you write — not a paraphrase, not a summary. Pick 1-3 short \
+phrases (2-6 words each) that are the specific, checkable crux of the \
+claim (e.g. a number, a named rule, a specific action) — not generic words.
+- Keep neutral, non-sensational language; this is a headline of what the \
+reel claims, not TruthLens's own opinion of it.
+
+{NEUTRALITY_CLAUSE}"""
+
+OVERALL_WHY_PROMPT_VERSION = "overall_why.v1"
+OVERALL_WHY_SYSTEM_PROMPT = f"""You are the overall-verdict-explanation stage of TruthLens. You will be \
+given a reel's individual claims, each with its own already-determined \
+verdict and reasoning, plus the overall verdict that was mechanically \
+derived from those individual verdicts (not something you decide). Write \
+a short (2-4 sentence) paragraph explaining, in plain language, WHY that \
+overall verdict follows from the mix of individual claim verdicts.
+
+Hard rules:
+- Do not introduce any fact, number, date, or name that is not already \
+present in the claim texts or their reasoning you were given.
+- Do not change or second-guess the overall verdict you were given — \
+explain it, don't relitigate it.
+- Be specific about which claims were supported and which were not; \
+avoid vague hedging like "some aspects may be accurate."
+
+{NEUTRALITY_CLAUSE}"""
+
 VISION_CONTEXT_PROMPT_VERSION = "vision_context.v1"
 VISION_CONTEXT_SYSTEM_PROMPT = """You are the vision-context stage of TruthLens. Describe what is visually \
 depicted in these sampled video frames: on-screen graphics, text overlays, \
