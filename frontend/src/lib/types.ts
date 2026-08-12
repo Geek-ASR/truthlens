@@ -191,6 +191,11 @@ export interface FactCheckDetail {
   covered_claims: ClaimOut[];
   evidence: EvidenceOut[];
   current_verdict: VerdictOut | null;
+  // The verdict actually shown on the carousel/caption, derived from every
+  // covered claim (backend app/pipeline/overall_verdict.py) — NOT the same
+  // thing as current_verdict, which is just the primary claim's own verdict.
+  overall_verdict_label: string | null;
+  overall_verdict_reasoning: string | null;
   caption_text: string | null;
   methodology_note: string | null;
   slides: SlideOut[];

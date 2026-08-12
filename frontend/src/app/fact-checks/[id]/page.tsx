@@ -263,7 +263,11 @@ export default function FactCheckDetailPage() {
           <h1>Fact-Check Review</h1>
           <div className="btn-row" style={{ marginTop: 6 }}>
             <StatusBadge status={fc.status} />
-            {verdict ? <VerdictBadge verdict={verdict.verdict} /> : null}
+            {fc.overall_verdict_label ? (
+              <VerdictBadge verdict={fc.overall_verdict_label} />
+            ) : verdict ? (
+              <VerdictBadge verdict={verdict.verdict} />
+            ) : null}
             {verdict ? (
               <ConfidenceBadge band={verdict.confidence_band} confidence={verdict.confidence} />
             ) : null}
@@ -339,9 +343,23 @@ export default function FactCheckDetailPage() {
             ) : null}
           </div>
 
+          {/* Overall verdict — what the carousel and caption actually show */}
+          {fc.overall_verdict_label ? (
+            <div className="card">
+              <h3>Overall Verdict</h3>
+              <div className="btn-row" style={{ marginBottom: 10 }}>
+                <VerdictBadge verdict={fc.overall_verdict_label} />
+              </div>
+              <p>{fc.overall_verdict_reasoning}</p>
+              <p className="hint">
+                Derived from every claim covered in this post, not just the primary claim below.
+              </p>
+            </div>
+          ) : null}
+
           {/* Verdict */}
           <div className="card">
-            <h3>Current Verdict</h3>
+            <h3>Primary Claim Verdict</h3>
             {verdict ? (
               <>
                 <div className="btn-row" style={{ marginBottom: 10 }}>

@@ -100,6 +100,8 @@ async def _load_fact_check_detail(db: AsyncSession, fact_check_id) -> FactCheckD
         covered_claims=covered_claims,
         evidence=evidence_rows,
         current_verdict=current_verdict,
+        overall_verdict_label=fact_check.overall_verdict_label,
+        overall_verdict_reasoning=fact_check.overall_verdict_reasoning,
         caption_text=fact_check.caption_text,
         methodology_note=fact_check.methodology_note,
         slides=slide_out,

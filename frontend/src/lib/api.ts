@@ -178,6 +178,20 @@ export async function analyzeReel(reelId: string): Promise<ReelOut> {
   return request<ReelOut>(`/api/reels/${reelId}/analyze`, { method: "POST" });
 }
 
+// The one-box flow: paste a URL, get back a finished fact-check in one
+// call (ingest+auto_fetch -> analyze -> build). Mirrors backend
+// POST /api/reels/quick — a long synchronous call (1-3+ minutes on local
+// models), not a background job.
+export async function quickFactCheck(
+  sourceUrl: string,
+  platform: string = "instagram"
+): Promise<FactCheckDetail> {
+  return request<FactCheckDetail>("/api/reels/quick", {
+    method: "POST",
+    body: JSON.stringify({ source_url: sourceUrl, platform }),
+  });
+}
+
 export async function getReel(reelId: string): Promise<ReelOut> {
   return request<ReelOut>(`/api/reels/${reelId}`);
 }

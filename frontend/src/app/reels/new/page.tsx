@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
   ApiError,
@@ -8,6 +9,7 @@ import {
   createReel,
   getClaimVerdicts,
   getReelClaims,
+  quickFactCheck,
 } from "@/lib/api";
 import { ErrorBanner, InfoBanner } from "@/components/ErrorBanner";
 import { Spinner } from "@/components/Spinner";
@@ -45,6 +47,37 @@ const EMPTY_FORM: FormState = {
 };
 
 export default function NewReelPage() {
+  const router = useRouter();
+
+  // Quick flow: paste a URL, get back a finished fact-check in one call.
+  // This is the primary path — the manual form below stays available for
+  // cases the quick flow can't handle (private posts, no auto-fetch, a
+  // pasted transcript instead of a downloadable video).
+  const [quickUrl, setQuickUrl] = useState("");
+  const [quickPlatform, setQuickPlatform] = useState<Platform>("instagram");
+  const [quickSubmitting, setQuickSubmitting] = useState(false);
+  const [quickError, setQuickError] = useState<string | null>(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  async function handleQuickSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!quickUrl.trim()) {
+      setQuickError("Paste a reel URL first.");
+      return;
+    }
+    setQuickSubmitting(true);
+    setQuickError(null);
+    try {
+      const factCheck = await quickFactCheck(quickUrl.trim(), quickPlatform);
+      router.push(`/fact-checks/${factCheck.id}`);
+    } catch (err) {
+      setQuickError(
+        err instanceof ApiError ? err.message : "Something went wrong building this fact-check."
+      );
+      setQuickSubmitting(false);
+    }
+  }
+
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [autoFetch, setAutoFetch] = useState(false);
@@ -146,14 +179,68 @@ export default function NewReelPage() {
     <div>
       <div className="page-header">
         <div>
-          <h1>New Reel</h1>
-          <div className="subtitle">
-            Paste the source URL and supply the media — an uploaded video, or a pasted transcript.
-          </div>
+          <h1>New Fact-Check</h1>
+          <div className="subtitle">Paste a reel URL. TruthLens does the rest.</div>
         </div>
       </div>
 
-      {!reel ? (
+      <form className="form-card" onSubmit={handleQuickSubmit}>
+        <ErrorBanner message={quickError} onDismiss={() => setQuickError(null)} />
+        <div className="field-row">
+          <div className="field" style={{ flex: 1 }}>
+            <label htmlFor="quickUrl">Reel URL</label>
+            <input
+              id="quickUrl"
+              type="url"
+              required
+              placeholder="https://www.instagram.com/p/…"
+              value={quickUrl}
+              onChange={(e) => setQuickUrl(e.target.value)}
+              disabled={quickSubmitting}
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="quickPlatform">Platform</label>
+            <select
+              id="quickPlatform"
+              value={quickPlatform}
+              onChange={(e) => setQuickPlatform(e.target.value as Platform)}
+              disabled={quickSubmitting}
+            >
+              {PLATFORMS.map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <button type="submit" className="btn btn-primary" disabled={quickSubmitting}>
+          {quickSubmitting ? "Fact-checking…" : "Get Fact-Check"}
+        </button>
+        {quickSubmitting ? (
+          <Spinner label="Fetching the reel, extracting claims, researching evidence, and building the carousel — this can take a few minutes." />
+        ) : (
+          <span className="hint">
+            Downloads the video, transcribes it, extracts claims, researches each one, and
+            generates the finished fact-check carousel — no other steps needed.
+          </span>
+        )}
+      </form>
+
+      <div style={{ textAlign: "center", margin: "16px 0" }}>
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          onClick={() => setShowAdvanced((v) => !v)}
+        >
+          {showAdvanced
+            ? "Hide advanced options"
+            : "Advanced: upload a video, paste a transcript, or add metadata manually →"}
+        </button>
+      </div>
+
+      {!showAdvanced ? null : !reel ? (
         <form className="form-card" onSubmit={handleSubmit}>
           <ErrorBanner message={validationError} onDismiss={() => setValidationError(null)} />
           <ErrorBanner message={submitError} onDismiss={() => setSubmitError(null)} />
