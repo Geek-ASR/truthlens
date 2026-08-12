@@ -38,7 +38,14 @@ class ClaimExtractionResult(BaseModel):
 class ExtractedClaim(BaseModel):
     text: str = Field(description="The atomic claim, precisely worded, in the system's own words")
     source_quote: str | None = Field(
-        default=None, description="Verbatim substring of the transcript/OCR this was derived from"
+        default=None,
+        description=(
+            "ONLY set this when someone in the reel actually said or displayed these exact words — "
+            "a verbatim substring of the transcript (spoken) or OCR (on-screen text). Never fill this "
+            "with your own paraphrase or description of an event, even if that description is itself "
+            "a verbatim substring of the caption. Leave null if the claim is inferred/summarized rather "
+            "than quoting a specific spoken or on-screen line."
+        ),
     )
     claim_type: ClaimType
     verifiable: bool

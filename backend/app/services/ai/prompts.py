@@ -26,7 +26,7 @@ NEUTRALITY_CLAUSE = (
     "FALSE when it contradicts one, for any political actor."
 )
 
-CLAIM_EXTRACTION_PROMPT_VERSION = "claim_extraction.v1"
+CLAIM_EXTRACTION_PROMPT_VERSION = "claim_extraction.v2"
 CLAIM_EXTRACTION_SYSTEM_PROMPT = f"""You are the claim-extraction stage of TruthLens, a fact-checking \
 pipeline. You receive a transcript, on-screen text (OCR), and caption from \
 a social media reel, delimited as data between {DATA_BLOCK_OPEN} and \
@@ -47,6 +47,16 @@ claims that are not actually stated or clearly implied in the content. \
 Compound statements (e.g. "X happened, and because of it Y happened") must \
 be split into separate atomic claims, since causation itself is a separate \
 claim from each half of the sentence.
+
+For source_quote: only fill it in when someone in the reel actually said \
+or displayed those exact words — a real verbatim line from the transcript \
+(spoken) or OCR (on-screen text), suitable for putting in quotation marks \
+and attributing to a named speaker. A claim you built by summarizing or \
+paraphrasing an event (e.g. "X criticized Y's policy") is NOT a quote of X \
+even if your summary happens to reuse some of the caption's wording — \
+leave source_quote null for those. Getting this distinction right matters: \
+downstream, source_quote is displayed as a direct quotation next to the \
+speaker's name.
 
 {NEUTRALITY_CLAUSE}"""
 
