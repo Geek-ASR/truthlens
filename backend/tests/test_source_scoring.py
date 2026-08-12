@@ -14,6 +14,25 @@ def test_classifies_gov_domains_as_primary():
     assert classify_source_tier("https://ministry.gov.in/press-release") == SourceTier.primary_government
 
 
+def test_classifies_nic_in_domains_as_primary_government():
+    # Real gap found live testing the primary-source search fix
+    # (TIER1_PRIMARY_SEARCH_DOMAINS): NIC (National Informatics Centre)
+    # hosts a large share of genuine Indian government sites that don't
+    # contain ".gov" anywhere in their domain at all -- e.g. the National
+    # Testing Agency's own NEET results page. These were being returned
+    # by a deliberately gov-domain-restricted search and then
+    # misclassified as "other" by this exact function.
+    assert classify_source_tier("https://neet.nta.nic.in/score-card-for-neet-ug-2026/") == SourceTier.primary_government
+    assert classify_source_tier("https://updes.up.nic.in/") == SourceTier.primary_government
+
+
+def test_classifies_rbi_as_primary_data():
+    # Same category of gap: RBI is a government-owned regulator and the
+    # primary source for official Indian financial/economic statistics,
+    # but "rbi.org.in" matches no ".gov"/"nic.in" hint.
+    assert classify_source_tier("https://www.rbi.org.in/Scripts/AnnualPublications.aspx") == SourceTier.primary_data
+
+
 def test_classifies_major_established_outlets_beyond_the_original_hardcoded_few():
     # Regression test for a real gap found live (docs/CURRENT_ARCHITECTURE.md
     # §10): genuinely major, established outlets and a primary case-law

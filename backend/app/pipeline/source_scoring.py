@@ -25,11 +25,34 @@ _WEIGHTS = {
     "conflict_of_interest": 0.05,
 }
 
-_TIER1_HINTS = (".gov", ".gov.", "parliament", "legislature", "election-commission", "eci.gov")
+_TIER1_HINTS = (
+    ".gov",
+    ".gov.",
+    "parliament",
+    "legislature",
+    "election-commission",
+    "eci.gov",
+    # NIC (National Informatics Centre) hosts a large share of official
+    # Indian government sites that don't carry ".gov" in their domain at
+    # all -- found live via the primary-source search fix
+    # (TIER1_PRIMARY_SEARCH_DOMAINS below): the National Testing Agency's
+    # own NEET results page (neet.nta.nic.in) and multiple state
+    # planning/finance department sites (e.g. updes.up.nic.in) were
+    # being returned by a deliberately gov-domain-restricted search and
+    # then misclassified as "other" by this exact function, understating
+    # sources that are unambiguously primary.
+    "nic.in",
+)
 _TIER1_LEGAL_DOMAINS = {
     # Case-law / primary legal-text databases — hosts the actual judgment
     # or statute text, not commentary about it.
     "indiankanoon.org": SourceTier.primary_legal,
+}
+_TIER1_DATA_DOMAINS = {
+    # Reserve Bank of India — the primary source for official Indian
+    # economic/financial statistics; ".org.in" domain doesn't match any
+    # existing hint despite being a government-owned regulator.
+    "rbi.org.in": SourceTier.primary_data,
 }
 _TIER2_DOMAINS = {
     "reuters.com": SourceTier.news_wire,
@@ -71,6 +94,27 @@ TIER3_FACTCHECK_DOMAINS = {
     "indiatoday.in": SourceTier.factcheck_org,
 }
 
+# Real gap found live and documented in research_paper/main.tex: the
+# research-planning prompt already asks the model for a primary-source
+# -targeted query, but a free-text "site:gov.in" the model writes itself
+# is not enforced anywhere — across 72 scored sources in one corpus, only
+# 8 ever reached primary_government and none reached primary_legal/
+# primary_data. This is the search-side allow-list search_fetch.py uses
+# to deterministically restrict a dedicated primary-source query via
+# SearchProvider.search(include_domains=...) — the same mechanism
+# already used for TIER3_FACTCHECK_DOMAINS above — rather than trusting
+# the model's own query phrasing to actually stay on these domains.
+# site:gov.in matches all *.gov.in subdomains (PIB, ECI, individual
+# ministries, etc.), so this short list has broad real coverage without
+# needing to enumerate every agency subdomain individually.
+TIER1_PRIMARY_SEARCH_DOMAINS = (
+    "gov.in",
+    "nic.in",
+    "sansad.in",
+    "rbi.org.in",
+    "indiankanoon.org",
+)
+
 _PUBLICATION_REPUTATION_BY_TIER = {
     SourceTier.primary_government: 0.95,
     SourceTier.primary_legal: 0.95,
@@ -100,6 +144,8 @@ def classify_source_tier(url: str) -> SourceTier:
         return SourceTier.primary_government
     if domain in _TIER1_LEGAL_DOMAINS:
         return _TIER1_LEGAL_DOMAINS[domain]
+    if domain in _TIER1_DATA_DOMAINS:
+        return _TIER1_DATA_DOMAINS[domain]
     if domain in _TIER2_DOMAINS:
         return _TIER2_DOMAINS[domain]
     if domain in TIER3_FACTCHECK_DOMAINS:

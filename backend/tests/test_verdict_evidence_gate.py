@@ -110,3 +110,61 @@ async def test_result_with_no_actual_content_is_never_stored_as_a_source():
     urls = [s.url for s in sources]
     assert "https://example.test/inaccessible" not in urls
     assert "https://example.test/real" in urls
+
+
+@pytest.mark.asyncio
+async def test_tier1_primary_query_is_restricted_to_primary_domains():
+    # Real gap found and documented in the paper: the research-planning
+    # prompt already asks the model for a primary-source-targeted query,
+    # but nothing enforced it -- a free-text "site:gov.in" the model
+    # wrote itself was never actually verified. A query explicitly
+    # planned as tier1_primary must now be restricted at the search call
+    # itself, the same deterministic mechanism already used for
+    # tier3_factcheck queries, not left to the model's own phrasing.
+    captured_include_domains = []
+
+    class _RecordingProvider(SearchProvider):
+        async def search(self, query, *, include_domains=None, exclude_domains=None, max_results=5):
+            captured_include_domains.append(include_domains)
+            return []
+
+    async with AsyncSessionLocal() as db:
+        reel, claim = await _make_claim(db)
+        now = datetime.now(timezone.utc)
+        query = SearchQuery(
+            claim_id=claim.id,
+            query_text="government spending on advertising",
+            target_tier=TargetTier.tier1_primary,
+            provider="test",
+            executed_at=now,
+            result_count=0,
+        )
+        db.add(query)
+        await db.flush()
+
+        await fetch_evidence_sources(db, claim, [query], _RecordingProvider())
+        await db.rollback()
+
+    assert len(captured_include_domains) == 1
+    assert captured_include_domains[0] is not None
+    assert "gov.in" in captured_include_domains[0]
+    assert "indiankanoon.org" in captured_include_domains[0]
+
+
+@pytest.mark.asyncio
+async def test_unrestricted_query_gets_no_domain_filter():
+    captured_include_domains = []
+
+    class _RecordingProvider(SearchProvider):
+        async def search(self, query, *, include_domains=None, exclude_domains=None, max_results=5):
+            captured_include_domains.append(include_domains)
+            return []
+
+    async with AsyncSessionLocal() as db:
+        reel, claim = await _make_claim(db)
+        queries = await _make_queries(db, claim, count=1)  # TargetTier.unrestricted
+
+        await fetch_evidence_sources(db, claim, queries, _RecordingProvider())
+        await db.rollback()
+
+    assert captured_include_domains == [None]

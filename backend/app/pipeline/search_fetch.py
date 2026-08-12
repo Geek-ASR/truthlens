@@ -11,7 +11,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import ResearchFailedError
 from app.db.models import ActorType, Claim, Source
 from app.pipeline.audit import record_audit
-from app.pipeline.source_scoring import TIER3_FACTCHECK_DOMAINS, classify_source_tier, score_source
+from app.pipeline.source_scoring import (
+    TIER1_PRIMARY_SEARCH_DOMAINS,
+    TIER3_FACTCHECK_DOMAINS,
+    classify_source_tier,
+    score_source,
+)
 from app.services.search.base import SearchProvider
 from app.services.storage.s3 import get_storage_client
 
@@ -37,9 +42,11 @@ async def fetch_evidence_sources(
         if len(sources) >= _MAX_SOURCES_PER_CLAIM:
             break
 
-        include_domains = (
-            list(TIER3_FACTCHECK_DOMAINS.keys()) if query.target_tier.value == "tier3_factcheck" else None
-        )
+        include_domains = None
+        if query.target_tier.value == "tier3_factcheck":
+            include_domains = list(TIER3_FACTCHECK_DOMAINS.keys())
+        elif query.target_tier.value == "tier1_primary":
+            include_domains = list(TIER1_PRIMARY_SEARCH_DOMAINS)
         try:
             results = await search_provider.search(
                 query.query_text, include_domains=include_domains, max_results=_RESULTS_PER_QUERY
