@@ -1,4 +1,17 @@
-from app.pipeline.reel_content import _display_text
+from app.db.models import ValidationStatus
+from app.db.models import Verdict as VerdictModel
+from app.db.models import VerdictLabel
+from app.pipeline.reel_content import _UNVALIDATED_REASONING_NOTE, _display_text, _safe_reasoning_text
+
+
+def _verdict(reasoning_summary: str, validation_status: ValidationStatus) -> VerdictModel:
+    return VerdictModel(
+        verdict=VerdictLabel.UNVERIFIED,
+        confidence=0.4,
+        reasoning_summary=reasoning_summary,
+        cited_evidence_ids=[],
+        validation_status=validation_status,
+    )
 
 
 def test_strips_trailing_validation_note():
@@ -32,3 +45,36 @@ def test_leaves_normal_text_untouched():
 def test_collapses_whitespace():
     raw = "Line one.\n\n\nLine   two."
     assert _display_text(raw) == "Line one. Line two."
+
+
+def test_safe_reasoning_text_shows_real_text_when_validation_passed():
+    v = _verdict("Kejriwal criticized the rule in a public statement.", ValidationStatus.passed)
+    assert _safe_reasoning_text(v) == "Kejriwal criticized the rule in a public statement."
+
+
+def test_safe_reasoning_text_hides_reasoning_from_a_downgraded_verdict():
+    # Real bug found live (research_paper/benchmark/results.md bm-0002):
+    # a verdict downgraded for citing an unsupported number still had its
+    # full free-text reasoning — including an unrelated-entity
+    # hallucination sourced from a DIFFERENT organization's Wikipedia
+    # page — reused verbatim on a published evidence-card slide and as
+    # input to the overall "why" paragraph's own LLM call. Once a
+    # verdict fails validation, none of its free-text reasoning is safe
+    # to reuse, only a generic, non-fabricated note.
+    v = _verdict(
+        "This suggests an unrelated organization has a violent ideology.",
+        ValidationStatus.downgraded_unsupported_stat,
+    )
+    result = _safe_reasoning_text(v)
+    assert result == _UNVALIDATED_REASONING_NOTE
+    assert "violent ideology" not in result
+
+
+def test_safe_reasoning_text_hides_reasoning_for_every_downgrade_reason():
+    for status in (
+        ValidationStatus.downgraded_missing_citation,
+        ValidationStatus.downgraded_unfetched_source,
+        ValidationStatus.downgraded_unsupported_stat,
+    ):
+        v = _verdict("Some potentially unsafe reasoning text.", status)
+        assert _safe_reasoning_text(v) == _UNVALIDATED_REASONING_NOTE

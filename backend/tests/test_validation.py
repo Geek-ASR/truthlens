@@ -131,6 +131,32 @@ def test_still_catches_a_real_hallucinated_number_next_to_a_url():
     assert outcome.status == ValidationStatus.downgraded_unsupported_stat
 
 
+def test_ignores_numbers_inside_internal_citation_markup():
+    # Real bug found live against a genuinely new reel (never seen
+    # during earlier development, research_paper/benchmark/results.md
+    # bm-0002): [[evidence_id=<uuid> | source_id=<uuid>]] markup contains
+    # UUID fragments that look like numbers ("609", "8371", ...) to
+    # _NUMBER_PATTERN. These got flagged as "unsupported statistics",
+    # downgrading a verdict for the wrong reason — a UUID inside
+    # citation markup is not a factual claim needing evidence support,
+    # and citation validity is already checked separately (Check 1).
+    source = _make_source(relevant_passage="Karni Sena accused the MP of insulting Rajput pride.")
+    evidence_id = uuid.uuid4()
+    proposal = VerdictProposal(
+        verdict=VerdictLabel.UNVERIFIED,
+        confidence=0.4,
+        reasoning_summary=(
+            "The claim is not supported by [[evidence_id=b7e30502-609c-40e9-8371-2515adffaf81 | "
+            "source_id=70210daf-638c-48a8-9513-889725c9c100]](https://example.test/article)."
+        ),
+        cited_evidence_ids=[evidence_id],
+    )
+
+    outcome = validate_verdict(proposal, {evidence_id: object()}, {evidence_id: source})
+
+    assert outcome.status == ValidationStatus.passed
+
+
 def test_ignores_small_meta_numbers_that_dont_need_source_support():
     source = _make_source(relevant_passage="General discussion with no specific figures.")
     evidence_id = uuid.uuid4()

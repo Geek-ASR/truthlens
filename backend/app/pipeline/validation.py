@@ -11,6 +11,13 @@ from app.schemas.verdict import VerdictProposal
 _NUMBER_PATTERN = re.compile(r"\b\d+(?:,\d{3})*(?:\.\d+)?%?")
 _MIN_DIGITS_TO_CHECK = 2  # ignore single-digit numbers (e.g. "3 sources") to avoid false-positive failures
 _URL_PATTERN = re.compile(r"https?://\S+")
+# Internal citation markup, e.g. "[[evidence_id=b7e30502-... | source_id=...]]".
+# Found live: UUID fragments inside this markup (e.g. "609", "8371") were
+# being extracted by _NUMBER_PATTERN and flagged as unsupported statistics,
+# downgrading verdicts for the wrong reason — a UUID is not a factual claim
+# needing evidence support, and this markup is already validated
+# separately (Check 1, cited-evidence-id existence).
+_INTERNAL_MARKUP_PATTERN = re.compile(r"\[\[.*?\]\]", re.DOTALL)
 
 _CAPPED_CONFIDENCE = 0.4
 
@@ -24,13 +31,15 @@ class ValidationOutcome:
 
 
 def _numbers_needing_support(text: str) -> list[str]:
-    # Strip URLs first — observed live: a model that cites a source
-    # inline as "(https://example.com/article-3065258.html)" was getting
-    # flagged for an "unsupported number" on the URL's own numeric ID,
-    # which is never a factual claim needing evidence support. Citation
-    # is already handled structurally via cited_evidence_ids; a URL
-    # appearing in the prose is incidental, not a statistic.
-    text_without_urls = _URL_PATTERN.sub("", text)
+    # Strip internal citation markup first (see _INTERNAL_MARKUP_PATTERN),
+    # then URLs — observed live: a model that cites a source inline as
+    # "(https://example.com/article-3065258.html)" was getting flagged
+    # for an "unsupported number" on the URL's own numeric ID, which is
+    # never a factual claim needing evidence support. Citation is already
+    # handled structurally via cited_evidence_ids; a URL appearing in the
+    # prose is incidental, not a statistic.
+    text_without_markup = _INTERNAL_MARKUP_PATTERN.sub("", text)
+    text_without_urls = _URL_PATTERN.sub("", text_without_markup)
     found = _NUMBER_PATTERN.findall(text_without_urls)
     return [n for n in found if len(re.sub(r"[,.%]", "", n)) >= _MIN_DIGITS_TO_CHECK]
 

@@ -11,7 +11,7 @@ import re
 from dataclasses import dataclass, field
 
 from app.core.config import get_settings
-from app.db.models import Claim, Evidence, Source, SourceTier, Verdict, VerdictLabel
+from app.db.models import Claim, Evidence, Source, SourceTier, ValidationStatus, Verdict, VerdictLabel
 from app.pipeline.overall_verdict import OverallVerdict
 from app.schemas.content import HeadlineResult, OverallWhyResult
 from app.services.ai.factory import get_llm_provider
@@ -60,6 +60,29 @@ def _display_text(raw: str) -> str:
     text = raw.split(_VALIDATION_NOTE_MARKER)[0]
     text = _INTERNAL_MARKUP_PATTERN.sub("", text)
     return " ".join(text.split()).strip()
+
+
+# A downgraded verdict's reasoning_summary is prose the model wrote to
+# justify its ORIGINAL (rejected) verdict — validate_verdict() strips
+# neither the reasoning nor the specific sentence that caused the
+# downgrade, because there's no reliable way to isolate just the bad
+# sentence. Real failure found live (research_paper/benchmark/results.md
+# bm-0002): a verdict downgraded for citing an unsupported number still
+# had its full reasoning text — including an unrelated-entity hallucination
+# ("this suggests [organization] has a violent ideology", sourced from a
+# DIFFERENT, similarly-named organization's Wikipedia page) — reused
+# verbatim as an evidence-card's answer_text AND as raw input material for
+# the overall "why" paragraph's own LLM call, which then wove it into
+# published output. Once a verdict fails validation, none of its free-text
+# reasoning is safe to display or reuse — only the label and a generic,
+# non-fabricated note are.
+_UNVALIDATED_REASONING_NOTE = "Automated reasoning for this claim did not pass grounding checks; recorded as UNVERIFIED pending human review."
+
+
+def _safe_reasoning_text(verdict: Verdict) -> str:
+    if verdict.validation_status != ValidationStatus.passed:
+        return _UNVALIDATED_REASONING_NOTE
+    return _display_text(verdict.reasoning_summary)
 
 
 @dataclass
@@ -196,7 +219,7 @@ async def _generate_why_paragraph(overall: OverallVerdict) -> str:
     provider = get_llm_provider()
     settings = get_settings()
     claims_block = "\n".join(
-        f"- Claim: {c.text}\n  Verdict: {v.verdict.value}\n  Reasoning: {_display_text(v.reasoning_summary)}"
+        f"- Claim: {c.text}\n  Verdict: {v.verdict.value}\n  Reasoning: {_safe_reasoning_text(v)}"
         for c, v in overall.claim_verdicts
     )
     user_content = f"OVERALL VERDICT: {overall.label.value}\n\nCLAIMS:\n{claims_block}"
@@ -262,7 +285,7 @@ async def assemble_reel_content(
                     claim_text=claim.text,
                     verdict_label=verdict.verdict.value,
                     icon=icon,
-                    answer_text=_display_text(verdict.reasoning_summary),
+                    answer_text=_safe_reasoning_text(verdict),
                     primary_source=primary_source,
                     independent_source=independent_source,
                 )
