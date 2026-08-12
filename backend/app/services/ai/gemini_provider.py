@@ -14,7 +14,20 @@ JSON schema (an OpenAPI-3.0-flavored SUBSET of JSON Schema: no $ref/$defs,
 only a few `format` values recognized) — _to_gemini_schema() converts a
 Pydantic model_json_schema() output into that shape."""
 from google import genai
-from google.genai import errors as genai_errors
+
+# The Interactions API used below (self._client.aio.interactions.create)
+# raises a SEPARATE error hierarchy from the documented google.genai.errors
+# module — its own APIError/RateLimitError etc. are not subclasses of
+# google.genai.errors.APIError (confirmed live:
+# issubclass(RateLimitError, errors.APIError) is False). There is no
+# public re-export of these types anywhere under google.genai; this
+# internal module is the only place they exist. Found live: a real
+# Gemini 429 (daily free-tier quota exhausted) raised
+# google.genai._gaos.lib.compat_errors.RateLimitError, which an except
+# clause written against google.genai.errors.APIError never matched,
+# crashing the whole /analyze request as an unhandled 500 instead of
+# degrading to the already-computed local-model result.
+from google.genai._gaos.lib import compat_errors as gaos_errors
 from pydantic import ValidationError
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
@@ -105,9 +118,10 @@ class GeminiProvider(LLMProvider):
             raise ProviderError(
                 f"Gemini call failed after retries ({model}, prompt {prompt_version}): {exc}"
             ) from exc
-        except genai_errors.APIError as exc:
+        except gaos_errors.GeminiNextGenAPIClientError as exc:
             raise ProviderError(
-                f"Gemini call failed ({model}, prompt {prompt_version}): {exc.code} {exc.message}"
+                f"Gemini call failed ({model}, prompt {prompt_version}): "
+                f"{getattr(exc, 'status_code', None)} {exc}"
             ) from exc
         except ValidationError as exc:
             raise ProviderError(
@@ -156,9 +170,16 @@ class GeminiProvider(LLMProvider):
                 generation_config={"max_output_tokens": max_tokens},
                 store=False,
             )
-        except genai_errors.APIError as exc:
-            if exc.code in _RETRYABLE_STATUS_CODES:
-                raise _RetryableAPIError(f"{exc.code} {exc.message}") from exc
+        except gaos_errors.GeminiNextGenAPIClientError as exc:
+            # APIConnectionError/APITimeoutError are ALSO APIError
+            # subclasses but never got an HTTP response at all, so
+            # status_code stays at APIError's class-level default of
+            # None -- treated as retryable too (a dropped connection is
+            # exactly the kind of transient failure worth one retry
+            # pass), not just the explicit 429/5xx status codes.
+            status_code = getattr(exc, "status_code", None)
+            if status_code is None or status_code in _RETRYABLE_STATUS_CODES:
+                raise _RetryableAPIError(f"{status_code} {exc}") from exc
             raise
 
         if interaction.status != "completed":

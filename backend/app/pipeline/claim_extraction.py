@@ -51,6 +51,24 @@ def _extraction_looks_grounded(claims: list[ExtractedClaim], source_text: str) -
     return grounded / len(verifiable) >= _MIN_GROUNDED_SHARE
 
 
+def _extraction_looks_substantive(claims: list[ExtractedClaim]) -> bool:
+    """Same "schema-valid but empty" failure already guarded against in
+    content_generation.py's _content_looks_complete and verdict.py's
+    _reasoning_looks_substantive, found here too via live testing: on a
+    real reel whose OCR text contained multiple checkable claims (a
+    funding-source dispute, an "AI-generated" document assertion),
+    Ollama returned two claims with claim_type=satire, verifiable=False,
+    and text="" -- schema-valid (an empty string is still a str) but
+    nothing for a human or the rest of the pipeline to act on. This is
+    invisible to _extraction_looks_grounded above, which only ever
+    evaluates verifiable claims' source_quote and is a no-op whenever
+    every extracted claim comes back non-verifiable, exactly as happened
+    here."""
+    if not claims:
+        return True  # a genuine "found nothing" result, not a failure
+    return any(c.text.strip() for c in claims)
+
+
 def _build_user_content(reel: Reel) -> str:
     parts = ["Analyze the following reel content and extract atomic claims.\n"]
     if reel.transcript:
@@ -97,10 +115,9 @@ async def extract_claims(db: AsyncSession, reel: Reel) -> list[Claim]:
         prompt_version=CLAIM_EXTRACTION_PROMPT_VERSION,
     )
 
-    if (
-        settings.LLM_PROVIDER == "ollama"
-        and settings.GEMINI_API_KEY
-        and not _extraction_looks_grounded(result.parsed.claims, user_content)
+    if settings.LLM_PROVIDER == "ollama" and settings.GEMINI_API_KEY and (
+        not _extraction_looks_grounded(result.parsed.claims, user_content)
+        or not _extraction_looks_substantive(result.parsed.claims)
     ):
         logger.warning(
             "claim_extraction_ungrounded_retrying_via_gemini",
@@ -131,6 +148,12 @@ async def extract_claims(db: AsyncSession, reel: Reel) -> list[Claim]:
 
     claims: list[Claim] = []
     for extracted in result.parsed.claims:
+        if not extracted.text.strip():
+            # Never persist a claim record with no actual content, even
+            # after the retry above -- same "don't store what we can't
+            # actually use" discipline as never storing a Source row for
+            # a page we couldn't fetch (search_fetch.py).
+            continue
         claim = Claim(
             reel_id=reel.id,
             text=extracted.text,
