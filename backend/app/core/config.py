@@ -90,6 +90,17 @@ class Settings(BaseSettings):
     META_GRAPH_API_VERSION: str = "v21.0"
     INSTAGRAM_ACCESS_TOKEN: str = ""
 
+    # Research/ablation only — never True in production (default False,
+    # not exposed in any deployed config). Baseline 4 in
+    # research/BASELINE_SPEC.md: when True, verdict.py still runs
+    # validate_verdict() and records its outcome, but persists the LLM's
+    # raw, unvalidated proposal instead of the validated/downgraded one —
+    # the ablation answering RQ1 ("does deterministic verification help,
+    # measured by actually removing it"). A runtime flag rather than a
+    # forked codepath so this baseline can never silently drift from the
+    # real system as TruthLens itself changes.
+    SKIP_VALIDATION: bool = False
+
     # Product configuration
     MAX_POSTS_PER_DAY: int = 12
     HUMAN_APPROVAL_MODE: bool = True  # default per product spec §20 — must be explicitly disabled

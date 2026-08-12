@@ -150,6 +150,23 @@ baseline-specific code. Every other configuration above is measured
   have no such stage to remove — and absent by construction in baseline
   4; present only in the full system).
 
+## Real gap found and fixed while building this (Day 3)
+
+The first working draft of baselines 2/3 called
+`app.services.ai.factory.get_llm_provider()` — the same factory function
+every real TruthLens pipeline stage uses. Since `GEMINI_API_KEY` was set
+in the dev environment, that factory silently returns
+`FallbackLLMProvider`, which retries against Gemini whenever the primary
+Ollama call raises `ProviderError`. That would have given both baselines
+the exact same failure-rescue mechanism TruthLens's own architecture is
+being evaluated for having — exactly the confound this document's own
+"what is held constant" section warns against, just introduced by
+accident rather than by a bad research decision. Fixed by importing
+`OllamaProvider` directly in both baseline scripts. Caught during Day 3's
+own smoke testing, before any number was reported anywhere — see
+`research/results/README.md` for the one already-run file this affected
+(kept as a labeled smoke-test artifact, not used for any conclusion).
+
 ## Implementation location
 
 ```

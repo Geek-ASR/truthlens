@@ -128,25 +128,51 @@ async def propose_verdict(
 
     evidence_by_id = {e.id: e for e in evidence_rows}
     source_by_evidence_id = {e.id: sources_by_id[e.source_id] for e in evidence_rows}
+    # Always computed, even under SKIP_VALIDATION below — its outcome is
+    # what the Baseline-4 ablation (research/BASELINE_SPEC.md) compares
+    # against, and validation_status is recorded either way so a
+    # human-audited comparison of "what the gate would have caught" is
+    # possible regardless of whether it was actually applied.
     outcome = validate_verdict(result.parsed, evidence_by_id, source_by_evidence_id)
 
     now = datetime.now(timezone.utc)
-    verdict = Verdict(
-        claim_id=claim.id,
-        verdict=outcome.verdict,
-        confidence=outcome.confidence,
-        confidence_band=confidence_to_band(outcome.confidence),
-        reasoning_summary=result.parsed.reasoning_summary
-        if outcome.status.value == "passed"
-        else f"{result.parsed.reasoning_summary}\n\n[VALIDATION NOTE: {'; '.join(outcome.notes)}]",
-        cited_evidence_ids=result.parsed.cited_evidence_ids if outcome.status.value == "passed" else [],
-        corrected_fact=outcome.corrected_fact,
-        context_note=outcome.context_note,
-        validation_status=outcome.status,
-        verdict_model=f"{result.model}:{result.prompt_version}",
-        is_current=True,
-        created_at=now,
-    )
+    if settings.SKIP_VALIDATION:
+        # Research/ablation only (see config.py) — persists the LLM's
+        # raw proposal exactly as generated, never gated by `outcome`.
+        # validation_status still records what validate_verdict() found,
+        # for comparison, but nothing here is filtered or downgraded
+        # because of it.
+        verdict = Verdict(
+            claim_id=claim.id,
+            verdict=result.parsed.verdict,
+            confidence=result.parsed.confidence,
+            confidence_band=confidence_to_band(result.parsed.confidence),
+            reasoning_summary=result.parsed.reasoning_summary,
+            cited_evidence_ids=result.parsed.cited_evidence_ids,
+            corrected_fact=result.parsed.corrected_fact,
+            context_note=result.parsed.context_note,
+            validation_status=outcome.status,
+            verdict_model=f"{result.model}:{result.prompt_version}",
+            is_current=True,
+            created_at=now,
+        )
+    else:
+        verdict = Verdict(
+            claim_id=claim.id,
+            verdict=outcome.verdict,
+            confidence=outcome.confidence,
+            confidence_band=confidence_to_band(outcome.confidence),
+            reasoning_summary=result.parsed.reasoning_summary
+            if outcome.status.value == "passed"
+            else f"{result.parsed.reasoning_summary}\n\n[VALIDATION NOTE: {'; '.join(outcome.notes)}]",
+            cited_evidence_ids=result.parsed.cited_evidence_ids if outcome.status.value == "passed" else [],
+            corrected_fact=outcome.corrected_fact,
+            context_note=outcome.context_note,
+            validation_status=outcome.status,
+            verdict_model=f"{result.model}:{result.prompt_version}",
+            is_current=True,
+            created_at=now,
+        )
     db.add(verdict)
     claim.status = ClaimStatus.researched
     await db.flush()
