@@ -96,10 +96,20 @@ when a claim is not simply true, TruthLens now surfaces what the same
 evidence establishes instead, held to the identical grounding standard,
 while deliberately not attempting the further step of predicting
 downstream consequences, which would require exactly the kind of
-ungrounded generation this paper argues against. We describe the larger
-evaluation this motivates and a taxonomy of concrete failure modes
-discovered through live testing that we believe generalize to other
-LLM-pipeline fact-checking systems.
+ungrounded generation this paper argues against. A third live test found
+two further real bugs outside the LLM reasoning stages entirely: claim
+extraction silently accepting schema-valid but empty-string claims, and
+a provider wrapper's error handling written against the wrong exception
+hierarchy for the API surface actually in use, which let a routine
+rate-limit condition crash an in-flight request after roughly forty
+minutes instead of failing fast -- notably, a pre-existing unit test for
+that exact code path had mocked the same wrong exception type the
+production code mishandled, passing throughout despite providing no real
+coverage. Both are fixed and reverified live, though this specific post
+did not yield a finished fact-check, a mixed result we report rather
+than omit. We describe the larger evaluation this motivates and a
+taxonomy of concrete failure modes discovered through live testing that
+we believe generalize to other LLM-pipeline fact-checking systems.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -481,10 +491,21 @@ and verdict proposal -- additionally run a deterministic
 accepting it:
 
 \begin{itemize}
-\item Claim extraction: is the extraction \emph{grounded}, i.e.\ do at
-  least half of the extracted verifiable claims have a
+\item Claim extraction, grounding: is the extraction \emph{grounded},
+  i.e.\ do at least half of the extracted verifiable claims have a
   \texttt{source\_quote} that is an actual substring of the combined
   transcript/OCR/caption text?
+\item Claim extraction, substantiveness: does at least one extracted
+  claim have non-empty \texttt{text}? Added after a real failure found
+  live (Section~\ref{sec:thirdpilot}): a locally hosted model returned
+  claims with \texttt{text=""} for content that plainly had checkable
+  claims in it -- schema-valid, but with nothing for the rest of the
+  pipeline to act on, and invisible to the grounding check above, which
+  only ever evaluates \emph{verifiable} claims and is a no-op when every
+  returned claim is non-verifiable, exactly what happened here. An
+  extraction with zero claims at all is not treated as a failure by this
+  check -- a genuine "found nothing" is a legitimate outcome, not a
+  quality problem to retry.
 \item Content generation / verdict reasoning: after stripping internal
   citation markup (\texttt{[[evidence\_id=...]]} blocks), does the
   remaining prose contain at least six real words? This check exists
@@ -833,6 +854,65 @@ conditions: the local model's own citation imprecision, not a flaw in
 the new correction mechanism, was what held the output back until a
 stronger model produced something that actually passed.
 
+\subsection{A third live test: two infrastructure bugs found, no
+finished output}
+\label{sec:thirdpilot}
+Not every live test ends in a published fact-check, and we report this
+one because it did not. A third real Instagram URL -- a noisy,
+multi-screenshot video montage with a heavily code-switched
+Hindi/Urdu/English transcript -- surfaced two further bugs, neither in
+the LLM reasoning stages this time but in the surrounding pipeline
+infrastructure.
+
+First, local claim extraction returned two schema-valid claims with
+\texttt{text=""} -- empty strings -- for content whose OCR text plainly
+contained checkable claims (a document authenticity dispute, a funding
+-source claim). This passed schema validation (an empty string is still
+a string) and was invisible to the existing grounding check
+(Section~\ref{sec:cascade}), which only ever evaluates \emph{verifiable}
+claims' \texttt{source\_quote} field and is a no-op whenever every
+returned claim comes back non-verifiable, exactly what happened here.
+This is the same "schema-valid but substantively empty" failure class
+already guarded against in the verdict and content-generation stages
+(Section~\ref{sec:cascade}), just not, until now, in claim extraction
+itself. Fixed with an analogous substantiveness check that escalates to
+the fallback model whenever every extracted claim is blank, plus an
+unconditional filter that never persists a blank-text claim regardless
+of which model produced it.
+
+Second, with that fix correctly triggering escalation more often, a
+retry call hit the fallback model's free-tier daily quota (20 requests
+per day). The specific API surface this system uses
+(an interactions-style endpoint, adopted after the older generation
+endpoint stopped accepting new API keys) raises a completely separate
+exception hierarchy from the one the provider's error handling was
+written against; we confirmed live that the rate-limit exception was
+not an instance of the caught type at all. The mismatch let a routine,
+expected failure mode -- quota exhaustion -- propagate as an unhandled
+exception instead of the intended typed error, crashing the entire
+in-flight request after some forty minutes of otherwise-successful work
+(dozens of completed local-model calls across several claims) rather
+than failing fast with a clear message. Fixed by catching the actual
+exception hierarchy the SDK uses; re-verified live post-fix that the
+identical quota-exhaustion condition now surfaces as a clean, sub-minute
+error instead of a long hang ending in a crash. Notably, a pre-existing
+unit test for this code path had mocked the same wrong exception
+hierarchy the production code was (mis)handling, so it passed
+throughout despite the underlying bug -- a reminder that a test can be
+internally consistent with buggy code and still provide no real
+coverage; it was rewritten against the SDK's actual exception classes.
+
+With the fallback model's daily quota already spent by the time both
+fixes were verified, we were not able to complete a finished,
+fallback-quality fact-check for this specific post the same day --
+local-only extraction on this content returned zero claims, an honest
+null result rather than a crash, consistent with the low ceiling on
+small-model reasoning quality already discussed in
+Section~\ref{sec:relatedwork} and \ref{sec:futurework}. We report the
+two infrastructure fixes as real, tested, and independently verified;
+we do not report a third successful pilot, because there isn't one yet
+for this post.
+
 \section{A Taxonomy of Failure Modes Found in Live Testing}
 \label{sec:failuremodes}
 
@@ -991,6 +1071,42 @@ rather than evaluated on a static benchmark.
   limitation of the underlying vision model itself, not a gap in the
   pipeline's use of it, and it does not have a clean deterministic fix
   the way a grounding check does.
+\item \textbf{Empty-string claims passing schema validation.} Found
+  during the third live test (Section~\ref{sec:thirdpilot}): a locally
+  hosted model returned claims with \texttt{text=""} for content whose
+  OCR plainly contained checkable claims. A non-empty-string type
+  constraint does not require a non-empty \emph{string} -- the same
+  category of gap as the citation-only \texttt{reasoning\_summary} entry
+  above, but in claim extraction rather than verdict reasoning, and
+  invisible to that stage's existing grounding check specifically
+  because the check only evaluates \emph{verifiable} claims and treats
+  zero verifiable claims as trivially fine, which is correct for a
+  genuine "nothing here" extraction but blind to "something here, just
+  empty." Fixed with a dedicated substantiveness check
+  (Section~\ref{sec:cascade}) plus an unconditional filter that never
+  persists a blank-text claim regardless of which model produced it.
+\item \textbf{An except clause written against the wrong SDK exception
+  hierarchy.} Also found during the third live test: escalating to the
+  fallback model correctly triggered more often after the fix above,
+  which surfaced a second, unrelated bug -- a real rate-limit response
+  from the fallback provider's API raised an exception type the
+  provider wrapper's error handling did not recognize as an instance of
+  the class it was written to catch, because the specific API surface in
+  use (adopted after an older endpoint stopped accepting new API keys)
+  turns out to raise a separate exception hierarchy entirely. The
+  mismatch let an entirely routine, expected condition -- daily quota
+  exhaustion -- propagate as an unhandled exception rather than the
+  intended typed error, crashing an in-flight request after roughly
+  forty minutes of otherwise-successful work instead of failing fast
+  with a clear message. A pre-existing unit test for this exact code
+  path had mocked the same wrong exception hierarchy the production code
+  was (mis)handling, so it passed throughout -- a concrete instance of a
+  broader risk worth naming: a test can be internally consistent with
+  buggy code, agreeing with a wrong assumption on both sides, and still
+  provide zero real coverage of the failure it was written to catch.
+  Fixed by catching the SDK's actual exception hierarchy and rewriting
+  the test against real instances of it rather than hand-constructed
+  doubles of the wrong type.
 \end{itemize}
 
 We consider this taxonomy, and the general lesson that most of these
@@ -1055,6 +1171,20 @@ search-snippet text throughout. We manually spot-checked that the
 snippets were substantive, but this was not verified systematically, and
 the underlying \texttt{.gov.in} fetch-reliability gap is unresolved,
 not merely undiscussed.
+
+\textbf{The third live test's fixes are infrastructure-hardening, not a
+new capability, and are each validated by one live failure and one live
+re-verification.} Section~\ref{sec:thirdpilot}'s two fixes (blank-claim
+substantiveness checking; the corrected exception hierarchy) were each
+triggered exactly once by real conditions and confirmed fixed by
+reproducing the same condition once more post-fix -- not exercised
+across a range of inputs. The daily quota limit on the fallback provider
+also means this specific failure mode (a rate-limit exception escaping
+unhandled) is, by construction, rare to trigger deliberately without
+either exhausting real quota or mocking the SDK, which is what the
+rewritten unit test now does; live re-triggering was possible here only
+because a real pipeline run happened to exhaust the quota during
+testing, not because we engineered the condition on demand.
 
 \section{Future Work}
 \label{sec:futurework}
@@ -1166,7 +1296,17 @@ from \textasciitilde11\% to 95\% in live testing, while honestly
 surfacing a distinct, unresolved reliability gap in fetching full page
 text from \texttt{.gov.in} domains specifically -- a reminder that fixing
 one measured gap tends to reveal the next one, not eliminate the need for
-further measurement. The most direct path to strengthening every claim in
+further measurement. A third live test (Section~\ref{sec:thirdpilot})
+found the same "schema-valid-but-empty" pattern recurring in a third
+pipeline stage (claim extraction, after verdict reasoning and content
+generation) despite two prior fixes for the identical failure class --
+reinforcing that grounding checks do not generalize across stages
+automatically -- and, separately, a wrong-exception-hierarchy bug that
+a same-purpose unit test had not caught because it mocked the identical
+wrong assumption the production code made; both are fixed, though the
+specific post that surfaced them still has no finished fact-check,
+reported here rather than quietly dropped. The most direct path to
+strengthening every claim in
 this paper is the held-out benchmark and search-equipped baseline
 comparison described in Section~\ref{sec:futurework}, which we intend to
 pursue as this work continues.

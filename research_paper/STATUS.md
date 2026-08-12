@@ -1,9 +1,34 @@
 # Paper status
 
-Last updated: 2026-08-12, third update same day (primary-source-retrieval
-fix folded in). Still genuinely multi-session.
+Last updated: 2026-08-13 (fourth update; third live-testing round folded
+in). Still genuinely multi-session.
 
 ## Latest update (this pass)
+
+Folded in the third live-testing round (`backend` commit `dbd04ae`): a
+new Evaluation subsection (`sec:thirdpilot`, new Section V-J) reporting
+a real Instagram post that surfaced two infrastructure bugs outside the
+LLM reasoning stages — claim extraction silently accepting
+schema-valid-but-empty-string claims (invisible to the existing
+grounding check, which is a no-op whenever every claim comes back
+non-verifiable), and a Gemini provider wrapper whose error handling was
+written against the wrong SDK exception hierarchy, letting a routine
+daily-quota 429 crash an in-flight request after ~40 minutes instead of
+failing fast. Both fixed and live-reverified; a pre-existing unit test
+for the second bug had mocked the same wrong exception type the
+production code mishandled, so it was rewritten against real instances
+of the SDK's actual hierarchy. Reported honestly as a mixed result —
+this specific post still has no finished fact-check, since Gemini's
+quota was exhausted by the time both fixes were verified. Updated
+Section IV-C's cascade methodology to document the new claim-extraction
+substantiveness check (it previously only described the grounding
+check), added two Section VI taxonomy entries, a Section VII
+threats-to-validity paragraph, and touched the abstract/conclusion.
+`main.tex` is now 13 pages, recompiled cleanly via `tectonic` (no
+undefined references, no missing-character warnings), visually
+re-verified page-by-page.
+
+## Prior update (primary-source-retrieval fix)
 
 Folded in the primary-source-retrieval fix (`backend` commit
 `6671d75`): a new Evaluation subsection (`sec:primarysourcefix`, new
