@@ -81,7 +81,16 @@ ingestion to single-image posts (not just video) surfaced a fabricated
 headline number in the process -- ``4,000 crore rupees'' rendered as an
 invented, and arithmetically wrong, ``\$1 Billion'' -- caught only after
 adding a dedicated deterministic check, since the model violated an
-explicit prompt instruction not to introduce new numbers. We also extend
+explicit prompt instruction not to introduce new numbers. We further
+close a gap our own evaluation flagged as the most consequential open
+problem for output quality: retrieval was rarely reaching primary
+government/legal sources despite prompt-level requests for them
+(8 of 72 sources, \textasciitilde11\%, in our initial corpus); enforcing
+a domain allow-list at the search-call level itself, the same mechanism
+already used for fact-checking-organization sources, raised this to 19
+of 20 (95\%) across live-tested queries, while surfacing an honest
+residual limitation of its own -- unreliable full-page-text retrieval
+specifically on \texttt{.gov.in} domains, left unresolved. We also extend
 the validation methodology beyond verdict labels to grounded corrections:
 when a claim is not simply true, TruthLens now surfaces what the same
 evidence establishes instead, held to the identical grounding standard,
@@ -643,6 +652,71 @@ consequential open problem for output quality, ahead of anything in the
 LLM reasoning stages themselves; we return to it in
 Section~\ref{sec:futurework}.
 
+\subsection{Closing the primary-source gap: a deterministic search-side
+fix}
+\label{sec:primarysourcefix}
+The gap above motivated a concrete fix, mirroring the mechanism already
+used for \texttt{tier3\_factcheck} queries (Section~\ref{sec:methodology}):
+a research-planning query explicitly targeted at \texttt{tier1\_primary}
+is now restricted at the search-call level itself, via
+\texttt{SearchProvider.search(include\_domains=\ldots)}, to a fixed
+allow-list (\texttt{gov.in}, \texttt{nic.in}, \texttt{sansad.in},
+\texttt{rbi.org.in}, \texttt{indiankanoon.org}) -- rather than trusting a
+free-text \texttt{site:gov.in} the model writes into its own query text,
+which nothing previously verified actually stayed on those domains.
+Implementing this surfaced a second, related gap: the source-tier
+classifier itself was misclassifying genuine government sources as
+\texttt{other} because its domain hints only matched \texttt{.gov}
+variants -- missing NIC (National Informatics Centre), which hosts a
+large share of official Indian government sites under \texttt{nic.in}
+with no \texttt{.gov} substring at all (e.g.\ the National Testing
+Agency's own NEET results page), and missing \texttt{rbi.org.in}, the
+primary source for official Indian financial statistics. Both were added
+to the classifier alongside the search-side fix.
+
+We then re-ran seven real, unscripted \texttt{tier1\_primary} queries
+against the live DuckDuckGo backend (no simulated results) to check
+whether the restriction actually changes what gets retrieved. Four
+queries returned results; three returned none at all (a UP-advertising
+-spending query, a social-media-takedown-rule query, and a second UP
+-advertising-budget query variant each came back empty --
+\texttt{DDGSException: No results found}). Pooling the four queries that
+did return results (20 sources total, after the classifier fix above):
+18 \texttt{primary\_government}, 1 \texttt{primary\_data}, 1
+\texttt{other} -- 19 of 20 (95\%) landing in a primary tier, against the
+8 of 72 (\textasciitilde11\%) baseline reported just above. One of the
+four queries (on India's social-media intermediary rules) returned the
+actual MeitY amendment-rules PDF and \texttt{egazette.gov.in} directly;
+another (on state-wise per-capita income) returned five Rajya
+Sabha-question-citing PIB releases and NITI Aayog/EAC-PM/MoSPI pages, all
+genuinely on-topic.
+
+Two findings temper this result rather than complicate it away. First, a
+query about the organization ``Karni Sena'' returned five results that
+were all, correctly, \texttt{primary\_government}-tier domains, but
+topically irrelevant -- generic government registration portals matched
+on keyword overlap, not evidence about the organization itself. Domain
+restriction guarantees tier correctness, not topical relevance; those are
+separate properties, and this fix addresses only the first. Second, for
+the per-capita-income query's five URLs, every full-page-content fetch
+failed: two \texttt{403 Forbidden} (\texttt{pib.gov.in},
+\texttt{niti.gov.in}) and three TLS certificate-verification failures
+(\texttt{eacpm.gov.in}, \texttt{invest.up.gov.in}, \texttt{mospi.gov.in}),
+falling back to the search backend's own snippet text (199--336
+characters per source). We manually confirmed those snippets were still
+substantive and on-topic -- e.g.\ real Rajya Sabha Unstarred Question
+text naming state-wise per capita income figures -- so the 95\% figure
+above is not built on empty content, but full source text is being lost
+specifically for the domain category this fix targets. We did not fix
+this: doing so would mean either relaxing certificate verification for a
+curated domain list, a real security trade-off we were not willing to
+take on without more investigation, or diagnosing the specific 403s
+further, and we did not want to ship an under-examined fix to a security
+-relevant check in the same pass as the retrieval fix above. We report it
+here as a distinct, open limitation rather than folding it into the 95\%
+headline number, which measures tier classification of retrieved
+results, not the completeness of the text behind them.
+
 \subsection{An out-of-sample pilot}
 \label{sec:pilot}
 Every number above comes from the same handful of videos used during
@@ -970,6 +1044,18 @@ verified, working code paths, not simulated, but neither has been
 exercised at anything like the scale needed to report a meaningful
 success rate.
 
+\textbf{The primary-source fix is measured on tier classification, not
+on full-text completeness.} Section~\ref{sec:primarysourcefix}'s 95\%
+figure describes what tier the retrieved sources were classified into,
+across a pool of only 20 sources from 4 successful queries out of 7
+attempted. It does not describe whether the system retrieved those
+sources' full text: for one of the four queries, every page fetch
+failed (403s and TLS certificate errors) and the pipeline fell back to
+search-snippet text throughout. We manually spot-checked that the
+snippets were substantive, but this was not verified systematically, and
+the underlying \texttt{.gov.in} fetch-reliability gap is unresolved,
+not merely undiscussed.
+
 \section{Future Work}
 \label{sec:futurework}
 
@@ -1015,15 +1101,22 @@ success rate.
   vision-read text and a human transcription on a small sample) would
   clarify whether it is rare noise or frequent enough to need a
   dedicated mitigation.
-\item \textbf{Primary-source retrieval.} Section~\ref{sec:evaluation}'s
-  most actionable finding: only 8 of 72 retrieved sources in our corpus
-  reached the \texttt{primary\_government} tier and none reached
-  \texttt{primary\_legal}/\texttt{primary\_data}, despite explicit
-  prompt-level requests for primary-source queries. Concrete next
-  steps: structured queries against known government/legislative
-  document APIs and domain allow-lists (e.g.\ \texttt{.gov.in},
-  \texttt{pib.gov.in}, \texttt{indiankanoon.org}) rather than relying on
-  a general-purpose web search engine to surface them incidentally.
+\item \textbf{Primary-source retrieval -- substantially addressed, one
+  gap remaining.} The domain-allow-list fix this item originally called
+  for is now implemented and live-tested
+  (Section~\ref{sec:primarysourcefix}): a dedicated
+  \texttt{tier1\_primary} query restricted to government/legal domains at
+  the search-call level, plus a related source-classifier fix
+  (\texttt{nic.in}, \texttt{rbi.org.in}), moved pooled primary-tier
+  retrieval from 8 of 72 (\textasciitilde11\%) to 19 of 20 (95\%) across
+  four real queries -- with the honest caveats that 3 of 7 real queries
+  returned no results at all, and that domain-correctness does not imply
+  topical relevance (the ``Karni Sena'' case). What remains open: a
+  page-fetch reliability gap specific to \texttt{.gov.in} domains (403s
+  and TLS certificate failures on several ministry/state sites, currently
+  masked by falling back to search-snippet text), which needs either a
+  deliberately scoped certificate-verification exception or further
+  diagnosis of the specific failures, not attempted this pass.
 \item \textbf{Systematic bias evaluation.} Apply an existing partisan-
   asymmetry evaluation methodology (Section~\ref{sec:relatedwork}) to
   TruthLens's own verdicts across politically matched claim pairs.
@@ -1064,10 +1157,19 @@ first step toward the kind of output actually useful to a reader --
 not just ``false,'' but what the evidence shows instead -- while the
 explicit decision not to extend it into predicting consequences marks
 where we believe grounded fact-checking has to stop and speculation
-would begin. The most direct path to strengthening every claim in this
-paper is the held-out benchmark and search-equipped baseline comparison
-described in Section~\ref{sec:futurework}, which we intend to pursue as
-this work continues.
+would begin. Closing the primary-source retrieval gap our own evaluation
+had flagged (Section~\ref{sec:primarysourcefix}) shows the same pattern
+at the retrieval stage rather than the generation stage: a deterministic,
+already-proven mechanism (domain-restricted search) applied to a
+previously-unenforced prompt-level request moved primary-tier retrieval
+from \textasciitilde11\% to 95\% in live testing, while honestly
+surfacing a distinct, unresolved reliability gap in fetching full page
+text from \texttt{.gov.in} domains specifically -- a reminder that fixing
+one measured gap tends to reveal the next one, not eliminate the need for
+further measurement. The most direct path to strengthening every claim in
+this paper is the held-out benchmark and search-equipped baseline
+comparison described in Section~\ref{sec:futurework}, which we intend to
+pursue as this work continues.
 
 \bibliographystyle{IEEEtran}
 \bibliography{references}

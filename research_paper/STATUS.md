@@ -1,9 +1,31 @@
 # Paper status
 
-Last updated: 2026-08-12, second update same day (photo-post ingestion +
-grounded-corrections work folded in). Still genuinely multi-session.
+Last updated: 2026-08-12, third update same day (primary-source-retrieval
+fix folded in). Still genuinely multi-session.
 
 ## Latest update (this pass)
+
+Folded in the primary-source-retrieval fix (`backend` commit
+`6671d75`): a new Evaluation subsection (`sec:primarysourcefix`, new
+Section V-F) reporting real, live-tested before/after numbers —
+pooled 19 of 20 (95%) sources landing in a primary tier across four
+successful `tier1_primary` queries, versus the paper's existing 8 of 72
+(~11%) baseline — plus the honest negative results alongside it: 3 of 7
+real queries returned zero results, a "Karni Sena" query showed
+domain-correct sources can still be topically irrelevant, and a newly
+found `.gov.in` page-fetch-reliability gap (403s and TLS certificate
+failures on several ministry/state sites, masked by falling back to
+search-snippet text) was deliberately left unresolved rather than
+patched with an under-examined certificate-verification change. Updated
+Future Work item 5 (was a pure aspiration, now "substantially addressed,
+one gap remaining"), added a Discussion/threats-to-validity paragraph
+specifically about the fetch-reliability gap, and updated the
+Abstract/Conclusion to reflect the fix. `main.tex` is now 12 pages,
+recompiled cleanly via `tectonic` with no undefined references and no
+missing-character warnings, visually re-verified page-by-page via
+`pdftoppm`.
+
+## Prior update (photo-post + grounded-corrections)
 
 Folded in everything from the photo-post-support and grounded-corrections
 engineering work: a new System Architecture subsection on multi-modal
