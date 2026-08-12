@@ -1,0 +1,530 @@
+[
+  {
+    "item_id": "item-0001",
+    "reel_id": "f634c1e9-e400-4723-994c-9addb9deaff5",
+    "conditions": {
+      "text_only": {
+        "condition": "text_only",
+        "claims": [
+          {
+            "text": "\u0628\u06cc\u0679\u06be\u0627 \u0622\u067e \u06a9\u0627 \u0646\u06cc\u0679\u06be \u0915\u0947 \u090f\u0915 \u091c\u093e\u092e \u092e\u0947\u0902 681 \u0938\u094d\u0915\u094b\u0921 \u0932\u0947\u0917\u093e \u0906 \u0930\u0939\u093e \u0939\u0948",
+            "source_quote": null,
+            "claim_type": "opinion",
+            "verifiable": false,
+            "time_reference": null,
+            "location": null,
+            "entities": [],
+            "importance": 0.0
+          },
+          {
+            "text": "681 \u0938\u094d\u0915\u094b\u0921 \u0915\u093e \u092e\u0924\u0932\u092c \u0939\u094b\u0924\u093e \u0939\u0948, \u091f\u0949\u092a \u092e\u0947\u0921\u093f\u0915\u0932 \u0915\u0949\u0932\u0947\u091c \u0939\u0948\u0902 ",
+            "source_quote": null,
+            "claim_type": "factual",
+            "verifiable": true,
+            "time_reference": null,
+            "location": null,
+            "entities": [],
+            "importance": 1.0
+          }
+        ],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 11.4847495829963,
+        "input_tokens": 857,
+        "output_tokens": 122
+      },
+      "text_ocr": {
+        "condition": "text_ocr",
+        "claims": [
+          {
+            "text": "Biotechnology is a field of science that deals with the use and application of biological systems, living organisms, or derivatives thereof",
+            "source_quote": null,
+            "claim_type": "factual",
+            "verifiable": true,
+            "time_reference": null,
+            "location": null,
+            "entities": [],
+            "importance": 0.5
+          },
+          {
+            "text": "The Indian government has established several medical colleges across India to provide quality education in medicine.",
+            "source_quote": null,
+            "claim_type": "factual",
+            "verifiable": true,
+            "time_reference": null,
+            "location": null,
+            "entities": [],
+            "importance": 1.0
+          }
+        ],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 39.657885417000216,
+        "input_tokens": 1114,
+        "output_tokens": 104
+      },
+      "text_ocr_vision": {
+        "condition": "text_ocr_vision",
+        "claims": [
+          {
+            "text": "681",
+            "source_quote": null,
+            "claim_type": "factual",
+            "verifiable": true,
+            "time_reference": null,
+            "location": null,
+            "entities": [],
+            "importance": 0.5
+          },
+          {
+            "text": "India's TOP MEDICAL COLLEGE",
+            "source_quote": null,
+            "claim_type": "opinion",
+            "verifiable": false,
+            "time_reference": null,
+            "location": null,
+            "entities": [],
+            "importance": 1.0
+          }
+        ],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 9.416837500000838,
+        "input_tokens": 1114,
+        "output_tokens": 71
+      }
+    }
+  },
+  {
+    "item_id": "item-0002",
+    "reel_id": "fec20d0d-e3de-495d-b6d2-36642dd32053",
+    "conditions": {
+      "text_only": {
+        "condition": "text_only",
+        "claims": [
+          {
+            "text": "",
+            "source_quote": null,
+            "claim_type": "factual",
+            "verifiable": false,
+            "time_reference": null,
+            "location": null,
+            "entities": [],
+            "importance": 0.0
+          }
+        ],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 14.388678499999514,
+        "input_tokens": 820,
+        "output_tokens": 37
+      },
+      "text_ocr": {
+        "condition": "text_ocr",
+        "claims": [
+          {
+            "text": "",
+            "source_quote": null,
+            "claim_type": "opinion",
+            "verifiable": false,
+            "time_reference": null,
+            "location": null,
+            "entities": [],
+            "importance": 0.0
+          }
+        ],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 1.984382499998901,
+        "input_tokens": 820,
+        "output_tokens": 37
+      },
+      "text_ocr_vision": {
+        "condition": "text_ocr_vision",
+        "claims": [
+          {
+            "text": "",
+            "source_quote": null,
+            "claim_type": "factual",
+            "verifiable": false,
+            "time_reference": null,
+            "location": null,
+            "entities": [],
+            "importance": 0.0
+          }
+        ],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 2.5218628749935306,
+        "input_tokens": 921,
+        "output_tokens": 37
+      }
+    }
+  },
+  {
+    "item_id": "item-0003",
+    "ingestion_error": "ERROR: [Instagram] DbKwKPnB6fB: Instagram sent an empty media response. Check if this post is accessible in your browser without being logged-in. If it is not, then use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Otherwise, if the post is accessible in browser without being logged-in, please report this issue on  https://github.com/yt-dlp/yt-dlp/issues?q= , filling out the appropriate issue template. Confirm you are on the latest version using  yt-dlp -U"
+  },
+  {
+    "item_id": "item-0004",
+    "reel_id": "25cb4a68-fb2d-460d-bcf5-c1c4d9b9e45b",
+    "conditions": {
+      "text_only": {
+        "condition": "text_only",
+        "claims": [
+          {
+            "text": "\u092e\u094d\u093f \u0917\u0904\u0928\u0940\u092a\u0935",
+            "source_quote": null,
+            "claim_type": "opinion",
+            "verifiable": false,
+            "time_reference": null,
+            "location": null,
+            "entities": [],
+            "importance": 1.0
+          }
+        ],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 7.789812916998926,
+        "input_tokens": 522,
+        "output_tokens": 74
+      },
+      "text_ocr": {
+        "condition": "text_ocr",
+        "claims": [
+          {
+            "text": "",
+            "source_quote": null,
+            "claim_type": "factual",
+            "verifiable": true,
+            "time_reference": null,
+            "location": null,
+            "entities": [],
+            "importance": 0.0
+          }
+        ],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 3.3305338330028462,
+        "input_tokens": 793,
+        "output_tokens": 38
+      },
+      "text_ocr_vision": {
+        "condition": "text_ocr_vision",
+        "claims": [
+          {
+            "text": "\u0e2d\u0ed1 \u0ecb\u0ebc \u0ef9\u0edd \u0ea4\u0eff u\u0f7a\u0dd8\u0df3 internationals",
+            "source_quote": null,
+            "claim_type": "opinion",
+            "verifiable": false,
+            "time_reference": null,
+            "location": null,
+            "entities": [],
+            "importance": 1.0
+          },
+          {
+            "text": "\u092e\u0932 \u090d\u094b dande me, kil lagakar baccho ke upar hamla kar rahi h Ua",
+            "source_quote": null,
+            "claim_type": "factual",
+            "verifiable": true,
+            "time_reference": null,
+            "location": null,
+            "entities": [],
+            "importance": 1.0
+          },
+          {
+            "text": "\u092e\u0932 \u090d\u094b dande me_ | kil lagakar baccho ke upor hamla kar rahi h",
+            "source_quote": null,
+            "claim_type": "factual",
+            "verifiable": true,
+            "time_reference": null,
+            "location": null,
+            "entities": [],
+            "importance": 1.0
+          },
+          {
+            "text": "\u092e\u0932 \u090d\u094b dandeme J na kil lagakar baccho ke upor hamla kar rahi h Pe, ey e",
+            "source_quote": null,
+            "claim_type": "factual",
+            "verifiable": true,
+            "time_reference": null,
+            "location": null,
+            "entities": [],
+            "importance": 1.0
+          },
+          {
+            "text": "\u092e\u0932 \u090d\u094b dande me [ues > kil lagakar baccho ke fl upor hamla kar rahih | \u2014 , \u2014 ]",
+            "source_quote": null,
+            "claim_type": "factual",
+            "verifiable": true,
+            "time_reference": null,
+            "location": null,
+            "entities": [],
+            "importance": 1.0
+          },
+          {
+            "text": "\u092e\u0932 \u090d\u094b dande me kil lagakar baccho ke upar hamla kar rahi h",
+            "source_quote": null,
+            "claim_type": "factual",
+            "verifiable": true,
+            "time_reference": null,
+            "location": null,
+            "entities": [],
+            "importance": 1.0
+          },
+          {
+            "text": "\u092e\u0932 \u090d\u094b dande me kil lagakar baccho ke upor hamla kar rahi h ee",
+            "source_quote": null,
+            "claim_type": "factual",
+            "verifiable": true,
+            "time_reference": null,
+            "location": null,
+            "entities": [],
+            "importance": 1.0
+          },
+          {
+            "text": "\u092e\u0932 \u090d\u094b dande me \u00bb.t kil lagakar baccho ke , .. S. upor hamla kar rahih a",
+            "source_quote": null,
+            "claim_type": "factual",
+            "verifiable": true,
+            "time_reference": null,
+            "location": null,
+            "entities": [],
+            "importance": 1.0
+          }
+        ],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 26.253174916993885,
+        "input_tokens": 928,
+        "output_tokens": 594
+      }
+    }
+  },
+  {
+    "item_id": "item-0005",
+    "reel_id": "e42f4878-1478-4213-a517-fb627fcd566a",
+    "conditions": {
+      "text_only": {
+        "condition": "text_only",
+        "claims": [],
+        "outcome_type": "error",
+        "error": "Ollama output for ClaimExtractionResult (llama3.2) failed schema validation after retries: 1 validation error for ClaimExtractionResult\nclaims.0.importance\n  Input should be greater than or equal to 0 [type=greater_than_equal, input_value=-1, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than_equal",
+        "latency_seconds": 35.39006037500076,
+        "input_tokens": 0,
+        "output_tokens": 0
+      },
+      "text_ocr": {
+        "condition": "text_ocr",
+        "claims": [
+          {
+            "text": "\u0926\u0947\u0936\u093e\u0924\u0940\u0932 \u0935\u093f\u0926\u094d\u092f\u093e\u0930\u094d\u0925\u094d\u092f\u093e\u0902\u091a\u093e \u092c\u0941\u0932\u0902\u0926 \u0906\u0935\u093e\u091c \u092c\u0928\u0932\u0947\u0932\u093e \u0906\u092a\u0932\u094d\u092f\u093e \u092e\u0930\u093e\u0920\u0935\u093e\u0921\u094d\u092f\u093e\u091a\u093e \u0938\u0941\u092a\u0941\u0924\u094d\u0930 \u0905\u092d\u093f\u091c\u093f\u0924 \u0926\u093f\u092a\u0915\u0947",
+            "source_quote": null,
+            "claim_type": "opinion",
+            "verifiable": false,
+            "time_reference": null,
+            "location": null,
+            "entities": [],
+            "importance": 0.5
+          },
+          {
+            "text": "",
+            "source_quote": null,
+            "claim_type": "factual",
+            "verifiable": true,
+            "time_reference": null,
+            "location": null,
+            "entities": [],
+            "importance": 1.0
+          }
+        ],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 5.336766333006381,
+        "input_tokens": 805,
+        "output_tokens": 113
+      },
+      "text_ocr_vision": {
+        "condition": "text_ocr_vision",
+        "claims": [],
+        "outcome_type": "error",
+        "error": "Ollama output for ClaimExtractionResult (llama3.2) failed schema validation after retries: 5 validation errors for ClaimExtractionResult\nclaims.2.importance\n  Input should be less than or equal to 1 [type=less_than_equal, input_value=2, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/less_than_equal\nclaims.3.importance\n  Input should be less than or equal to 1 [type=less_than_equal, input_value=3, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/less_than_equal\nclaims.4.importance\n  Input should be less than or equal to 1 [type=less_than_equal, input_value=4, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/less_than_equal\nclaims.5.importance\n  Input should be less than or equal to 1 [type=less_than_equal, input_value=5, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/less_than_equal\nclaims.6.importance\n  Input should be less than or equal to 1 [type=less_than_equal, input_value=6, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/less_than_equal",
+        "latency_seconds": 29.025522959003865,
+        "input_tokens": 0,
+        "output_tokens": 0
+      }
+    }
+  },
+  {
+    "item_id": "item-0006",
+    "reel_id": "f7594457-7218-4f16-81d9-aeeb39d26cac",
+    "conditions": {
+      "text_only": {
+        "condition": "text_only",
+        "claims": [
+          {
+            "text": "",
+            "source_quote": null,
+            "claim_type": "factual",
+            "verifiable": false,
+            "time_reference": null,
+            "location": null,
+            "entities": [],
+            "importance": 0.0
+          },
+          {
+            "text": "",
+            "source_quote": null,
+            "claim_type": "opinion",
+            "verifiable": true,
+            "time_reference": null,
+            "location": null,
+            "entities": [],
+            "importance": 1.0
+          }
+        ],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 8.174407333004638,
+        "input_tokens": 617,
+        "output_tokens": 63
+      },
+      "text_ocr": {
+        "condition": "text_ocr",
+        "claims": [
+          {
+            "text": "",
+            "source_quote": null,
+            "claim_type": "factual",
+            "verifiable": false,
+            "time_reference": null,
+            "location": null,
+            "entities": [],
+            "importance": 0.0
+          },
+          {
+            "text": "",
+            "source_quote": null,
+            "claim_type": "opinion",
+            "verifiable": true,
+            "time_reference": null,
+            "location": null,
+            "entities": [],
+            "importance": 1.0
+          }
+        ],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 6.77014033299929,
+        "input_tokens": 617,
+        "output_tokens": 63
+      },
+      "text_ocr_vision": {
+        "condition": "text_ocr_vision",
+        "claims": [
+          {
+            "text": "",
+            "source_quote": null,
+            "claim_type": "factual",
+            "verifiable": false,
+            "time_reference": null,
+            "location": null,
+            "entities": [],
+            "importance": 0.0
+          },
+          {
+            "text": "",
+            "source_quote": null,
+            "claim_type": "opinion",
+            "verifiable": false,
+            "time_reference": null,
+            "location": null,
+            "entities": [],
+            "importance": 1.0
+          }
+        ],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 7.97203512499982,
+        "input_tokens": 1665,
+        "output_tokens": 74
+      }
+    }
+  },
+  {
+    "item_id": "item-0007",
+    "reel_id": "6e5b28b1-b036-4ccb-9ee7-f7bf5850ac42",
+    "conditions": {
+      "text_only": {
+        "condition": "text_only",
+        "claims": [
+          {
+            "text": "",
+            "source_quote": null,
+            "claim_type": "factual",
+            "verifiable": true,
+            "time_reference": null,
+            "location": null,
+            "entities": [],
+            "importance": 0.0
+          }
+        ],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 7.084594082996773,
+        "input_tokens": 645,
+        "output_tokens": 38
+      },
+      "text_ocr": {
+        "condition": "text_ocr",
+        "claims": [
+          {
+            "text": "",
+            "source_quote": null,
+            "claim_type": "factual",
+            "verifiable": true,
+            "time_reference": null,
+            "location": null,
+            "entities": [],
+            "importance": 0.0
+          }
+        ],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 15.511720791000698,
+        "input_tokens": 645,
+        "output_tokens": 37
+      },
+      "text_ocr_vision": {
+        "condition": "text_ocr_vision",
+        "claims": [
+          {
+            "text": "",
+            "source_quote": null,
+            "claim_type": "factual",
+            "verifiable": true,
+            "time_reference": null,
+            "location": null,
+            "entities": [],
+            "importance": 0.0
+          },
+          {
+            "text": "",
+            "source_quote": null,
+            "claim_type": "opinion",
+            "verifiable": false,
+            "time_reference": null,
+            "location": null,
+            "entities": [],
+            "importance": 0.0
+          }
+        ],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 3.1295938749972265,
+        "input_tokens": 645,
+        "output_tokens": 64
+      }
+    }
+  }
+]

@@ -1,0 +1,22 @@
+item_id,condition,n_claims_extracted,covered_ground_truth,outcome_type,notes
+item-0001,text_only,2,1,resolved,covers real 681-score claim; does not cover the provenance/timing claim (structurally not extractable from this post alone)
+item-0001,text_ocr,2,0,resolved,both claims are generic hallucinated filler unrelated to real OCR content (biotechnology/medical colleges) -- real hallucination instance
+item-0001,text_ocr_vision,2,1,resolved,covers real 681-score / top-medical-college claim
+item-0002,text_only,1,0,resolved,claim text is empty string
+item-0002,text_ocr,1,0,resolved,claim text is empty string
+item-0002,text_ocr_vision,1,0,resolved,claim text is empty string
+item-0003,text_only,0,0,ingestion_failed,persistent Instagram empty-media-response error on 2 independent attempts; excluded from coverage denominator
+item-0003,text_ocr,0,0,ingestion_failed,see above
+item-0003,text_ocr_vision,0,0,ingestion_failed,see above
+item-0004,text_only,1,0,resolved,claim text is nonsense transcript garble
+item-0004,text_ocr,1,0,resolved,claim text is empty string despite real OCR content being present in the input
+item-0004,text_ocr_vision,7,1,resolved,7 near-duplicate claims from noisy OCR-frame variants; substantively covers the real baton-with-nails claim (new failure mode: not deduplicated)
+item-0005,text_only,0,0,error,Ollama schema validation failure -- importance=-1 (out of [0,1] range)
+item-0005,text_ocr,2,0,resolved,neither claim names the false identity (Keshav Mahto Kamlesh); consistent with the claim living outside this specific post
+item-0005,text_ocr_vision,0,0,error,Ollama schema validation failure -- importance values 2-6 (out of [0,1] range), resembling claim ordinals
+item-0006,text_only,2,0,resolved,both claims are empty string
+item-0006,text_ocr,2,0,resolved,both claims are empty string
+item-0006,text_ocr_vision,2,0,resolved,both claims are empty string
+item-0007,text_only,1,0,resolved,claim text is empty string
+item-0007,text_ocr,1,0,resolved,claim text is empty string
+item-0007,text_ocr_vision,2,0,resolved,both claims are empty string

@@ -1,0 +1,97 @@
+{
+  "_metadata": {
+    "llm_assisted_draft": true,
+    "adjudicated_by_human": false,
+    "note": "Per ANNOTATION_GUIDELINES.md: these are draft atomic-claim breakdowns prepared by Claude from the REAL ingested transcript/OCR/vision/caption data (research/results/multimodal_claim_extraction_20260812T211658Z.json) plus the professional fact-checkers' own article descriptions. They are NOT ground truth until Aditya (or another independent human) reviews, edits, or rejects them. Do not treat any veracity/coverage number computed against these drafts as final.",
+    "source_of_content": "Real transcript/OCR/vision_context/caption pulled directly from the reels table after live ingestion on 2026-08-13, not re-derived from the fact-check articles alone.",
+    "item_0003_excluded": "item-0003 could not be ingested (persistent yt-dlp 'empty media response' from Instagram, confirmed on 2 independent attempts) -- no real transcript/OCR/vision exists to draft claims from, so it is excluded from this file and from Day 4's coverage measurement rather than drafted from the fact-check article alone, which would blur the line between Task A and Task B sourcing."
+  },
+  "items": [
+    {
+      "item_id": "item-0001",
+      "atomic_claims": [
+        {
+          "claim_text": "The video shows a PW Vidyapeeth student with an expected NEET score of 681/720.",
+          "type": "factual",
+          "modality": "on-screen text (OCR) + transcript, consistent",
+          "veracity": "not addressed by BOOM's fact-check directly -- the score itself is not disputed",
+          "provenance_relevance": false,
+          "ambiguity": "none -- this is directly stated on-screen and in the transcript"
+        },
+        {
+          "claim_text": "This video captures the student's reaction to seeing NEET 2026 results on result day (implied by the caption '#neet2026' and viral recirculation, per BOOM).",
+          "type": "factual",
+          "modality": "provenance -- implied by context/caption/recirculation pattern, NOT explicitly stated in the video's own transcript or OCR",
+          "veracity": "FALSE (Tier-1, BOOM Live)",
+          "provenance_relevance": true,
+          "ambiguity": "This is the actual checkworthy claim per the dataset's ground truth, but it is a claim about the video's CONTEXT (when/why it was posted), not something the video's own transcript/OCR states outright -- a real test of whether claim extraction can identify a provenance claim that isn't textually present in the reel's own content at all, only implied by how it was recirculated. This may be fundamentally unextractable from THIS reel's own transcript/OCR/vision alone, since the false context was added by whoever recirculated it, not by the original poster."
+        }
+      ]
+    },
+    {
+      "item_id": "item-0002",
+      "atomic_claims": [
+        {
+          "claim_text": "The video shows a woman at the Delhi CJP protest at Jantar Mantar having her masked identity revealed amid misconduct/indecency.",
+          "type": "factual",
+          "modality": "provenance/visual -- NOT stated in the video's own audio (transcript is literally just 'Music', no speech) or OCR (none found); this claim exists entirely in the CAPTION text added by the account that shared it, not in the underlying video content itself",
+          "veracity": "FALSE (Tier-1, Alt News) -- genuinely Mexico World Cup celebration footage",
+          "provenance_relevance": true,
+          "ambiguity": "The real caption text (fetched live) is itself a long, moralizing Hindi paragraph about the 'seriousness' of a student behaving indecently -- it does not literally assert the Jantar Mantar/CJP claim in so many words within the captured caption text; that framing appears to live in surrounding context (title/other text) not fully captured in this project's caption_text field. Flagged as a real ambiguity for human review, not resolved by assumption."
+        }
+      ]
+    },
+    {
+      "item_id": "item-0004",
+      "atomic_claims": [
+        {
+          "claim_text": "Delhi Police used a baton (danda) with a nail (kil) put into it to attack children (baccho) at the protest.",
+          "type": "factual",
+          "modality": "on-screen text (OCR) -- clearly present, repeated across multiple frames ('Delhi police dande me kil lagakar baccho ke upar hamla kar rahi h'); NOT recoverable from the transcript, which Whisper transcribed as unrelated garbled text ('ऴलेगलतिम स्यभी है दिलगल् internationals')",
+          "veracity": "TRUE (Tier-1, BOOM Live) -- authenticity/location/date confirmed; BOOM's own caveat: footage doesn't independently establish WHO put the nails in or that police specifically used it that way",
+          "provenance_relevance": true,
+          "ambiguity": "This item is the clearest real test case for RQ3 in this dataset: the checkworthy claim is entirely carried by on-screen text, is completely absent from the (badly mistranscribed) audio, and a text-only pipeline configuration has no realistic path to finding it."
+        }
+      ]
+    },
+    {
+      "item_id": "item-0005",
+      "atomic_claims": [
+        {
+          "claim_text": "The video/photo shows CJP founder Abhijeet Dipke meeting Jharkhand Congress president Keshav Mahto Kamlesh.",
+          "type": "factual",
+          "modality": "provenance -- the real caption (fetched live, in Marathi) says Dipke met a person described as 'Marathwada's own son' -- it does NOT itself name 'Keshav Mahto Kamlesh' or 'Jharkhand' anywhere in the actual post text captured; that specific misidentification appears to live in how OTHER accounts recaptioned/reshared this same video, similar to item-0002's structure",
+          "veracity": "MISLEADING (Tier-1, Factly) -- the second man is real Maharashtra Congress leader Babajani Durrani, not Keshav Mahto Kamlesh",
+          "provenance_relevance": true,
+          "ambiguity": "Real, accurate vision-context output for once (correctly describes 'two men... one wearing glasses and both having beards') -- but vision alone cannot supply the specific false identity claim (a name), which isn't visually determinable at all. This is a genuine test of whether the SPECIFIC claim under test is even something the ingested content (this exact post) can be expected to surface, versus something that only exists in a different, unlinked repost -- same structural issue as item-0002."
+        }
+      ]
+    },
+    {
+      "item_id": "item-0006",
+      "atomic_claims": [
+        {
+          "claim_text": "This video shows real, devastating footage of the July 2026 Assam floods.",
+          "type": "factual",
+          "modality": "provenance -- the original post (real transcript, though badly garbled by Whisper; real caption, just a laughing emoji) makes NO flood claim at all -- confirms BOOM's finding that this is comedy content stripped of context by whoever recirculated it as flood footage",
+          "veracity": "FALSE (Tier-1, BOOM Live Hindi) -- AI-generated per Hive Moderation (98.8%)",
+          "provenance_relevance": true,
+          "ambiguity": "Structurally identical to item-0001/0002/0005: the false claim lives entirely OUTSIDE this specific post's own transcript/caption/OCR -- it was added by a different account during recirculation. This project's dataset, by construction (Tier-1 sourcing requires a fact-checker to have traced back to an original source video), has repeatedly selected exactly this kind of case, which is worth naming as a pattern in MULTIMODAL_EVALUATION.md: most items in this dataset are 'the false context is not in the video at all' cases, not 'the video's own transcript contains a false statement' cases -- these need different system capabilities (matching a video to how it's being recaptioned elsewhere) that claim extraction over a single post's own content cannot address by design."
+        }
+      ]
+    },
+    {
+      "item_id": "item-0007",
+      "atomic_claims": [
+        {
+          "claim_text": "A speaker at the CJP protest raises Islamic slogans ('Naara-e-Taqbeer', 'Allahu Akbar'), implying communal/anti-national overtones to the protest.",
+          "type": "factual",
+          "modality": "transcript -- partially present; Whisper's real transcript captures fragments consistent with the speaker discussing Muslims and remembrance/unity language, but is repetitive/degraded and does NOT clearly capture the crucial first half (the 'Jai Shri Ram'/unity framing) that Alt News's fact-check says is what makes the full clip's framing misleading when cropped",
+          "veracity": "FALSE (Tier-1, Alt News Hindi) -- due to selective cropping, not fabrication",
+          "provenance_relevance": false,
+          "ambiguity": "This is the one item where the crux of the claim (what makes it misleading) is a matter of WHAT WAS CUT OUT, not what's present -- a category of claim no amount of transcript/OCR/vision analysis of the (already-cropped) 5-second clip alone can catch, since the missing context is, by definition, not in this video at all. Worth naming explicitly: 'misleading_context via cropping' is a claim type where multimodal analysis of the clip itself has a structural ceiling, distinct from provenance/visual claims where richer analysis of the SAME footage can help."
+        }
+      ]
+    }
+  ]
+}

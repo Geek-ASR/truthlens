@@ -36,6 +36,17 @@ from app.core.url_safety import require_public_http_url
 # surfacing ProviderError to the caller.
 _RETRYABLE_MESSAGES = ("empty media response", "timed out", "connection reset", "temporary failure")
 
+# yt-dlp's Instagram extractor reports "this post has no video" in more
+# than one distinct phrasing depending on which internal code path
+# detects it -- found live (research/dataset item-0005, a real photo
+# post): yt-dlp raised "No video formats found!" for this post, which
+# "no video in this post" alone never matched, so the photo-post
+# fallback below never triggered and a genuine, fetchable photo post
+# failed ingestion outright instead of falling back to Open Graph tags.
+# A tuple of markers, same pattern as _RETRYABLE_MESSAGES above, rather
+# than a single fixed string.
+_NO_VIDEO_MESSAGES = ("no video in this post", "no video formats found")
+
 # Same identifiable, honest bot UA used for search-result fetching
 # (app/services/search/duckduckgo.py) — confirmed live that Instagram
 # actually serves richer Open Graph tags to a declared bot UA than to a
@@ -97,7 +108,7 @@ def fetch_from_url(url: str, output_dir: str) -> UrlFetchResult:
     try:
         info = _download_with_retry(url, output_dir)
     except ProviderError as exc:
-        if "no video in this post" in str(exc).lower():
+        if any(marker in str(exc).lower() for marker in _NO_VIDEO_MESSAGES):
             return _fetch_photo_via_og_tags(url, output_dir)
         raise
 

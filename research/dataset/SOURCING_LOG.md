@@ -34,6 +34,37 @@ citable finding about this dataset's domain if it holds up under more
 searching, not just a search-skill problem. Flagged for the next
 sourcing pass rather than assumed.
 
+## Real ingestion status (Day 4, 2026-08-13)
+
+All 7 items were run through the actual system's ingestion pipeline
+(fetch + transcribe + OCR + vision) for `research/MULTIMODAL_EVALUATION.md`.
+Result: **6 of 7 fetchable**, one real, persistent failure:
+
+- **item-0003**: Instagram consistently returns an empty media response
+  to yt-dlp for this specific post — confirmed on 2 independent
+  attempts, each internally retried 3× with backoff, both attempts
+  failing identically. Not resolved. May be genuinely transient
+  (worth a later retry) or may indicate this specific post has become
+  harder to fetch since it was added to the dataset on 2026-08-13 —
+  can't distinguish from the evidence available. **Excluded from Day
+  4's claim-coverage measurement** rather than scored as a coverage
+  failure, since there is no real content to extract claims from.
+- **item-0005**: initially failed for a different, real reason — a code
+  bug (see below), not an Instagram-side issue. Now fixed and
+  ingesting successfully.
+
+**A real bug found and fixed via this dataset, not just documented**:
+item-0005 (a genuine photo post) failed with yt-dlp reporting `"No
+video formats found!"` — correct information, but
+`app/services/url_downloader.py`'s existing photo-post fallback only
+matched the substring `"no video in this post"`, a different phrasing.
+Fixed by matching a tuple of known "no video" phrasings instead of one
+fixed string (same pattern already used for `_RETRYABLE_MESSAGES` one
+function over). Two new regression tests added; re-verified live
+immediately after the fix. See `research/MULTIMODAL_EVALUATION.md` for
+full detail and `backend/tests/test_url_downloader_photo_fallback.py`
+for the tests.
+
 ## Candidates actively fetched (article content + liveness of the Instagram URL both checked)
 
 | # | Outlet | Article | Instagram embed found? | Live (HTTP 200, real og:tags)? | Outcome |

@@ -114,6 +114,35 @@ def test_fetch_from_url_falls_back_to_photo_on_no_video_error(monkeypatch):
     assert result.photo_path == "/tmp/x.jpg"
 
 
+def test_fetch_from_url_falls_back_to_photo_on_no_video_formats_found_error(monkeypatch):
+    # Real gap found live (research/dataset item-0005, a genuine photo
+    # post): yt-dlp's Instagram extractor doesn't always phrase a
+    # no-video condition as "no video in this post" -- for this post it
+    # raised "No video formats found!" instead, which the single-string
+    # check above never matched, so a real, fetchable photo post failed
+    # ingestion outright rather than falling back to Open Graph tags.
+    import app.services.url_downloader as url_downloader
+
+    def fake_download(url, output_dir):
+        raise ProviderError(
+            f"Could not fetch media from {url}. The source site may require login, have "
+            f"rate-limited this request, or yt-dlp's extractor for it may be out of date. "
+            f"Underlying error: ERROR: [Instagram] Dbnsxd_Mk1A: No video formats found!"
+        )
+
+    sentinel = url_downloader.UrlFetchResult(
+        video_path=None, thumbnail_path=None, caption_text="caption", creator_handle="someone",
+        posted_at=None, view_count=None, like_count=None, comment_count=None, hashtags=[], photo_path="/tmp/y.jpg",
+    )
+    monkeypatch.setattr(url_downloader, "_download_with_retry", fake_download)
+    monkeypatch.setattr(url_downloader, "_fetch_photo_via_og_tags", lambda url, output_dir: sentinel)
+
+    result = fetch_from_url("https://www.instagram.com/babajanidurrani/p/Dbns78RDIXY/", "/tmp")
+
+    assert result is sentinel
+    assert result.photo_path == "/tmp/y.jpg"
+
+
 def test_fetch_from_url_reraises_unrelated_provider_errors(monkeypatch):
     import app.services.url_downloader as url_downloader
 
