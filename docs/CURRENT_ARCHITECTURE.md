@@ -351,3 +351,47 @@ overall multi-claim reel verdict aggregation, quote verification, a
 public fact-check page, and carousel visual redesign. The task's own
 stated priority order puts the evidence engine (fixed) ahead of these,
 and the evidence engine was the actual reported failure.
+
+## 11. Drift since 2026-08-12 (this doc was stale; corrected 2026-08-13)
+
+Everything above this section predates several real, shipped changes.
+Rather than rewrite the whole document, this section names what changed
+and where to find the detail, so nobody trusts §1-10 as the current
+state of those specific areas. Full architectural/experimental detail
+for the IEEE program lives in `docs/SYSTEM_AUDIT.md` and `research/`;
+this section is a pointer, not a duplicate.
+
+- **Multi-claim reel-level verdict aggregation shipped** (contradicting
+  §10's "deliberately not done" list above) — `app/pipeline/overall_verdict.py`,
+  a fully deterministic rule table over already-validated claim verdicts.
+- **Multi-modal ingestion (photo posts, not just video)** —
+  `MediaType` enum, OG-tag fallback fetch, `orchestrator.analyze_reel`
+  branches on `media_type`.
+- **Grounded corrections** — `Verdict.corrected_fact`/`context_note`,
+  independently number-grounded, `verdict.v2`.
+- **Primary-source retrieval enforcement** — `TIER1_PRIMARY_SEARCH_DOMAINS`
+  in `source_scoring.py`, wired into `search_fetch.py`'s
+  `include_domains`, live-measured to move primary-tier retrieval from
+  ~11% to 95% in a small live sample (see `research_paper/main.tex` §V-F
+  for exact numbers and caveats — the 95% figure is on tier
+  classification of retrieved results, not full-text completeness).
+- **Two infrastructure bugs found and fixed 2026-08-13** (commit
+  `dbd04ae`): claim extraction silently persisting schema-valid
+  empty-string claims (now caught by `_extraction_looks_substantive`);
+  a Gemini provider error-handling bug where the wrong SDK exception
+  hierarchy was caught, letting a routine 429 crash an in-flight request
+  after ~40 minutes instead of failing fast.
+- **The system is now entering a 10-day structured experimental
+  program** (started 2026-08-13, frozen at git tag `truthlens-pre-ieee`)
+  to build a held-out evaluation dataset, fair baselines, ablations, and
+  quantitative validator/evidence-quality/multimodal-coverage
+  evaluations, targeting an IEEE conference submission. See
+  `research/EXPERIMENT_PLAN.md` for the live plan and
+  `docs/SYSTEM_AUDIT.md` for the fabrication-risk inventory that plan is
+  built on. Two real gaps were found during that audit that §1-10 above
+  don't mention: `evidence_analysis.py` overwrites `Source.relevant_passage`
+  to a fixed truncation of the full text after analysis (not, as its own
+  comment claims, the excerpt the model actually cited) — a risk to
+  numeric-grounding-check accuracy that must be measured, not assumed;
+  and `evidence_analysis.py`'s stance classification has no deterministic
+  guard at all, unlike every other LLM-generation stage.
