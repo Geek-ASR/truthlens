@@ -15,7 +15,7 @@ from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ProviderError
-from app.db.models import ActorType, DiscoverySource, IngestionStatus, Reel
+from app.db.models import ActorType, DiscoverySource, IngestionStatus, MediaType, Reel
 from app.pipeline.audit import record_audit
 from app.schemas.reel import ReelCreate
 from app.services.media import extract_audio, extract_thumbnail, sample_frames
@@ -40,15 +40,19 @@ async def ingest_reel(db: AsyncSession, payload: ReelCreate, video_bytes: bytes 
             raise
         if fetched_meta.video_path:
             video_bytes = Path(fetched_meta.video_path).read_bytes()
-        elif not fetched_meta.caption_text:
+        elif not fetched_meta.photo_path and not fetched_meta.caption_text:
             tmp_fetch_dir.cleanup()
             raise ProviderError(
-                f"auto_fetch could not find a video or caption at {payload.source_url}."
+                f"auto_fetch could not find a video, photo, or caption at {payload.source_url}."
             )
 
     fetched_posted_at = None
     if fetched_meta and fetched_meta.posted_at:
         fetched_posted_at = datetime.strptime(fetched_meta.posted_at, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+
+    photo_bytes = None
+    if not video_bytes and fetched_meta and fetched_meta.photo_path:
+        photo_bytes = Path(fetched_meta.photo_path).read_bytes()
 
     reel = Reel(
         source_url=str(payload.source_url),
@@ -65,6 +69,7 @@ async def ingest_reel(db: AsyncSession, payload: ReelCreate, video_bytes: bytes 
         discovery_source=DiscoverySource.manual,
         ingestion_status=IngestionStatus.uploaded,
         auto_fetched=fetched_meta is not None,
+        media_type=MediaType.photo if photo_bytes else MediaType.video,
         submitted_by_user_id=submitted_by_user_id,
     )
 
@@ -95,6 +100,18 @@ async def ingest_reel(db: AsyncSession, payload: ReelCreate, video_bytes: bytes 
             thumb_key = storage.generate_key("reels/thumbnail", thumb_ext)
             storage.put_bytes(thumb_key, thumb_bytes, content_type=f"image/{thumb_ext}")
             reel.thumbnail_storage_key = thumb_key
+    elif photo_bytes:
+        content_hash = hashlib.sha256(photo_bytes).hexdigest()
+        reel.media_content_hash = content_hash
+
+        photo_ext = Path(fetched_meta.photo_path).suffix.lstrip(".") or "jpg"
+        photo_key = storage.generate_key("reels/photo", photo_ext)
+        storage.put_bytes(photo_key, photo_bytes, content_type=f"image/{photo_ext}")
+        # The photo IS the post's only image — it doubles as its own
+        # "thumbnail" for slide rendering. Same storage key for both
+        # fields rather than uploading the same bytes twice.
+        reel.media_storage_key = photo_key
+        reel.thumbnail_storage_key = photo_key
 
     if tmp_fetch_dir:
         tmp_fetch_dir.cleanup()
@@ -110,7 +127,7 @@ async def ingest_reel(db: AsyncSession, payload: ReelCreate, video_bytes: bytes 
         actor=str(submitted_by_user_id) if submitted_by_user_id else "unauthenticated-ingest",
         action="ingest_reel",
         input_summary={"source_url": str(payload.source_url), "auto_fetch": payload.auto_fetch},
-        output_summary={"reel_id": str(reel.id), "has_video": bool(video_bytes)},
+        output_summary={"reel_id": str(reel.id), "media_type": reel.media_type.value},
     )
     return reel
 
@@ -124,3 +141,15 @@ def extract_media_artifacts(video_bytes: bytes) -> tuple[str, list[str]]:
     audio_path = extract_audio(video_path, tmpdir)
     frame_paths = sample_frames(video_path, tmpdir)
     return audio_path, frame_paths
+
+
+def extract_photo_artifact(photo_bytes: bytes) -> list[str]:
+    """A photo post has exactly one "frame" and no audio — this exists so
+    the caller (orchestrator.analyze_reel) can pass a single-element
+    frame_paths list to the same ocr_reel()/analyze_vision_context()
+    functions a video uses, with no transcription step, rather than
+    duplicating their logic for a one-image case."""
+    tmpdir = tempfile.mkdtemp()
+    photo_path = str(Path(tmpdir) / "photo.jpg")
+    Path(photo_path).write_bytes(photo_bytes)
+    return [photo_path]

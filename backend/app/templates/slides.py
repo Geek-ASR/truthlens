@@ -135,11 +135,12 @@ def render_reel_claims_slide(
     creator_handle: str | None,
     source_url: str,
     thumbnail: Image.Image | None,
+    content_label: str = "Reel",
 ) -> bytes:
     canvas = _base_canvas()
     draw = ImageDraw.Draw(canvas)
 
-    draw.text((_MARGIN, 44), "WHAT THE REEL CLAIMS", font=font_bold(38), fill=INK)
+    draw.text((_MARGIN, 44), f"WHAT THE {content_label.upper()} CLAIMS", font=font_bold(38), fill=INK)
     y = 110
 
     if quote:
@@ -159,11 +160,11 @@ def render_reel_claims_slide(
         thumb = cover_resize(thumbnail.convert("RGB"), (_W - 2 * _MARGIN, thumb_h))
         canvas.paste(thumb, (_MARGIN, y))
         draw.rectangle((_MARGIN, y + thumb_h - 40, _W - _MARGIN, y + thumb_h), fill=(10, 12, 12))
-        handle_text = f"@{creator_handle}" if creator_handle else "Original reel"
+        handle_text = f"@{creator_handle}" if creator_handle else f"Original {content_label.lower()}"
         draw.text((_MARGIN + 14, y + thumb_h - 32), handle_text, font=font_bold(20), fill=PAPER)
         y += thumb_h + 30
 
-    draw.text((_MARGIN, y), "KEY POINTS FROM THE REEL", font=font_bold(24), fill=ACCENT)
+    draw.text((_MARGIN, y), f"KEY POINTS FROM THE {content_label.upper()}", font=font_bold(24), fill=ACCENT)
     y += 40
     remaining_h = _H - 170 - y
     max_points = max(1, min(len(key_points), remaining_h // 60))
@@ -176,7 +177,7 @@ def render_reel_claims_slide(
         y += 14
 
     draw.rectangle((0, _H - 100, _W, _H), fill=CARD_BG)
-    draw.text((_MARGIN, _H - 80), "Original reel:", font=font_regular(18), fill=MUTED)
+    draw.text((_MARGIN, _H - 80), f"Original {content_label.lower()}:", font=font_regular(18), fill=MUTED)
     draw_wrapped_text(draw, (_MARGIN, _H - 54), source_url, font_regular(20), _W - 2 * _MARGIN, ACCENT, max_lines=1)
 
     return to_png_bytes(canvas)

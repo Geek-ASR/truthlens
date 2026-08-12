@@ -3,6 +3,24 @@ from io import BytesIO
 
 from PIL import Image, ImageDraw, ImageFont
 
+# The bundled/system fonts used for slide rendering (Arial/DejaVu Sans,
+# see brand.py) don't include a glyph for some characters that show up
+# routinely in this app's actual content -- found live on a real Indian
+# political claim ("...spent ₹4,000 crore on advertising..."): the ₹
+# glyph rendered as a "tofu" box (□) on the published slide. Substituted
+# to an ASCII-safe equivalent before rendering only -- this never touches
+# the underlying stored/API text, which renders the real character fine
+# everywhere else (captions, JSON, the dashboard).
+_RENDER_CHAR_SUBSTITUTIONS = {
+    "₹": "Rs. ",  # ₹ INDIAN RUPEE SIGN
+}
+
+
+def _sanitize_for_render(text: str) -> str:
+    for char, replacement in _RENDER_CHAR_SUBSTITUTIONS.items():
+        text = text.replace(char, replacement)
+    return text
+
 
 def wrap_to_width(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.FreeTypeFont, max_width: int) -> list[str]:
     words = text.split()
@@ -33,6 +51,7 @@ def draw_wrapped_text(
 ) -> int:
     """Draws wrapped text and returns the y-coordinate after the last line."""
     x, y = xy
+    text = _sanitize_for_render(text)
     lines = wrap_to_width(draw, text, font, max_width)
     if max_lines and len(lines) > max_lines:
         lines = lines[:max_lines]
@@ -74,6 +93,14 @@ def draw_wrapped_text_with_highlights(
     validated by the caller — see schemas/content.py HeadlineResult)
     differently. Falls back to plain draw_wrapped_text if there's nothing
     to highlight."""
+    # Sanitize both text and phrases the same way before matching -- a
+    # phrase validated as a substring of the ORIGINAL text needs the
+    # same substitutions applied so it's still a substring afterward
+    # (character-substitution alone can't change length here since ₹'s
+    # replacement is unlikely to appear mid-phrase-boundary, but keeping
+    # both in lockstep is what actually guarantees it rather than luck).
+    text = _sanitize_for_render(text)
+    highlight_phrases = [_sanitize_for_render(p) for p in highlight_phrases]
     if not highlight_phrases:
         return draw_wrapped_text(draw, xy, text, font, max_width, base_color, line_spacing, max_lines)
 

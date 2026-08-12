@@ -15,9 +15,12 @@ public web video embeds) with no ToS conflict for the vast majority of
 them — Instagram is the one platform where this module's use crosses a
 line this project otherwise avoids everywhere else in the codebase.
 """
+import html
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
+import httpx
 import yt_dlp
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
@@ -33,6 +36,33 @@ from app.core.url_safety import require_public_http_url
 # surfacing ProviderError to the caller.
 _RETRYABLE_MESSAGES = ("empty media response", "timed out", "connection reset", "temporary failure")
 
+# Same identifiable, honest bot UA used for search-result fetching
+# (app/services/search/duckduckgo.py) — confirmed live that Instagram
+# actually serves richer Open Graph tags to a declared bot UA than to a
+# spoofed-browser one (it appears to special-case known crawler UAs for
+# link-preview purposes, the same mechanism Slack/Facebook link previews
+# rely on), so this isn't just consistency for its own sake.
+_USER_AGENT = "Mozilla/5.0 (compatible; TruthLensBot/1.0; +automated fact-checking research)"
+_OG_FETCH_TIMEOUT = 15
+
+_IMAGE_CONTENT_TYPE_EXT = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/heic": "heic",
+}
+
+# Instagram's og:description format, e.g. "13K likes, 222 comments -
+# thenewindia2 on August 5, 2026: "caption text"." — likes/comments are
+# omitted for some posts (private-adjacent engagement counts), so both
+# are optional groups. Best-effort only: if this doesn't match, the raw
+# og:description is used as caption_text with no structured fields
+# rather than guessing.
+_OG_DESCRIPTION_PATTERN = re.compile(
+    r"^(?:([\d.,]+[KMB]?) likes?, )?(?:([\d.,]+[KMB]?) comments? - )?"
+    r"([A-Za-z0-9_.]+) on ([A-Za-z]+ \d{1,2}, \d{4}): (.*)$"
+)
+
 
 @dataclass
 class UrlFetchResult:
@@ -45,6 +75,10 @@ class UrlFetchResult:
     like_count: int | None
     comment_count: int | None
     hashtags: list[str]
+    # Set only for posts with no video stream at all (a photo or photo
+    # -carousel post) — see _fetch_photo_via_og_tags. None for every
+    # video fetch, unchanged from before photo support existed.
+    photo_path: str | None = None
 
 
 def fetch_from_url(url: str, output_dir: str) -> UrlFetchResult:
@@ -53,9 +87,19 @@ def fetch_from_url(url: str, output_dir: str) -> UrlFetchResult:
     confirm — every value here is either directly reported by yt-dlp's
     extractor or left None (consistent with docs/FACT_CHECK_METHODOLOGY.md's
     "no invented facts" standard applying to reel metadata too, not just
-    evidence)."""
+    evidence).
+
+    Falls back to a photo-post fetch (Open Graph meta tags, not yt-dlp)
+    when the extractor reports there's no video in the post at all --
+    yt-dlp's Instagram extractor refuses outright rather than returning
+    partial data for image posts."""
     require_public_http_url(url)
-    info = _download_with_retry(url, output_dir)
+    try:
+        info = _download_with_retry(url, output_dir)
+    except ProviderError as exc:
+        if "no video in this post" in str(exc).lower():
+            return _fetch_photo_via_og_tags(url, output_dir)
+        raise
 
     video_path = _find_downloaded_file(output_dir, exclude_suffixes=(".jpg", ".jpeg", ".png", ".webp"))
     thumbnail_path = _find_downloaded_file(output_dir, include_suffixes=(".jpg", ".jpeg", ".png", ".webp"))
@@ -78,6 +122,99 @@ def fetch_from_url(url: str, output_dir: str) -> UrlFetchResult:
         like_count=info.get("like_count"),
         comment_count=info.get("comment_count"),
         hashtags=hashtags,
+    )
+
+
+def _og_tag(html_text: str, prop: str) -> str | None:
+    match = re.search(rf'<meta property="{re.escape(prop)}" content="([^"]*)"', html_text)
+    return html.unescape(match.group(1)) if match else None
+
+
+def _parse_count(raw: str) -> int | None:
+    raw = raw.strip().replace(",", "")
+    multiplier = 1
+    if raw and raw[-1] in "KMB":
+        multiplier = {"K": 1_000, "M": 1_000_000, "B": 1_000_000_000}[raw[-1]]
+        raw = raw[:-1]
+    try:
+        return int(float(raw) * multiplier)
+    except ValueError:
+        return None
+
+
+def _fetch_photo_via_og_tags(url: str, output_dir: str) -> UrlFetchResult:
+    with httpx.Client(timeout=_OG_FETCH_TIMEOUT, follow_redirects=True, headers={"User-Agent": _USER_AGENT}) as client:
+        try:
+            page = client.get(url)
+            page.raise_for_status()
+        except httpx.HTTPError as exc:
+            raise ProviderError(f"Could not fetch this post's page to look for a photo: {exc}") from exc
+
+        image_url = _og_tag(page.text, "og:image")
+        if not image_url:
+            raise ProviderError(
+                f"{url} has no video AND no photo Open Graph tag — it may be private, "
+                f"deleted, or require login to view."
+            )
+
+        try:
+            image_resp = client.get(image_url)
+            image_resp.raise_for_status()
+        except httpx.HTTPError as exc:
+            raise ProviderError(f"Found a photo URL for this post but could not download it: {exc}") from exc
+
+    content_type = image_resp.headers.get("content-type", "").split(";")[0].strip().lower()
+    ext = _IMAGE_CONTENT_TYPE_EXT.get(content_type, "jpg")
+    photo_path = str(Path(output_dir) / f"download.{ext}")
+    Path(photo_path).write_bytes(image_resp.content)
+
+    description = _og_tag(page.text, "og:description") or ""
+    og_url = _og_tag(page.text, "og:url") or ""
+
+    like_count = comment_count = None
+    creator_handle = None
+    posted_at = None
+    caption_text = description or None
+
+    match = _OG_DESCRIPTION_PATTERN.match(description)
+    if match:
+        likes_raw, comments_raw, handle, date_raw, caption_raw = match.groups()
+        if likes_raw:
+            like_count = _parse_count(likes_raw)
+        if comments_raw:
+            comment_count = _parse_count(comments_raw)
+        creator_handle = handle
+        try:
+            from datetime import datetime
+
+            posted_at = datetime.strptime(date_raw, "%B %d, %Y").strftime("%Y-%m-%d")
+        except ValueError:
+            posted_at = None
+        # One combined strip call, not chained ones: str.strip(chars) removes
+        # any of the given characters from each end repeatedly until a
+        # non-matching one is hit, so a trailing '". ' (quote, period,
+        # space) is fully peeled in one pass. Chaining .strip('"').rstrip(".")
+        # separately would miss the quote when it sits behind a trailing
+        # period rather than at the very end.
+        caption_text = caption_raw.strip(' "“”.') or None
+
+    if not creator_handle:
+        # og:url is typically https://www.instagram.com/<handle>/p/<shortcode>/
+        handle_match = re.search(r"instagram\.com/([A-Za-z0-9_.]+)/", og_url)
+        if handle_match and handle_match.group(1) not in ("p", "reel", "tv"):
+            creator_handle = handle_match.group(1)
+
+    return UrlFetchResult(
+        video_path=None,
+        thumbnail_path=None,
+        caption_text=caption_text,
+        creator_handle=creator_handle,
+        posted_at=posted_at,
+        view_count=None,  # Open Graph tags don't expose view counts (photos have none anyway)
+        like_count=like_count,
+        comment_count=comment_count,
+        hashtags=[],  # not reliably present in og:description; claim extraction still reads caption_text directly
+        photo_path=photo_path,
     )
 
 

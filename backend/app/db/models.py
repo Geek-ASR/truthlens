@@ -47,6 +47,11 @@ class Platform(str, enum.Enum):
     other = "other"
 
 
+class MediaType(str, enum.Enum):
+    video = "video"
+    photo = "photo"
+
+
 class DiscoverySource(str, enum.Enum):
     manual = "manual"
     rss = "rss"
@@ -226,6 +231,14 @@ class Reel(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     media_storage_key: Mapped[str | None] = mapped_column(Text, nullable=True)
     media_content_hash: Mapped[str | None] = mapped_column(String(128), index=True, nullable=True)
     thumbnail_storage_key: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # What media_storage_key actually holds — a video (the original
+    # behavior) or a photo, for posts with no video stream at all (e.g. a
+    # single-image or carousel Instagram post). Defaults to video so
+    # existing rows, all of which predate photo support, stay correct
+    # without a backfill. Drives branching in orchestrator.analyze_reel:
+    # a photo has no audio to transcribe, so transcription is skipped,
+    # but OCR and vision-context analysis both run on the single image.
+    media_type: Mapped[MediaType] = mapped_column(Enum(MediaType, name="media_type"), default=MediaType.video)
     auto_fetched: Mapped[bool] = mapped_column(
         Boolean, default=False
     )  # media fetched via yt-dlp rather than manual upload; see docs/ARCHITECTURE.md §2a

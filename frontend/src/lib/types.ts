@@ -6,6 +6,8 @@ export type UserRole = "admin" | "reviewer" | "viewer";
 
 export type Platform = "instagram" | "youtube" | "x" | "tiktok" | "other";
 
+export type MediaType = "video" | "photo";
+
 export type DiscoverySource =
   | "manual"
   | "rss"
@@ -100,6 +102,7 @@ export interface ReelOut {
   share_count: number | null;
   hashtags: string[] | null;
   thumbnail_storage_key: string | null;
+  media_type: MediaType;
   auto_fetched: boolean;
   transcript: string | null;
   transcript_segments: unknown[] | null;

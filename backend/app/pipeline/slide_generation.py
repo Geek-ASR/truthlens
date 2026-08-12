@@ -65,6 +65,7 @@ async def generate_slides(
     now = datetime.now(timezone.utc)
     date_str = now.strftime("%b %d, %Y")
     platform_label = _PLATFORM_LABELS.get(reel.platform.value, "Social media")
+    content_label = "Post" if reel.media_type.value == "photo" else "Reel"
     key_fact = content.evidence_cards[0].answer_text[:140] if content.evidence_cards else content.why_paragraph[:140]
 
     renders = [
@@ -97,6 +98,7 @@ async def generate_slides(
                 creator_handle=reel.creator_handle,
                 source_url=reel.source_url,
                 thumbnail=thumbnail,
+                content_label=content_label,
             ),
             {
                 "quote": content.quote,

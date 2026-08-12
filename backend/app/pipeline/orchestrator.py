@@ -15,7 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import DuplicateFactCheckError, ResearchFailedError
-from app.db.models import Claim, ClaimStatus, Evidence, FactCheck, FactCheckStatus, Reel, Source, Verdict
+from app.db.models import Claim, ClaimStatus, Evidence, FactCheck, FactCheckStatus, MediaType, Reel, Source, Verdict
 from app.pipeline import (
     claim_extraction,
     duplicate_detection,
@@ -38,10 +38,19 @@ from app.services.storage.s3 import get_storage_client
 async def analyze_reel(db: AsyncSession, reel: Reel) -> Reel:
     storage = get_storage_client()
 
-    if reel.media_storage_key:
+    if reel.media_storage_key and reel.media_type == MediaType.video:
         video_bytes = storage.get_bytes(reel.media_storage_key)
         audio_path, frame_paths = ingestion.extract_media_artifacts(video_bytes)
         await transcription.transcribe_reel(db, reel, audio_path)
+        await ocr.ocr_reel(db, reel, frame_paths)
+        await vision_context.analyze_vision_context(db, reel, frame_paths)
+    elif reel.media_storage_key and reel.media_type == MediaType.photo:
+        # No audio to transcribe. OCR and vision-context analysis both
+        # already operate on a plain list of image paths (see their own
+        # docstrings) so the single photo is a drop-in one-element
+        # "frame_paths" list, not a special case for either function.
+        photo_bytes = storage.get_bytes(reel.media_storage_key)
+        frame_paths = ingestion.extract_photo_artifact(photo_bytes)
         await ocr.ocr_reel(db, reel, frame_paths)
         await vision_context.analyze_vision_context(db, reel, frame_paths)
 
@@ -163,6 +172,7 @@ async def build_reel_fact_check(db: AsyncSession, reel: Reel) -> FactCheck:
 
 
 def _build_reel_caption(*, reel: Reel, content, caption_sources: list[Source]) -> str:
+    content_label = "post" if reel.media_type == MediaType.photo else "reel"
     claim_by_claim = "\n".join(
         f"{'✓' if row.icon == '✓' else ('✗' if row.icon == '✗' else '⚠')} {row.claim_text} — "
         f"{row.verdict_label.replace('_', ' ')}"
@@ -184,11 +194,11 @@ def _build_reel_caption(*, reel: Reel, content, caption_sources: list[Source]) -
         f"{claim_by_claim}\n\n"
         "SOURCES:\n"
         f"{sources_block}\n\n"
-        "ORIGINAL REEL:\n"
+        f"ORIGINAL {content_label.upper()}:\n"
         f"{reel.source_url}\n\n"
         f"FACT-CHECKED: {date_str}\n\n"
         "IMPORTANT:\n"
-        "This fact-check evaluates the specific claims made in the referenced reel based on "
+        f"This fact-check evaluates the specific claims made in the referenced {content_label} based on "
         "evidence available at the time of publication.\n\n"
         "#FactCheck #MediaLiteracy #TruthLens"
     )

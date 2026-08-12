@@ -61,10 +61,24 @@ def _build_user_content(reel: Reel) -> str:
     if reel.caption_text:
         parts.append(f"POSTED CAPTION:\n{wrap_untrusted(reel.caption_text)}")
     if reel.vision_context:
-        parts.append(
-            f"VISUAL CONTEXT (advisory, not evidence):\n"
-            f"{wrap_untrusted(reel.vision_context.get('scene_description', ''))}"
-        )
+        # visible_text_or_graphics is on-screen TEXT the vision model
+        # read off the image/frames -- the same kind of signal OCR
+        # produces, just via a different mechanism, and was being
+        # silently dropped here. Real gap found live: a photo post's
+        # OCR stage returned nothing, but vision analysis of that exact
+        # same image correctly read a specific, checkable on-screen
+        # claim ("...spent ₹94 crores on advertising... in eight
+        # years") into this field -- which claim_extraction never saw,
+        # because only scene_description (a much vaguer, more
+        # hallucination-prone general description) was ever included
+        # here. Given equivalent weight to OCR text, not lumped in with
+        # the "advisory" scene description.
+        visible_text = reel.vision_context.get("visible_text_or_graphics")
+        if visible_text:
+            parts.append(f"ON-SCREEN TEXT (detected via image analysis):\n{wrap_untrusted(visible_text)}")
+        scene_description = reel.vision_context.get("scene_description")
+        if scene_description:
+            parts.append(f"VISUAL CONTEXT (advisory, not evidence):\n{wrap_untrusted(scene_description)}")
     if len(parts) == 1:
         raise ValueError("Reel has no transcript, OCR text, or caption to extract claims from.")
     return "\n\n".join(parts)

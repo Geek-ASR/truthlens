@@ -26,6 +26,27 @@ _PRIMARY_TIERS = {SourceTier.primary_government, SourceTier.primary_legal, Sourc
 _MAX_EVIDENCE_CARDS = 3
 _MAX_SOURCES_PER_LIST = 4
 
+# Real fabrication found live: HEADLINE_SYSTEM_PROMPT explicitly says
+# "Never introduce a fact, number, date, or name that is not already in
+# the claim text you were given" -- and the model violated it anyway,
+# converting a claim's "4,000 crore rupees" into a headline reading "$1
+# Billion" (an invented, and wrong -- 4,000 crore is roughly $480M, not
+# $1B -- currency conversion nobody asked for). highlight_phrases already
+# had a grounding check (must be a real substring of the headline this
+# call wrote), but nothing checked the headline's own numbers against
+# the source claim it was supposed to be restating. Same principle as
+# validation.py's number-grounding check for verdict reasoning, applied
+# to this separate exposure point.
+_HEADLINE_NUMBER_PATTERN = re.compile(r"\d[\d,.]*")
+
+
+def _numbers_in(text: str) -> set[str]:
+    return {n.strip(",.") for n in _HEADLINE_NUMBER_PATTERN.findall(text)}
+
+
+def _headline_numbers_are_grounded(headline: str, claim_text: str) -> bool:
+    return all(n in claim_text for n in _numbers_in(headline))
+
 _VERDICT_ICON = {
     VerdictLabel.TRUE: "✓",
     VerdictLabel.MOSTLY_TRUE: "✓",
@@ -206,11 +227,24 @@ async def _generate_headline(primary_claim: Claim) -> HeadlineResult:
         prompt_version=HEADLINE_PROMPT_VERSION,
     )
     parsed = result.parsed
+    headline = parsed.headline
+
+    if not _headline_numbers_are_grounded(headline, primary_claim.text):
+        # The model invented/changed a number despite being told not to
+        # (see _HEADLINE_NUMBER_PATTERN's comment for the real case this
+        # was found from). No amount of highlight-phrase validation makes
+        # a fabricated number safe to publish, so the whole generated
+        # headline is discarded here, not just trimmed -- fall back to
+        # the claim's own already-grounded text verbatim, which can never
+        # introduce a number the claim didn't already have.
+        headline = primary_claim.text[:180]
+        return HeadlineResult(headline=headline, highlight_phrases=[])
+
     # Grounding check, same principle as claim_extraction's source_quote
     # check: a highlight phrase that isn't actually a substring of the
     # headline the model itself wrote is dropped, not trusted.
-    validated_phrases = [p for p in parsed.highlight_phrases if p and p in parsed.headline]
-    return HeadlineResult(headline=parsed.headline, highlight_phrases=validated_phrases)
+    validated_phrases = [p for p in parsed.highlight_phrases if p and p in headline]
+    return HeadlineResult(headline=headline, highlight_phrases=validated_phrases)
 
 
 async def _generate_why_paragraph(overall: OverallVerdict) -> str:

@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from app.core.exceptions import ProviderError
+from app.db.models import MediaType
 from app.db.session import AsyncSessionLocal
 from app.pipeline import ingestion
 from app.schemas.reel import ReelCreate
@@ -129,3 +130,117 @@ async def test_no_media_no_transcript_no_auto_fetch_raises_value_error(fake_stor
         with pytest.raises(ValueError):
             await ingestion.ingest_reel(db, payload, None, None)
         await db.rollback()
+
+
+# ---------------------------------------------------------------------------
+# Photo posts (no video stream at all — app/services/url_downloader.py's
+# Open Graph fallback). Confirmed live against a real photo post
+# (instagram.com/p/Dbrw0EPhFcU/) during development.
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def tmp_photo_file(tmp_path):
+    photo_path = tmp_path / "download.jpg"
+    photo_path.write_bytes(b"fake-photo-bytes")
+    return str(photo_path)
+
+
+@pytest.mark.asyncio
+async def test_photo_post_sets_media_type_photo_and_reuses_image_as_thumbnail(
+    monkeypatch, fake_storage, tmp_photo_file
+):
+    fetched = UrlFetchResult(
+        video_path=None,
+        thumbnail_path=None,
+        caption_text="The second poorest state by income, but number one in publicity and propaganda",
+        creator_handle="thenewindia2",
+        posted_at="2026-08-05",
+        view_count=None,
+        like_count=13000,
+        comment_count=222,
+        hashtags=[],
+        photo_path=tmp_photo_file,
+    )
+    monkeypatch.setattr(ingestion, "fetch_from_url", lambda url, out_dir: fetched)
+
+    payload = ReelCreate(source_url="https://www.instagram.com/p/Dbrw0EPhFcU/", auto_fetch=True)
+
+    async with AsyncSessionLocal() as db:
+        reel = await ingestion.ingest_reel(db, payload, None, None)
+        await db.rollback()
+
+    assert reel.media_type == MediaType.photo
+    assert reel.media_storage_key is not None
+    # The photo doubles as its own thumbnail -- same key, not a second upload.
+    assert reel.thumbnail_storage_key == reel.media_storage_key
+    assert reel.media_content_hash is not None
+    assert reel.caption_text.startswith("The second poorest state")
+    assert reel.like_count == 13000
+    assert reel.comment_count == 222
+    # Exactly one upload (the photo) -- no ffmpeg-derived thumbnail upload
+    # happened, unlike the video path's two uploads (video + thumbnail).
+    assert len(fake_storage.puts) == 1
+    assert fake_storage.puts[0][1] == b"fake-photo-bytes"
+
+
+@pytest.mark.asyncio
+async def test_photo_post_with_no_caption_still_ingests(monkeypatch, fake_storage, tmp_photo_file):
+    # A photo with a caption-less og:description (e.g. an unparseable
+    # format) shouldn't be treated as "nothing found" the way a
+    # caption-less, video-less, transcript-less fetch is.
+    fetched = UrlFetchResult(
+        video_path=None,
+        thumbnail_path=None,
+        caption_text=None,
+        creator_handle=None,
+        posted_at=None,
+        view_count=None,
+        like_count=None,
+        comment_count=None,
+        hashtags=[],
+        photo_path=tmp_photo_file,
+    )
+    monkeypatch.setattr(ingestion, "fetch_from_url", lambda url, out_dir: fetched)
+
+    payload = ReelCreate(source_url="https://www.instagram.com/p/nocaption/", auto_fetch=True)
+
+    async with AsyncSessionLocal() as db:
+        reel = await ingestion.ingest_reel(db, payload, None, None)
+        await db.rollback()
+
+    assert reel.media_type == MediaType.photo
+    assert reel.media_storage_key is not None
+
+
+@pytest.mark.asyncio
+async def test_video_post_still_gets_media_type_video(monkeypatch, fake_storage, tmp_media_files):
+    # Regression guard: adding photo support must not change the default
+    # for the existing, far more common video path.
+    video_path, thumb_path = tmp_media_files
+    fetched = UrlFetchResult(
+        video_path=video_path,
+        thumbnail_path=thumb_path,
+        caption_text="A video caption",
+        creator_handle="someone",
+        posted_at=None,
+        view_count=None,
+        like_count=None,
+        comment_count=None,
+        hashtags=[],
+    )
+    monkeypatch.setattr(ingestion, "fetch_from_url", lambda url, out_dir: fetched)
+
+    payload = ReelCreate(source_url="https://instagram.com/reel/stillvideo", auto_fetch=True)
+
+    async with AsyncSessionLocal() as db:
+        reel = await ingestion.ingest_reel(db, payload, None, None)
+        await db.rollback()
+
+    assert reel.media_type == MediaType.video
+    assert reel.media_storage_key != reel.thumbnail_storage_key
+
+
+def test_extract_photo_artifact_returns_one_element_frame_list():
+    frame_paths = ingestion.extract_photo_artifact(b"fake-photo-bytes")
+    assert len(frame_paths) == 1
+    assert Path(frame_paths[0]).read_bytes() == b"fake-photo-bytes"

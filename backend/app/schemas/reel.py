@@ -3,7 +3,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field, HttpUrl
 
-from app.schemas.common import DiscoverySource, IngestionStatus, Platform
+from app.schemas.common import DiscoverySource, IngestionStatus, MediaType, Platform
 
 
 class ReelCreate(BaseModel):
@@ -64,6 +64,7 @@ class ReelOut(BaseModel):
     share_count: int | None
     hashtags: list[str] | None
     thumbnail_storage_key: str | None
+    media_type: MediaType
     auto_fetched: bool
     transcript: str | None
     transcript_segments: list | None

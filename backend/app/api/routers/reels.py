@@ -120,6 +120,17 @@ async def quick_fact_check(payload: QuickFactCheckRequest, db: DbSession, curren
         raise HTTPException(502, f"Could not fetch this reel: {exc}") from exc
     await db.commit()
     await db.refresh(reel)
+    # Captured now, while the session is fresh, rather than read from
+    # `reel.id` after a later rollback: AsyncSession expires ORM
+    # attributes on commit/rollback by default, and accessing an expired
+    # attribute triggers a lazy-reload that needs an awaited DB round
+    # trip — doing that implicitly inside an f-string (no await) crashes
+    # with "MissingGreenlet: greenlet_spawn has not been called" instead
+    # of raising the intended HTTPException. Found live: the first
+    # request that ever hit this exact path (zero verifiable claims
+    # extracted from a photo post) surfaced it as a bare 500 instead of
+    # the intended 400 with a helpful message.
+    reel_id = reel.id
 
     try:
         reel = await analyze_reel(db, reel)
@@ -137,7 +148,7 @@ async def quick_fact_check(payload: QuickFactCheckRequest, db: DbSession, curren
         await db.rollback()
         raise HTTPException(
             400,
-            f"{exc} The reel and its research were still saved (id={reel.id}) — "
+            f"{exc} The reel and its research were still saved (id={reel_id}) — "
             f"you can retry research or build a fact-check for it manually from the dashboard.",
         ) from exc
 
