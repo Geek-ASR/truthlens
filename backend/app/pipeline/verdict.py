@@ -140,6 +140,8 @@ async def propose_verdict(
         if outcome.status.value == "passed"
         else f"{result.parsed.reasoning_summary}\n\n[VALIDATION NOTE: {'; '.join(outcome.notes)}]",
         cited_evidence_ids=result.parsed.cited_evidence_ids if outcome.status.value == "passed" else [],
+        corrected_fact=outcome.corrected_fact,
+        context_note=outcome.context_note,
         validation_status=outcome.status,
         verdict_model=f"{result.model}:{result.prompt_version}",
         is_current=True,

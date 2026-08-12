@@ -1,16 +1,28 @@
 from app.db.models import ValidationStatus
 from app.db.models import Verdict as VerdictModel
 from app.db.models import VerdictLabel
-from app.pipeline.reel_content import _UNVALIDATED_REASONING_NOTE, _display_text, _safe_reasoning_text
+from app.pipeline.reel_content import (
+    _UNVALIDATED_REASONING_NOTE,
+    _display_text,
+    _safe_reasoning_text,
+    _safe_supplementary_text,
+)
 
 
-def _verdict(reasoning_summary: str, validation_status: ValidationStatus) -> VerdictModel:
+def _verdict(
+    reasoning_summary: str,
+    validation_status: ValidationStatus,
+    corrected_fact: str | None = None,
+    context_note: str | None = None,
+) -> VerdictModel:
     return VerdictModel(
         verdict=VerdictLabel.UNVERIFIED,
         confidence=0.4,
         reasoning_summary=reasoning_summary,
         cited_evidence_ids=[],
         validation_status=validation_status,
+        corrected_fact=corrected_fact,
+        context_note=context_note,
     )
 
 
@@ -78,3 +90,24 @@ def test_safe_reasoning_text_hides_reasoning_for_every_downgrade_reason():
     ):
         v = _verdict("Some potentially unsafe reasoning text.", status)
         assert _safe_reasoning_text(v) == _UNVALIDATED_REASONING_NOTE
+
+
+def test_safe_supplementary_text_shown_when_passed():
+    v = _verdict("...", ValidationStatus.passed, corrected_fact="The real figure was 7,000 crore.")
+    assert _safe_supplementary_text(v, v.corrected_fact) == "The real figure was 7,000 crore."
+
+
+def test_safe_supplementary_text_hidden_when_verdict_downgraded():
+    # Even though validate_verdict() already independently grounds
+    # corrected_fact/context_note before persisting them, once the
+    # verdict AS A WHOLE is downgraded nothing from that same LLM call
+    # is trusted for display -- same rule as reasoning_summary.
+    v = _verdict(
+        "...", ValidationStatus.downgraded_unsupported_stat, corrected_fact="The real figure was 7,000 crore."
+    )
+    assert _safe_supplementary_text(v, v.corrected_fact) is None
+
+
+def test_safe_supplementary_text_none_when_field_unset():
+    v = _verdict("...", ValidationStatus.passed, corrected_fact=None)
+    assert _safe_supplementary_text(v, v.corrected_fact) is None

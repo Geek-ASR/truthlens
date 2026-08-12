@@ -23,11 +23,22 @@ _CAPPED_CONFIDENCE = 0.4
 
 
 class ValidationOutcome:
-    def __init__(self, status: ValidationStatus, verdict: VerdictLabel, confidence: float, notes: list[str]):
+    def __init__(
+        self,
+        status: ValidationStatus,
+        verdict: VerdictLabel,
+        confidence: float,
+        notes: list[str],
+        *,
+        corrected_fact: str | None = None,
+        context_note: str | None = None,
+    ):
         self.status = status
         self.verdict = verdict
         self.confidence = confidence
         self.notes = notes
+        self.corrected_fact = corrected_fact
+        self.context_note = context_note
 
 
 def _numbers_needing_support(text: str) -> list[str]:
@@ -42,6 +53,38 @@ def _numbers_needing_support(text: str) -> list[str]:
     text_without_urls = _URL_PATTERN.sub("", text_without_markup)
     found = _NUMBER_PATTERN.findall(text_without_urls)
     return [n for n in found if len(re.sub(r"[,.%]", "", n)) >= _MIN_DIGITS_TO_CHECK]
+
+
+def _all_numbers(text: str) -> list[str]:
+    # Unlike _numbers_needing_support, no _MIN_DIGITS_TO_CHECK filter:
+    # corrected_fact/context_note are short, specific, single-sentence
+    # fields (not prose that might incidentally mention a meta-number
+    # like "3 sources"), so there's no legitimate reason for one to
+    # contain a single-digit number that isn't in the source it's
+    # supposedly drawn from. Same reasoning as reel_content.py's headline
+    # -grounding check, which exists because "$1 Billion" (single-digit
+    # "1") would otherwise slip past a >=2-digit filter entirely.
+    text_without_markup = _INTERNAL_MARKUP_PATTERN.sub("", text)
+    text_without_urls = _URL_PATTERN.sub("", text_without_markup)
+    return _NUMBER_PATTERN.findall(text_without_urls)
+
+
+def _grounded_or_none(text: str | None, all_passages: str) -> str | None:
+    # Independent of the main citation/number checks below -- a
+    # corrected_fact or context_note can be grounded in ANY source in
+    # this claim's evidence matrix, not only the ones cited for
+    # reasoning_summary, since the "actual fact" or context might come
+    # from a different source than the one that drove the verdict label
+    # itself. Dropped silently (not downgraded) if its numbers aren't
+    # grounded -- these are supplementary, so an ungrounded one shouldn't
+    # invalidate an otherwise-good verdict, but its own text is never
+    # trusted for display or reuse.
+    if not text:
+        return None
+    numbers = _all_numbers(text)
+    if numbers and any(n not in all_passages for n in numbers):
+        return None
+    return text
 
 
 def validate_verdict(
@@ -89,4 +132,22 @@ def validate_verdict(
                 [f"Numbers {missing} in reasoning_summary do not appear in any cited source passage."],
             )
 
-    return ValidationOutcome(ValidationStatus.passed, proposal.verdict, proposal.confidence, [])
+    all_passages = " ".join(
+        s.relevant_passage for s in source_by_evidence_id.values() if s.relevant_passage
+    )
+    # A "correction" for a TRUE verdict is a contradiction in terms --
+    # dropped regardless of what the model provided, even if it happened
+    # to be well-grounded, rather than displaying something confusing.
+    corrected_fact = None if proposal.verdict == VerdictLabel.TRUE else _grounded_or_none(
+        proposal.corrected_fact, all_passages
+    )
+    context_note = _grounded_or_none(proposal.context_note, all_passages)
+
+    return ValidationOutcome(
+        ValidationStatus.passed,
+        proposal.verdict,
+        proposal.confidence,
+        [],
+        corrected_fact=corrected_fact,
+        context_note=context_note,
+    )

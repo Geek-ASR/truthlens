@@ -372,6 +372,16 @@ export default function FactCheckDetailPage() {
                   />
                 ) : null}
                 <p>{verdict.reasoning_summary}</p>
+                {verdict.corrected_fact ? (
+                  <p>
+                    <strong>What&apos;s actually true:</strong> {verdict.corrected_fact}
+                  </p>
+                ) : null}
+                {verdict.context_note ? (
+                  <p className="hint">
+                    <strong>Context:</strong> {verdict.context_note}
+                  </p>
+                ) : null}
                 <p className="hint">
                   Cites {verdict.cited_evidence_ids.length} evidence row
                   {verdict.cited_evidence_ids.length === 1 ? "" : "s"} · proposed{" "}

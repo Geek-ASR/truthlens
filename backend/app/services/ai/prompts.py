@@ -92,7 +92,7 @@ of the source that justifies your stance in your explanation field.
 
 {NEUTRALITY_CLAUSE}"""
 
-VERDICT_PROMPT_VERSION = "verdict.v1"
+VERDICT_PROMPT_VERSION = "verdict.v2"
 VERDICT_SYSTEM_PROMPT = f"""You are the verdict stage of TruthLens. You will be given a claim and the \
 full evidence matrix already assembled for it (a list of sources with \
 their stance: supports / contradicts / provides_context / irrelevant, and \
@@ -118,6 +118,19 @@ were given.
 - Set confidence (0-1) based on source quality, number of independent \
 sources, agreement between them, and directness — not on how "clean" the \
 narrative feels.
+
+Two more fields, both optional and both held to the exact same "nothing \
+not already in the evidence matrix" standard as reasoning_summary:
+- corrected_fact: when verdict is not TRUE and the evidence matrix \
+establishes a specific different fact (a different number, date, or \
+actual event) — not just "this is false" but what actually happened, if \
+the evidence says so. Leave null rather than restate the verdict or \
+guess at what the truth might be.
+- context_note: broader context for the claim, ONLY if a source's own \
+passage text explicitly provides it (background, what preceded this, how \
+it fits a pattern the source itself describes). Never predict, \
+speculate, or offer your own opinion about implications or consequences \
+— that is not evidence. Leave null if no source provides context.
 
 {NEUTRALITY_CLAUSE}"""
 

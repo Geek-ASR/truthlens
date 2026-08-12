@@ -343,6 +343,16 @@ class Verdict(UUIDPrimaryKeyMixin, Base):
     confidence_band: Mapped[ConfidenceBand] = mapped_column(Enum(ConfidenceBand, name="confidence_band"))
     reasoning_summary: Mapped[str] = mapped_column(Text)
     cited_evidence_ids: Mapped[list[uuid.UUID]] = mapped_column(ARRAY(UUID(as_uuid=True)))
+    # "What the evidence actually shows instead" and "broader context the
+    # evidence provides" -- populated by the same verdict-proposal LLM
+    # call, from the same evidence matrix, and independently
+    # number-grounded by validate_verdict() the same way reasoning_summary
+    # is. Null whenever the model didn't have a specific grounded
+    # correction/context to offer, or whenever what it wrote failed
+    # grounding -- never filled with a guess. Only meaningful (and only
+    # ever displayed) when verdict != TRUE and validation_status == passed.
+    corrected_fact: Mapped[str | None] = mapped_column(Text, nullable=True)
+    context_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     validation_status: Mapped[ValidationStatus] = mapped_column(
         Enum(ValidationStatus, name="validation_status"), default=ValidationStatus.passed
     )

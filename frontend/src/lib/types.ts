@@ -162,6 +162,8 @@ export interface VerdictOut {
   confidence_band: ConfidenceBand;
   reasoning_summary: string;
   cited_evidence_ids: string[];
+  corrected_fact: string | null;
+  context_note: string | null;
   validation_status: ValidationStatus;
   is_current: boolean;
   created_at: string;

@@ -106,6 +106,19 @@ def _safe_reasoning_text(verdict: Verdict) -> str:
     return _display_text(verdict.reasoning_summary)
 
 
+def _safe_supplementary_text(verdict: Verdict, raw: str | None) -> str | None:
+    # corrected_fact/context_note are already independently number
+    # -grounded by validate_verdict() before being persisted (a hallucinated
+    # one is already None by the time it gets here) -- but if the verdict
+    # AS A WHOLE was downgraded, nothing from that same LLM call is
+    # trusted for display, same rule as _safe_reasoning_text, even for a
+    # field that individually passed its own narrower check.
+    if verdict.validation_status != ValidationStatus.passed or not raw:
+        return None
+    text = _display_text(raw)
+    return text or None
+
+
 @dataclass
 class SourceCitation:
     label: str
@@ -122,6 +135,14 @@ class EvidenceCard:
     answer_text: str
     primary_source: SourceCitation | None
     independent_source: SourceCitation | None
+    # "What the evidence actually shows instead" / broader context from
+    # the evidence -- both already independently number-grounded by
+    # validate_verdict() (app/pipeline/validation.py) before reaching
+    # here. Only ever set when the verdict's own validation_status is
+    # passed (see the evidence_cards loop below) -- same "don't trust
+    # anything from a downgraded verdict" rule as answer_text.
+    corrected_fact: str | None = None
+    context_note: str | None = None
 
 
 @dataclass
@@ -322,6 +343,8 @@ async def assemble_reel_content(
                     answer_text=_safe_reasoning_text(verdict),
                     primary_source=primary_source,
                     independent_source=independent_source,
+                    corrected_fact=_safe_supplementary_text(verdict, verdict.corrected_fact),
+                    context_note=_safe_supplementary_text(verdict, verdict.context_note),
                 )
             )
 

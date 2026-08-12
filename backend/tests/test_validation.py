@@ -170,3 +170,122 @@ def test_ignores_small_meta_numbers_that_dont_need_source_support():
     outcome = validate_verdict(proposal, {evidence_id: object()}, {evidence_id: source})
 
     assert outcome.status == ValidationStatus.passed
+
+
+# ---------------------------------------------------------------------------
+# corrected_fact / context_note — "what's actually true" and broader
+# context, both independently number-grounded against the FULL evidence
+# matrix (not just cited_evidence_ids), since a correction can legitimately
+# come from a different source than the one driving the verdict label.
+# ---------------------------------------------------------------------------
+
+def test_corrected_fact_passes_through_when_grounded():
+    source = _make_source(
+        relevant_passage="Government records show the actual figure was 7,000 crore, not 4,000 crore."
+    )
+    evidence_id = uuid.uuid4()
+    proposal = VerdictProposal(
+        verdict=VerdictLabel.FALSE,
+        confidence=0.8,
+        reasoning_summary="The cited figure does not match official records.",
+        cited_evidence_ids=[evidence_id],
+        corrected_fact="The actual figure was 7,000 crore, not 4,000 crore.",
+    )
+
+    outcome = validate_verdict(proposal, {evidence_id: object()}, {evidence_id: source})
+
+    assert outcome.status == ValidationStatus.passed
+    assert outcome.corrected_fact == "The actual figure was 7,000 crore, not 4,000 crore."
+
+
+def test_corrected_fact_dropped_when_it_introduces_an_ungrounded_number():
+    # Same principle as the headline-fabrication bug found live
+    # (app/pipeline/reel_content.py's _headline_numbers_are_grounded):
+    # a "correction" that itself invents a number not in any source
+    # passage is exactly as dangerous as a hallucinated reasoning_summary
+    # -- just quieter, since it reads as extra-helpful rather than wrong.
+    source = _make_source(relevant_passage="Government records show the actual figure was 7,000 crore.")
+    evidence_id = uuid.uuid4()
+    proposal = VerdictProposal(
+        verdict=VerdictLabel.FALSE,
+        confidence=0.8,
+        reasoning_summary="The cited figure does not match official records.",
+        cited_evidence_ids=[evidence_id],
+        corrected_fact="The actual figure was $1 billion.",  # not in any passage
+    )
+
+    outcome = validate_verdict(proposal, {evidence_id: object()}, {evidence_id: source})
+
+    # The core verdict is unaffected -- only the ungrounded supplementary
+    # field is dropped, not the whole verdict.
+    assert outcome.status == ValidationStatus.passed
+    assert outcome.corrected_fact is None
+
+
+def test_corrected_fact_dropped_entirely_for_a_true_verdict():
+    # A "correction" for a claim that's actually TRUE is a contradiction
+    # in terms -- dropped regardless of grounding, not just displayed
+    # confusingly next to a TRUE badge.
+    source = _make_source(relevant_passage="Confirmed: the figure was 4,000 crore.")
+    evidence_id = uuid.uuid4()
+    proposal = VerdictProposal(
+        verdict=VerdictLabel.TRUE,
+        confidence=0.9,
+        reasoning_summary="Official records confirm the figure.",
+        cited_evidence_ids=[evidence_id],
+        corrected_fact="The figure was 4,000 crore.",  # grounded, but nonsensical for TRUE
+    )
+
+    outcome = validate_verdict(proposal, {evidence_id: object()}, {evidence_id: source})
+
+    assert outcome.corrected_fact is None
+
+
+def test_context_note_can_be_grounded_in_a_source_not_cited_for_reasoning():
+    # corrected_fact/context_note are checked against the FULL evidence
+    # matrix, not just cited_evidence_ids -- a context note can
+    # legitimately draw on a different source than the one that drove
+    # the verdict label.
+    cited_evidence_id = uuid.uuid4()
+    other_evidence_id = uuid.uuid4()
+    cited_source = _make_source(relevant_passage="The rule took effect in March 2026.")
+    other_source = _make_source(
+        relevant_passage="This follows a broader push for social media regulation across the region in 2025."
+    )
+    proposal = VerdictProposal(
+        verdict=VerdictLabel.TRUE,
+        confidence=0.8,
+        reasoning_summary="Official records confirm the rule took effect in March 2026.",
+        cited_evidence_ids=[cited_evidence_id],
+        context_note="This follows a broader push for social media regulation across the region in 2025.",
+    )
+
+    outcome = validate_verdict(
+        proposal,
+        {cited_evidence_id: object(), other_evidence_id: object()},
+        {cited_evidence_id: cited_source, other_evidence_id: other_source},
+    )
+
+    assert outcome.status == ValidationStatus.passed
+    assert outcome.context_note == (
+        "This follows a broader push for social media regulation across the region in 2025."
+    )
+
+
+def test_corrected_fact_and_context_note_are_none_when_verdict_is_downgraded():
+    # A downgraded verdict (missing citation, in this case) shouldn't
+    # carry a corrected_fact/context_note either, even though the early
+    # -return path never computes them -- confirms they default safely.
+    proposal = VerdictProposal(
+        verdict=VerdictLabel.FALSE,
+        confidence=0.9,
+        reasoning_summary="Some claim.",
+        cited_evidence_ids=[uuid.uuid4()],  # not in evidence_by_id
+        corrected_fact="Some correction.",
+    )
+
+    outcome = validate_verdict(proposal, {}, {})
+
+    assert outcome.status == ValidationStatus.downgraded_missing_citation
+    assert outcome.corrected_fact is None
+    assert outcome.context_note is None

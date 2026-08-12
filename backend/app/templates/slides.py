@@ -204,11 +204,23 @@ def _draw_source_citation(draw: ImageDraw.ImageDraw, xy: tuple[int, int], width:
 
 
 def _evidence_card_height(card: EvidenceCard) -> int:
+    # Found live: the original +72/+130 estimates undercounted what
+    # draw_wrapped_text actually advances for a 2-line block at this font
+    # size (label 22px + 2 lines * (18pt + 10 line_spacing) + 10 gap =
+    # 88px, not 72 -- and source citations run similarly tight), so a
+    # card with a corrected_fact block visibly overflowed its rounded
+    # -rectangle box into the card below it on a real rendered slide.
+    # Generous, not exact, on purpose: better a little empty space in a
+    # short card than text bleeding across a card boundary again.
     height = 150
+    if card.corrected_fact:
+        height += 95
+    if card.context_note:
+        height += 95
     if card.primary_source:
-        height += 130
+        height += 145
     if card.independent_source:
-        height += 130
+        height += 145
     return height
 
 
@@ -247,6 +259,22 @@ def render_evidence_slide(
             max_lines=3,
         )
         text_y += 8
+
+        content_w = _W - 2 * _MARGIN - 44
+        if card.corrected_fact:
+            draw.text((inner_x, text_y), "WHAT'S ACTUALLY TRUE", font=font_bold(15), fill=ACCENT)
+            text_y += 22
+            text_y = draw_wrapped_text(
+                draw, (inner_x, text_y), card.corrected_fact, font_regular(18), content_w, INK, max_lines=2,
+            )
+            text_y += 10
+        if card.context_note:
+            draw.text((inner_x, text_y), "CONTEXT", font=font_bold(15), fill=MUTED)
+            text_y += 22
+            text_y = draw_wrapped_text(
+                draw, (inner_x, text_y), card.context_note, font_regular(18), content_w, MUTED, max_lines=2,
+            )
+            text_y += 10
 
         col_w = (_W - 2 * _MARGIN - 44 - 24) // 2 if (card.primary_source and card.independent_source) else _W - 2 * _MARGIN - 44
         if card.primary_source:

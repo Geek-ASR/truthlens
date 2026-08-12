@@ -182,6 +182,16 @@ def _build_reel_caption(*, reel: Reel, content, caption_sources: list[Source]) -
         f"{i + 1}. {s.publisher or s.title or s.url}\n   {s.url}" for i, s in enumerate(caption_sources[:8])
     ) or "No corroborating sources were found at the time of publication."
     date_str = datetime.now(timezone.utc).strftime("%b %d, %Y")
+
+    # Deduplicated across cards -- more than one claim can legitimately
+    # point at the same underlying correction/context.
+    corrections = list(dict.fromkeys(c.corrected_fact for c in content.evidence_cards if c.corrected_fact))
+    context_notes = list(dict.fromkeys(c.context_note for c in content.evidence_cards if c.context_note))
+    correction_block = (
+        "WHAT WE FOUND INSTEAD:\n" + "\n".join(f"• {c}" for c in corrections) + "\n\n" if corrections else ""
+    )
+    context_block = "CONTEXT:\n" + "\n".join(f"• {c}" for c in context_notes) + "\n\n" if context_notes else ""
+
     return (
         "🔎 FACT CHECK\n\n"
         "CLAIM:\n"
@@ -190,6 +200,8 @@ def _build_reel_caption(*, reel: Reel, content, caption_sources: list[Source]) -
         f"{content.overall_verdict_label.replace('_', ' ')}\n\n"
         "WHY:\n"
         f"{content.why_paragraph}\n\n"
+        f"{correction_block}"
+        f"{context_block}"
         "CLAIM-BY-CLAIM:\n"
         f"{claim_by_claim}\n\n"
         "SOURCES:\n"
