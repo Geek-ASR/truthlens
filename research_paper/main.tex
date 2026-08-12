@@ -76,10 +76,21 @@ baseline abstaining (correctly recognizing it had no way to know about
 recent events) where TruthLens's pipeline reached a substantive,
 correct-at-the-label answer -- a result we are careful to attribute to
 search access rather than to any demonstrated advantage in TruthLens's
-specific architecture, pending a search-equipped baseline. We describe
-the larger evaluation this motivates and a taxonomy of concrete failure
-modes discovered through live testing that we believe generalize to
-other LLM-pipeline fact-checking systems.
+specific architecture, pending a search-equipped baseline. Extending
+ingestion to single-image posts (not just video) surfaced a fabricated
+headline number in the process -- ``4,000 crore rupees'' rendered as an
+invented, and arithmetically wrong, ``\$1 Billion'' -- caught only after
+adding a dedicated deterministic check, since the model violated an
+explicit prompt instruction not to introduce new numbers. We also extend
+the validation methodology beyond verdict labels to grounded corrections:
+when a claim is not simply true, TruthLens now surfaces what the same
+evidence establishes instead, held to the identical grounding standard,
+while deliberately not attempting the further step of predicting
+downstream consequences, which would require exactly the kind of
+ungrounded generation this paper argues against. We describe the larger
+evaluation this motivates and a taxonomy of concrete failure modes
+discovered through live testing that we believe generalize to other
+LLM-pipeline fact-checking systems.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -166,6 +177,14 @@ This paper makes the following contributions:
   bracket) are not, to our knowledge, previously documented in the
   automated fact-checking literature at this level of implementation
   detail (Section~\ref{sec:failuremodes}).
+\item An extension of the validation methodology from verdict labels to
+  grounded corrections and context -- what the evidence establishes
+  instead of a false or unverified claim, held to the same deterministic
+  grounding standard as the verdict itself -- together with an explicit,
+  motivated decision not to extend it further into predicting
+  consequences, which would require ungrounded generation of exactly the
+  kind this paper's architecture exists to prevent
+  (Section~\ref{sec:corrections}).
 \end{enumerate}
 
 We are explicit throughout about the evidentiary status of our claims.
@@ -315,7 +334,8 @@ persisted its output to the database:
 \item \textbf{Ingestion.} The source video is downloaded (or manually
   uploaded), audio is extracted and transcribed, on-screen text is
   sampled and OCR'd at a fixed interval, and a representative thumbnail
-  frame is selected.
+  frame is selected. A single-image (photo) post follows a parallel path
+  with no video stream at all (Section~\ref{sec:multimodal}).
 \item \textbf{Claim extraction.} An LLM decomposes the transcript, OCR
   text, and caption into atomic claims, each classified as
   \texttt{factual}, \texttt{opinion}, \texttt{prediction},
@@ -367,6 +387,27 @@ them into one per-claim verdict discards exactly the ``partially true,
 partially misleading'' structure a reader needs. The rule table in
 Section~\ref{sec:methodology} governs how per-claim verdicts combine
 into the one verdict actually shown on the published carousel.
+
+\subsection{Multi-modal ingestion: video and photo posts}
+\label{sec:multimodal}
+Not every short-form political post is a video. TruthLens originally
+handled only content with a video stream; a real post
+(Section~\ref{sec:secondpilot}) exposed this as a hard failure rather
+than a degraded case. We added a parallel photo-post ingestion path:
+when the video downloader reports no video stream at all, the pipeline
+falls back to the post's Open Graph metadata (image URL, caption,
+engagement counts) fetched directly from the page rather than through
+the video-download tool, which does not expose a photo-only code path.
+A new \texttt{media\_type} field (\texttt{video}/\texttt{photo}) drives
+branching at exactly one point downstream: audio extraction and
+transcription are skipped for a photo (there is no audio), but OCR and
+vision-context analysis needed no new code at all, because both already
+operated on a plain list of image paths rather than assuming a video --
+a single photo is a one-element case of the same interface a video's
+sampled frames already satisfy. This is a small but relevant point for
+system design in this domain: designing the frame-analysis interface
+around ``a list of images'' rather than ``frames extracted from a
+video'' made a later, unplanned input modality nearly free to add.
 
 \section{Methodology: Making the Model More Trustworthy, Not Just More Capable}
 \label{sec:methodology}
@@ -463,6 +504,50 @@ further LLM call, so the single highest-stakes number in the product --
 the verdict shown on the published carousel's first slide -- remains
 fully auditable from already-validated per-claim verdicts rather than
 resting on a second, opaque judgment.
+
+\subsection{Grounded corrections: what the evidence shows instead}
+\label{sec:corrections}
+A verdict of \texttt{FALSE} or \texttt{UNVERIFIED} alone is a weak
+deliverable -- professional fact-checkers do not stop at ``this is
+false''; they say what is actually true, with a source. We extended the
+verdict-proposal call (rather than adding a new one) with two optional
+fields, \texttt{corrected\_fact} and \texttt{context\_note}, populated
+from the same evidence matrix already given to that stage and held to
+the identical ``nothing not already in the evidence'' rule as
+\texttt{reasoning\_summary}. \texttt{corrected\_fact} is the specific
+alternative fact the evidence establishes (a different number, a
+different date), left null rather than guessed when no such alternative
+is established; \texttt{context\_note} is background the evidence itself
+states, never the model's own speculation.
+
+We deliberately did not build the natural next request -- speculation
+about downstream consequences of a claim. Predicting what a false or
+misleading claim about a real political actor might lead to is
+forward-looking generation with no evidence to ground it against, which
+is exactly the failure category Section~\ref{sec:validation}'s
+architecture exists to prevent. Scoping it out is a design decision, not
+an oversight, and we note it here because the boundary between
+``grounded context'' (safe, and built) and ``predicted consequences''
+(ungrounded, and not built) is precisely the line this paper's whole
+argument is drawn along.
+
+Both fields are validated independently of \texttt{reasoning\_summary},
+against numbers found anywhere in the claim's full evidence matrix
+rather than only the sources cited for the main verdict -- a correction
+can legitimately draw on a different source than the one that
+determined the label. This independent check uses every digit in a
+number, not just those with two or more digits as
+Section~\ref{sec:validation}'s original number check does: that
+threshold exists to avoid flagging incidental meta-numbers in longer
+prose (``we reviewed 3 sources''), but \texttt{corrected\_fact} and
+\texttt{context\_note} are short, specific, single-sentence fields where
+no such incidental number should appear, and a single-digit fabrication
+(Section~\ref{sec:failuremodes}'s ``\$1 Billion'') would otherwise slip
+through uncaught. Finally, whenever the \emph{parent} verdict fails
+validation, neither field is trusted for display even if it
+individually passed its own check -- the same ``don't reuse anything
+from an already-unreliable call'' rule already applied to
+\texttt{reasoning\_summary} (Section~\ref{sec:failuremodes}).
 
 \section{Evaluation}
 \label{sec:evaluation}
@@ -628,6 +713,52 @@ call'' -- is needed before this comparison can support a stronger
 claim, and is now the more precisely scoped version of
 Section~\ref{sec:futurework}'s baseline item.
 
+\subsection{A second out-of-sample pilot: a photo post, and a grounded correction}
+\label{sec:secondpilot}
+A user-supplied Instagram URL turned out to be a single-image post, not
+a video -- TruthLens had no path for that at all, only a hard failure.
+Building one (Section~\ref{sec:multimodal}) and testing it against this
+real post, an image captioned ``The second poorest state by income, but
+number one in publicity and propaganda'' with an overlaid graphic citing
+specific government ad-spending figures, surfaced four further real
+issues before it produced usable output, each fixed and re-verified the
+same way as Section~\ref{sec:failuremodes}'s taxonomy: an unrelated
+crash on the zero-verifiable-claims path, on-screen text read correctly
+by vision analysis but silently dropped before reaching claim
+extraction, a fabricated headline number (detailed in
+Section~\ref{sec:failuremodes}), and a missing glyph for the Indian
+Rupee sign in the rendering font. With those fixed, claim extraction correctly
+produced two specific, verifiable claims (a rupee figure for
+government ad spending; a state income ranking) and one correctly
+-excluded opinion-framed claim.
+
+This post doubled as the first live test of the corrected-fact mechanism
+(Section~\ref{sec:corrections}), and it is worth reporting exactly what
+happened rather than only the eventual success. The claim's own
+retrieved evidence already contained a specific correction -- an
+investigative piece citing the state government's own budget documents
+for a figure roughly 70\% higher than the claim stated. Across three
+consecutive calls, the default local model's verdict was downgraded
+each time, for a real and unrelated reason: its \texttt{reasoning\_
+summary} cited a number that appeared in the evidence matrix but not in
+the specific source it had formally cited. Per
+Section~\ref{sec:corrections}'s design, this correctly suppressed
+\texttt{corrected\_fact} on every one of those three calls, even though
+the field itself would likely have been fine -- the system was
+conservative in exactly the situation it should be. A call to the
+fallback model produced a clean pass: verdict \texttt{MOSTLY\_FALSE},
+and a \texttt{corrected\_fact} stating the actual figure with its
+source, which we confirmed against the underlying article's own text
+before trusting it ourselves. Rendering it surfaced one more issue --
+the new content's height was undercounted in the slide layout,
+overflowing one evidence card into the next -- fixed and re-verified
+visually. We read the three-downgrades-then-one-clean-pass pattern as a
+small but genuine demonstration of Section~\ref{sec:cascade}'s
+verification-gated design doing its job under real, not synthetic,
+conditions: the local model's own citation imprecision, not a flaw in
+the new correction mechanism, was what held the output back until a
+stronger model produced something that actually passed.
+
 \section{A Taxonomy of Failure Modes Found in Live Testing}
 \label{sec:failuremodes}
 
@@ -727,6 +858,65 @@ rather than evaluated on a static benchmark.
   the fact-check stayed in the internal review queue -- but the
   underlying entity-confusion in evidence retrieval is unfixed and
   could resurface in a form these particular checks don't catch.
+\item \textbf{Single-digit fabrication in generated headlines.} Found
+  during the second pilot (Section~\ref{sec:secondpilot}):
+  \texttt{HEADLINE\_SYSTEM\_PROMPT} explicitly instructs the model never
+  to introduce a number not already in the source claim, and it did so
+  anyway, converting a claim stating ``4,000 crore rupees'' into a
+  headline reading ``\$1 Billion'' -- both invented and wrong (4,000
+  crore is roughly \$480M). This is the same failure category as the
+  organization-confusion case above (a free-text generation stage
+  violating an explicit grounding instruction) but in a different
+  pipeline stage, which is itself the point: prompt-level instructions
+  are not self-enforcing, and each generation surface needs its own
+  deterministic check, not a single shared assumption that ``we told it
+  not to'' is sufficient anywhere. The existing number-grounding check
+  (Section~\ref{sec:validation}) ignores single-digit numbers to avoid
+  flagging incidental meta-commentary in longer prose (``3 sources'');
+  a headline is short enough that this exception does not apply, and a
+  naive reuse of that check would have missed ``\$1'' entirely. Fixed
+  with a headline-specific check requiring every digit sequence in the
+  generated headline to appear in the source claim, falling back to the
+  claim's own (already-grounded) text verbatim on failure rather than a
+  second model attempt, since a second attempt is not guaranteed not to
+  fabricate a different number.
+\item \textbf{Vision-read text silently discarded before claim
+  extraction.} Also found during the second pilot: vision analysis of
+  the photo correctly read a specific figure and timeframe off an
+  on-screen graphic into a dedicated ``visible text'' field, distinct
+  from a separate, vaguer scene-description field -- but claim
+  extraction's prompt only ever included the latter. The specific,
+  checkable content a vision model had already extracted was available
+  in the database and simply never reached the stage that needed it,
+  which is a different class of problem from every other entry in this
+  taxonomy: not a hallucination, but a real signal being thrown away
+  before it could be used. Fixed by including the on-screen-text field
+  with the same weight as OCR output, distinct from the advisory-only
+  scene description.
+\item \textbf{Missing glyph rendering as a blank box.} The bundled
+  rendering fonts have no glyph for the Indian Rupee sign, which
+  rendered as a placeholder box on a published slide showing a
+  government spending figure -- a routine character in this specific
+  domain's claims, not an edge case. Fixed with a character substitution
+  applied only at render time, leaving the underlying data untouched
+  everywhere else (captions, API responses, the dashboard).
+\item \textbf{Vision-transcription accuracy, left unresolved.} Distinct
+  from the discarded-field bug above: the same vision analysis
+  occasionally misreads the text it is looking at. One quote box
+  displayed on a published slide read as truncated words ("sp." for
+  "spent," "pu" for "publicity") interrupted by a single stray
+  Devanagari character standing in for a number, where the underlying
+  claim record correctly identified the same on-screen text as
+  ``spent \ldots{} 4,000 crore.'' This corrupted only the
+  \emph{display} quote; the claim text used for research and verdicts
+  was unaffected, so it did not change any conclusion, but it is a real,
+  visible defect we chose not to patch with an unverified heuristic (for
+  instance, flagging isolated non-Latin characters in otherwise-Latin
+  text) rather than risk a fix with an unknown false-positive rate. This
+  is qualitatively different from every fixed entry above: an accuracy
+  limitation of the underlying vision model itself, not a gap in the
+  pipeline's use of it, and it does not have a clean deterministic fix
+  the way a grounding check does.
 \end{itemize}
 
 We consider this taxonomy, and the general lesson that most of these
@@ -767,6 +957,19 @@ TruthLens's decomposition/tiering/validation design -- is still needed
 and is the most direct way to substantiate the paper's central
 architectural claim.
 
+\textbf{Grounded corrections and photo-post ingestion are each tested on
+essentially one real case.} Section~\ref{sec:corrections}'s
+\texttt{corrected\_fact} mechanism produced a clean, verified result
+exactly once, after being correctly suppressed on three prior calls for
+an unrelated reason (Section~\ref{sec:secondpilot}); how often it
+actually fires with a specific, grounded correction on a broader corpus
+-- as opposed to correctly returning null when the evidence does not
+establish one -- is unknown. Photo-post ingestion (Section~\ref{sec:multimodal})
+is similarly tested against a single real post. Both are real,
+verified, working code paths, not simulated, but neither has been
+exercised at anything like the scale needed to report a meaningful
+success rate.
+
 \section{Future Work}
 \label{sec:futurework}
 
@@ -800,6 +1003,18 @@ architectural claim.
   tangential claim instead), would target what the pilot suggests is the
   dominant real-world failure mode in this domain -- likely higher
   leverage than any of the LLM-reasoning-focused items below.
+\item \textbf{Vision-transcription accuracy.} Section~\ref{sec:failuremodes}
+  documents a case where vision analysis of an on-screen graphic
+  introduced a stray character and truncated words into an otherwise
+  -correct reading. This did not affect any conclusion in that instance
+  (the separately-extracted claim text was correct), but it is an
+  accuracy limitation of the underlying vision model itself, not
+  something a grounding check can catch the way a fabricated number can
+  -- the text was present, just imprecisely transcribed. Systematically
+  measuring this rate (e.g.\ character-level edit distance between
+  vision-read text and a human transcription on a small sample) would
+  clarify whether it is rare noise or frequent enough to need a
+  dedicated mitigation.
 \item \textbf{Primary-source retrieval.} Section~\ref{sec:evaluation}'s
   most actionable finding: only 8 of 72 retrieved sources in our corpus
   reached the \texttt{primary\_government} tier and none reached
@@ -835,12 +1050,24 @@ These results come from a small, non-independent development corpus and
 should be read as preliminary telemetry, not a benchmark evaluation --
 but the failure modes they surfaced (schema-valid-but-empty output,
 verbatim-but-misattributed quotation, silent presentation
-inconsistency) are, we believe, general enough to matter to any team
-building an LLM pipeline whose output will be published and trusted.
-The most direct path to strengthening every claim in this paper is the
-held-out benchmark and naive-baseline comparison described in
-Section~\ref{sec:futurework}, which we intend to pursue as this work
-continues.
+inconsistency, single-digit numeric fabrication in a generated headline,
+a correctly-extracted signal silently discarded before it reached the
+stage that needed it) are, we believe, general enough to matter to any
+team building an LLM pipeline whose output will be published and
+trusted -- and general enough, in the case of the headline fabrication,
+to recur in a newly added feature (photo-post ingestion) despite the
+underlying validation architecture already existing, because grounding
+has to be re-applied at every new generation surface rather than assumed
+to transfer. Extending the same validation methodology from verdict
+labels to grounded corrections (Section~\ref{sec:corrections}) is a
+first step toward the kind of output actually useful to a reader --
+not just ``false,'' but what the evidence shows instead -- while the
+explicit decision not to extend it into predicting consequences marks
+where we believe grounded fact-checking has to stop and speculation
+would begin. The most direct path to strengthening every claim in this
+paper is the held-out benchmark and search-equipped baseline comparison
+described in Section~\ref{sec:futurework}, which we intend to pursue as
+this work continues.
 
 \bibliographystyle{IEEEtran}
 \bibliography{references}

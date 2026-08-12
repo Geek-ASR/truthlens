@@ -1,13 +1,34 @@
 # Paper status
 
-Last updated: 2026-08-12 (session 1 of an expected multi-session effort —
-this is genuinely not a one-sitting task if it's going to be honest).
+Last updated: 2026-08-12, second update same day (photo-post ingestion +
+grounded-corrections work folded in). Still genuinely multi-session.
+
+## Latest update (this pass)
+
+Folded in everything from the photo-post-support and grounded-corrections
+engineering work: a new System Architecture subsection on multi-modal
+(video/photo) ingestion; a new Methodology subsection on the
+`corrected_fact`/`context_note` mechanism, including the explicit,
+motivated decision NOT to build consequence-speculation; a new
+Evaluation subsection (`sec:secondpilot`) reporting the second
+out-of-sample pilot in full, including the three-downgrades-then-one
+-clean-pass pattern that real-world-tested the verification-gated
+cascade under conditions we didn't script; four new taxonomy entries
+(single-digit headline fabrication, discarded vision-read text, missing
+₹ glyph, unresolved vision-transcription accuracy); a new Future Work
+item; two new Discussion/threats-to-validity notes (both new mechanisms
+are single-case-tested); and abstract/contributions/conclusion updates.
+`main.tex` is now 11 pages. One real embarrassment caught before it
+shipped: a draft sentence used the literal "₹" character to describe the
+missing-glyph bug and hit the exact same missing-glyph problem in the
+paper's own PDF (Latin Modern also lacks that glyph) — replaced with
+words, not the character, same fix philosophy as the actual code.
 
 ## What's real and done
 
-- `main.tex` — full draft, IEEEtran conference format, 9 sections
-  (9 pages compiled), all with real content. Nothing in it is fabricated:
-  every citation is in `references.bib` and traceable in `SOURCES.md`;
+- `main.tex` — full draft, IEEEtran conference format, 11 pages, all
+  with real content. Nothing in it is fabricated: every citation is in
+  `references.bib` and traceable in `SOURCES.md`;
   every evaluation number is either a live query result against the
   actual TruthLens database, a real `POST /api/reels/quick` run against a
   genuinely new reel, or a real LLM call to the naive-baseline script.
