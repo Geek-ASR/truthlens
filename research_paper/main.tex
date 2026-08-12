@@ -1,0 +1,808 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+
+% ============================================================================
+% STATUS (remove before submission): this draft is honest about what is and
+% is not yet backed by rigorous evaluation. Search "TODO" for open items.
+% See research_paper/SOURCES.md for the citation-verification trail and
+% research_paper/STATUS.md for the overall project status and next steps.
+% ============================================================================
+
+\begin{document}
+
+\title{TruthLens: A Verification-Gated Pipeline for Evidence-Grounded Fact-Checking of Short-Form Political Video}
+
+\author{
+\IEEEauthorblockN{Aditya Rekhe}
+\IEEEauthorblockA{
+% TODO: affiliation not known to the drafting assistant -- fill in before
+% submission. Left as a visible placeholder rather than a guess.
+\textit{[Affiliation placeholder -- TODO]} \\
+Email: adityarekhe1030@gmail.com}
+}
+
+\maketitle
+
+\begin{abstract}
+Short-form video is now a primary vector for political misinformation, yet
+most automated fact-checking research targets text -- tweets, news
+sentences, or curated claim lists -- and most LLM-based fact-checking
+systems are evaluated on whether they reach a correct final label, not on
+whether the intermediate evidence chain that produced that label is real.
+We present TruthLens, a fact-checking pipeline for short-form political
+video (Instagram Reels, in the deployed case study) that enforces a strict
+evidence-before-verdict ordering -- atomic claim decomposition, multi-query
+web research, tiered source retrieval, per-source evidence extraction, and
+only then a claim-level verdict -- and, distinctively, subjects every
+LLM-generated verdict to a deterministic, non-LLM validation pass before
+it can be published. The validator checks that every cited piece of
+evidence actually exists, that every cited source was actually fetched,
+and that every number asserted in the model's reasoning actually appears
+in a cited passage; verdicts that fail are automatically downgraded rather
+than silently trusted. We further introduce an explicit distinction
+between \texttt{UNVERIFIED} (evidence was genuinely sought and found
+insufficient) and \texttt{RESEARCH\_FAILED} (the retrieval infrastructure
+itself broke), so that an infrastructure failure can never be published as
+if it were a considered null result, and a cost-aware model-escalation
+pattern in which a free, locally-hosted model is used by default and a
+paid model is invoked only when a deterministic ``is this output
+substantively grounded'' check fails. We report preliminary operational
+telemetry collected during iterative development -- including that
+deterministic validation downgraded 28.6\% (6 of 21) of generated verdicts
+in our test corpus, and that the free local model required escalation on
+25--43\% of invocations depending on pipeline stage -- and are explicit
+about what these numbers do and do not establish: they come from a small,
+non-independent, single-domain test corpus accumulated during debugging,
+not a held-out benchmark. A small first step toward a real held-out
+check -- two reels TruthLens had never seen, each independently
+fact-checked by a professional Indian fact-checking organization --
+found its verdict agreeing with the independent ground truth in both
+cases, but also surfaced a more consequential result: on both, the
+system's text-derived claim extraction missed the actual visual
+misinformation (real footage recaptioned with a false claim about what
+it shows), and one run exposed a real gap in validation coverage that
+let a downgraded verdict's hallucinated reasoning reach a rendered
+slide, which we traced and fixed the same day. We describe the larger
+evaluation this motivates and a taxonomy of concrete failure modes
+discovered through live testing that we believe generalize to other
+LLM-pipeline fact-checking systems.
+\end{abstract}
+
+\begin{IEEEkeywords}
+automated fact-checking, large language models, hallucination mitigation,
+retrieval-augmented generation, misinformation detection, short-form video,
+claim verification, source credibility
+\end{IEEEkeywords}
+
+\section{Introduction}
+
+Political misinformation increasingly spreads through short-form video --
+Instagram Reels, YouTube Shorts, TikTok -- rather than text
+\cite{shang2021tiktec}. This shift matters for automated fact-checking
+research in two ways that are easy to underestimate. First, the input is
+multi-modal and lossy: a claim may be spoken (transcript), displayed as
+on-screen text (OCR), or only implied by a caption, and any system that
+treats a reel as a single block of text discards exactly the structure a
+fact-checker needs to attribute who said what. Second, and more
+consequentially, the dominant existing evaluation paradigm for automated
+fact-checking -- did the system output the correct veracity label for a
+claim, measured against a benchmark such as FEVER \cite{thorne2018fever}
+or LIAR \cite{wang2017liar} -- says nothing about whether the evidence the
+system cites in support of that label is real. An LLM asked to
+``fact-check this claim'' can produce a fluent, well-cited-looking verdict
+whose citations point to sources it never retrieved, or whose numbers
+never appeared in any source it read. This is the specific failure mode
+this paper is about.
+
+We built and iteratively debugged TruthLens, a pipeline that ingests a
+political short-form video, decomposes it into atomic factual claims,
+researches each claim against the open web, and produces a
+carousel-style, cited, claim-by-claim fact-check -- while trying to make
+that specific failure mode (correct-sounding but ungrounded output)
+structurally difficult rather than merely discouraged by prompting. The
+central design principle, stated as a hard constraint throughout
+development, is \textbf{evidence before verdict}: the system is not
+permitted to propose a verdict and then search for support; it must
+search first, and a verdict can only be built from evidence rows that
+already exist in the database at the time the verdict-proposal model is
+invoked.
+
+Enforcing this ordering architecturally is necessary but not sufficient,
+because even a model given only real, already-fetched evidence can still
+hallucinate -- inventing a citation to evidence that was never actually
+supplied, asserting a number the source never stated, or (a failure mode
+we discovered live, not anticipated in advance) padding a
+\texttt{reasoning\_summary} field entirely with internal citation markup
+and no actual prose, which is schema-valid (a non-empty string) while
+being substantively empty. TruthLens's second contribution is therefore a
+deterministic, non-LLM validation layer that re-checks every LLM output
+against ground truth already in the database before it is allowed to
+reach a reader, downgrading rather than trusting outputs that fail.
+
+This paper makes the following contributions:
+
+\begin{enumerate}
+\item An architecture and reference implementation for evidence-grounded,
+  multi-claim fact-checking of short-form video, including atomic claim
+  decomposition with verbatim-quote grounding, multi-tier source
+  credibility scoring, and deterministic (non-LLM) aggregation of
+  per-claim verdicts into a single auditable reel-level verdict
+  (Section~\ref{sec:architecture}).
+\item A deterministic post-hoc validation methodology -- citation
+  existence, source-fetch existence, and number-grounding checks -- that
+  catches a measurable fraction of ungrounded LLM output without
+  requiring a second, equally fallible LLM call to police the first
+  (Section~\ref{sec:methodology}).
+\item An explicit \texttt{RESEARCH\_FAILED} vs.\ \texttt{UNVERIFIED}
+  distinction, and a publication gate that refuses to let infrastructure
+  failure masquerade as a considered null result -- an instance of the
+  broader selective-prediction principle that a system should distinguish
+  ``I looked and found nothing'' from ``I could not look''
+  (Section~\ref{sec:methodology}).
+\item A cost-aware escalation pattern -- default to a free, local model;
+  escalate to a paid model only when a deterministic substantiveness
+  check fails -- evaluated, as preliminary telemetry, on how often
+  escalation actually triggers per pipeline stage
+  (Section~\ref{sec:evaluation}).
+\item A concrete taxonomy of failure modes discovered through live,
+  iterative testing against a real deployed reel, several of which (a
+  paraphrase misattributed as a direct quote; a dashboard verdict that
+  silently disagreed with the published carousel verdict; a
+  bracket-matching validation-note regex that truncated at the wrong
+  bracket) are not, to our knowledge, previously documented in the
+  automated fact-checking literature at this level of implementation
+  detail (Section~\ref{sec:failuremodes}).
+\end{enumerate}
+
+We are explicit throughout about the evidentiary status of our claims.
+Section~\ref{sec:evaluation} reports real, measured telemetry from
+TruthLens's own audit log, not simulated or projected numbers -- but that
+telemetry comes from a small corpus (three distinct source videos, 16
+distinct claims, 21 verdict-generation events including re-runs across
+pipeline-fix iterations) accumulated during debugging rather than a
+frozen, held-out benchmark, and we describe in
+Section~\ref{sec:futurework} the larger evaluation required before any
+accuracy claim here should be treated as representative.
+
+\section{Related Work}
+\label{sec:relatedwork}
+
+Automated fact-checking and LLM factuality evaluation have both grown
+into large enough literatures to warrant their own surveys
+\cite{rahman2025hallucinationtotruth,vykopal2024genaisurvey}; we focus below
+on the specific sub-areas TruthLens draws on and departs from, rather
+than attempting a comprehensive survey ourselves.
+
+\subsection{Claim detection and decomposition}
+Claim detection for fact-checking spans monolingual, multilingual, and
+cross-lingual settings \cite{panchendrarajan2024claimdetection}, all of which are
+relevant to TruthLens's mixed English/Hindi/Urdu input. ClaimBuster
+\cite{hassan2017claimbuster} established check-worthy claim
+detection as a distinct pipeline stage, using a TF-IDF/POS/NER-featured
+SVM to rank sentences from political debate transcripts by how worth
+fact-checking they are. TruthLens's claim-extraction stage performs a
+related but distinct task: rather than ranking existing sentences, an LLM
+decomposes a transcript, OCR stream, and caption into new atomic
+claims, splitting compound statements (e.g. ``X happened, and because of
+it Y happened'') into independently checkable parts, following the
+general claim-decomposition strategy used in systems such as ProgramFC,
+which decomposes complex claims into sub-questions before per-question
+retrieval. We extend this with a grounding requirement specific to
+video: each extracted claim's \texttt{source\_quote}, when present, must
+be a verbatim substring of the actual transcript/OCR text, checked
+deterministically, not merely asserted by the model.
+
+\subsection{Fact-checking benchmarks}
+FEVER \cite{thorne2018fever} (Wikipedia-derived claims, Supports/
+Refutes/NotEnoughInfo) and LIAR \cite{wang2017liar} (12.8K PolitiFact
+statements, six-way truthfulness) are the dominant benchmarks for
+claim-verification models, and both evaluate a system's final label
+against ground truth without examining whether the evidence chain that
+produced the label is real. TruthLens's evaluation gap
+(Section~\ref{sec:futurework}) is precisely that we do not yet have a
+FEVER/LIAR-scale held-out benchmark for our own domain (Indian political
+short-form video); closing that gap, likely by curating a small
+labeled set in the style of these benchmarks rather than reusing them
+directly (our claims arrive multi-modally and in Hindi/Urdu/English
+mixed transcripts, which neither benchmark covers), is the single most
+important item of future work.
+
+\subsection{LLM hallucination and grounding verification}
+A growing body of work targets citation and grounding hallucination in
+LLM output specifically. A preregistered, hand-scored evaluation of
+leading commercial legal AI research tools found each hallucinates on
+17--33\% of queries \cite{magesh2024hallucinationfree}, and recent
+systems such as CiteCheck \cite{khajavi2026citecheck} detect hallucinated
+references by grounding each citation against external sources with a
+structured LLM verifier. Our validation layer (Section~\ref{sec:methodology})
+shares the goal but differs in mechanism: rather than using a second LLM
+call to judge whether a citation is plausible, TruthLens's checks are
+deterministic set-membership and substring tests against data the
+pipeline itself already fetched (does the cited \texttt{evidence\_id}
+exist; was the cited source actually retrieved; does the asserted number
+appear in the cited passage's stored text). This trades generality (we
+cannot catch a hallucination that happens to reuse a real, cited evidence
+ID incorrectly) for auditability and zero marginal LLM cost per check. A
+recent analysis of citation-grounding oracles in the legal domain is a
+useful caution for exactly this kind of check: it shows that an apparent
+hallucination rate measured by verifying citations against a reference
+graph is highly sensitive to that graph's coverage, not just to the
+model being measured, with the same responses scoring 15--21\%
+``hallucinated'' against a sparse snapshot of a citation registry and
+under 1.1\% against a denser one built from the same source
+\cite{ovcharov2026oracle}. TruthLens's own number-grounding check has an
+analogous blind spot: it can only confirm a number against sources the
+pipeline itself fetched, so it cannot distinguish ``this number is
+fabricated'' from ``this number is real but supported only by a source
+we did not retrieve.'' We flag this as an open limitation rather than a
+solved problem.
+
+\subsection{Political fact-checking with LLMs}
+Most directly relevant to TruthLens's domain, DeVerna et al.\
+\cite{deverna2025curatedcontext} evaluated 15 LLMs against over 6,000
+PolitiFact-verified claims and found that reasoning ability provided
+``minimal benefit'' and raw web search only ``moderate gains'' for
+political fact-checking accuracy, while providing curated, high-quality
+context improved macro-F1 by an average of 233\% across models. This is
+strong independent evidence for TruthLens's core design bet: that
+pipeline-level evidence curation (multi-query research planning, source
+tiering, per-source relevance filtering) matters more than which LLM
+does the final reasoning step. We view TruthLens as, in part, an
+applied instantiation and extension of that finding to a harder,
+multi-modal input domain.
+
+\subsection{Short-form video misinformation}
+TikTec \cite{shang2021tiktec} detects misleading COVID-19 short videos on
+TikTok by jointly modeling visual, audio, and textual signal, using
+captions to focus attention on the most informative frames. Recent work
+on checkworthiness detection specifically targets multilingual
+short-form video \cite{vatndal2025shortcheck}. TruthLens differs
+from this line of work in task framing: rather than a binary/graded
+misinformation classifier over the video as a whole, TruthLens performs
+open-domain, claim-level, cited verification against live web evidence,
+closer in spirit to FEVER-style verification than to TikTec-style
+classification, but applied to video-derived claims rather than
+Wikipedia sentences.
+
+\subsection{Political neutrality of automated fact-checkers}
+LLMs are not neutral instruments; recent evaluations document
+measurable partisan asymmetries in frontier models under politically
+charged prompts \cite{peng2026partisan}. Because a visibly biased
+automated fact-checker is worse than none for a politically sensitive
+application, every TruthLens system prompt includes an explicit
+neutrality clause instructing the model to apply identical evidentiary
+standards regardless of which political actor is named and to be
+equally willing to conclude a claim is true or false for any side. We
+have not run a systematic bias audit of TruthLens's own output (see
+Section~\ref{sec:futurework}); this is a limitation, not a resolved
+claim.
+
+\subsection{Cost-aware model cascading}
+FrugalGPT \cite{chen2023frugalgpt} demonstrated that routing most queries
+to a cheap model and escalating only hard cases to an expensive one can
+sharply cut inference cost with little accuracy loss. TruthLens applies
+the same principle in reverse-priority form suited to a zero-marginal-cost
+constraint: every stage defaults to a \emph{free, locally hosted} model
+(Llama 3.2 via Ollama) rather than a cheap paid one, and escalates to a
+paid model (Gemini) only when a deterministic quality gate -- not a
+learned cost/accuracy predictor as in FrugalGPT -- detects that the local
+model's output is schema-valid but substantively empty.
+
+\section{System Architecture}
+\label{sec:architecture}
+
+TruthLens is a FastAPI backend with a PostgreSQL/pgvector datastore, a
+Next.js review dashboard, and an object store (S3-compatible) for media
+and rendered output. The pipeline runs in the following strict order for
+every reel, and no stage may begin before the stage before it has
+persisted its output to the database:
+
+\begin{enumerate}
+\item \textbf{Ingestion.} The source video is downloaded (or manually
+  uploaded), audio is extracted and transcribed, on-screen text is
+  sampled and OCR'd at a fixed interval, and a representative thumbnail
+  frame is selected.
+\item \textbf{Claim extraction.} An LLM decomposes the transcript, OCR
+  text, and caption into atomic claims, each classified as
+  \texttt{factual}, \texttt{opinion}, \texttt{prediction},
+  \texttt{satire}, or \texttt{rhetorical}, with only \texttt{factual}
+  claims specific enough to research marked \texttt{verifiable}.
+\item \textbf{Research planning.} For each verifiable claim, an LLM
+  proposes 2--5 targeted search queries, explicitly instructed to include
+  at least one query aimed at primary sources (official/government
+  domains) when plausible.
+\item \textbf{Search and fetch.} Each query is run against a search
+  provider; result pages are fetched and their full text extracted
+  (not just the search snippet).
+\item \textbf{Evidence analysis.} For each fetched source, an LLM judges
+  stance (\texttt{supports}/\texttt{contradicts}/\texttt{provides\_
+  context}/\texttt{irrelevant}) against the claim, grounded in that
+  source's actual extracted text only.
+\item \textbf{Verdict proposal.} Given the claim and its full evidence
+  matrix (every evidence row, with source reliability and stance), an
+  LLM proposes a verdict label, confidence, and cited evidence IDs.
+\item \textbf{Deterministic validation} (Section~\ref{sec:methodology}).
+\item \textbf{Overall-verdict aggregation.} Once every claim covered by a
+  fact-check has a validated verdict, a fixed rule table -- not an LLM
+  call -- derives one reel-level verdict.
+\item \textbf{Content assembly and rendering.} A carousel of slides
+  (headline poster, claims/quote, evidence, conclusion) is assembled,
+  drawing almost all content directly from already-validated database
+  rows; only headline phrasing and a short ``why'' paragraph pass
+  through one additional narrow, schema-constrained LLM call each, both
+  with their own grounding checks (Section~\ref{sec:methodology}).
+\end{enumerate}
+
+\subsection{Source tiering}
+Every retrieved source is scored along an 8-dimension weighted
+reliability rubric and assigned to one of eight tiers:
+\texttt{primary\_government}, \texttt{primary\_legal},
+\texttt{primary\_data}, \texttt{news\_wire}, \texttt{established\_news},
+\texttt{academic}, \texttt{factcheck\_org}, or \texttt{other}. Tier
+membership determines both which sources are eligible to be surfaced as
+a claim's ``primary source'' citation on the rendered carousel and, in
+aggregate, the reliability-weighted confidence of the evidence matrix
+handed to the verdict-proposal stage.
+
+\subsection{Multi-claim, reel-level verdicts}
+An earlier version of TruthLens built one fact-check per claim; the
+current version builds one fact-check per \emph{reel}, covering every
+verifiable claim extracted from it, because a single short-form video
+routinely makes several claims of differing veracity, and collapsing
+them into one per-claim verdict discards exactly the ``partially true,
+partially misleading'' structure a reader needs. The rule table in
+Section~\ref{sec:methodology} governs how per-claim verdicts combine
+into the one verdict actually shown on the published carousel.
+
+\section{Methodology: Making the Model More Trustworthy, Not Just More Capable}
+\label{sec:methodology}
+
+The paper's title question -- how to make the model ``really better'' for
+this purpose -- is, in our experience building TruthLens, substantially a
+question about the pipeline around the model rather than the model
+itself. This section describes the four mechanisms we found to matter
+most.
+
+\subsection{Deterministic anti-hallucination validation}
+\label{sec:validation}
+After the verdict-proposal LLM call returns a structured
+\texttt{VerdictProposal} (label, confidence, reasoning, cited evidence
+IDs), TruthLens runs three checks against data already in the database,
+none of which invoke an LLM:
+
+\begin{itemize}
+\item \textbf{Citation existence:} every ID in \texttt{cited\_evidence\_
+  ids} must correspond to an evidence row that was actually passed to
+  the model in its evidence matrix.
+\item \textbf{Source-fetch existence:} every cited evidence row's source
+  must have a stored, successfully fetched full-text passage --- a
+  citation cannot point at a source the pipeline only planned to fetch.
+\item \textbf{Number grounding:} every numeral appearing in the model's
+  \texttt{reasoning\_summary} is extracted and checked for appearance in
+  at least one cited source's stored passage text.
+\end{itemize}
+
+A verdict that fails any check is not discarded -- it is
+\emph{downgraded}: persisted with a \texttt{validation\_status} other
+than \texttt{passed}, an appended, clearly delimited
+\texttt{[VALIDATION NOTE: ...]} explaining what failed, and excluded
+from citation lists shown to a reader. This preserves the model's
+underlying verdict label (still potentially useful to a human reviewer)
+while refusing to let its specific, unverified justification reach a
+reader unflagged.
+
+\subsection{The \texttt{RESEARCH\_FAILED} / \texttt{UNVERIFIED} distinction}
+\texttt{UNVERIFIED} is a legitimate, informative output: it means the
+system genuinely searched and found insufficient evidence to support or
+refute a claim. Early in development, TruthLens conflated this with a
+second, very different situation -- the search backend itself returning
+zero usable results because of a missing API key or provider
+misconfiguration -- and both surfaced identically as
+\texttt{UNVERIFIED}, indistinguishable to a reader from a considered
+null result. We introduced a distinct \texttt{RESEARCH\_FAILED} claim
+status, raised only when \emph{all} queries for a claim fail at the
+infrastructure level (not when queries succeed but return no relevant
+results), and a publication gate that refuses to build a fact-check
+whose primary claim is \texttt{RESEARCH\_FAILED}. This is a direct,
+domain-specific instance of the broader selective-prediction principle
+that a system should distinguish ``I don't know'' from ``I could not
+check''.
+
+\subsection{Verification-gated model cascading}
+\label{sec:cascade}
+Every pipeline stage defaults to a free, locally hosted model. Three
+stages -- claim extraction, content generation (headline/why-paragraph),
+and verdict proposal -- additionally run a deterministic
+\emph{substantiveness check} on the local model's output before
+accepting it:
+
+\begin{itemize}
+\item Claim extraction: is the extraction \emph{grounded}, i.e.\ do at
+  least half of the extracted verifiable claims have a
+  \texttt{source\_quote} that is an actual substring of the combined
+  transcript/OCR/caption text?
+\item Content generation / verdict reasoning: after stripping internal
+  citation markup (\texttt{[[evidence\_id=...]]} blocks), does the
+  remaining prose contain at least six real words? This check exists
+  because we discovered, live, that a locally hosted model would
+  sometimes produce a \texttt{reasoning\_summary} composed
+  \emph{entirely} of citation markup with no prose at all -- schema-valid
+  (a non-empty string), but explaining nothing to a reader.
+\end{itemize}
+
+On failure, the same call is retried once against a stronger paid model
+(Gemini) with an identical prompt, and the retry (whichever model
+produced it) is logged. This differs from a classic cascade
+\cite{chen2023frugalgpt} in that the escalation trigger is a
+deterministic grounding/substantiveness predicate specific to this
+domain's failure modes, not a learned or generic confidence estimate.
+
+\subsection{Deterministic overall-verdict aggregation}
+Once every claim covered by a fact-check has a verdict, TruthLens derives
+one reel-level verdict via a fixed rule table over the \emph{set} of
+per-claim verdict labels (weighted by whether a claim is
+``major,'' importance $\geq 0.5$) -- for example, all claims
+\texttt{TRUE} yields overall \texttt{TRUE}; a mix containing both
+\texttt{TRUE}/\texttt{MOSTLY\_TRUE} and \texttt{FALSE} yields
+\texttt{MISLEADING}. This is a plain combinatorial function, not a
+further LLM call, so the single highest-stakes number in the product --
+the verdict shown on the published carousel's first slide -- remains
+fully auditable from already-validated per-claim verdicts rather than
+resting on a second, opaque judgment.
+
+\section{Evaluation}
+\label{sec:evaluation}
+
+\subsection{What this section is, and is not}
+We report real telemetry recorded in TruthLens's own audit log during
+iterative development and live debugging against a small corpus: five
+ingested reel records over three distinct underlying videos (by
+content hash), yielding 28 extracted claims (16 marked verifiable and
+carried through to a verdict at least once), and 21 verdict-generation
+events in total -- more than the number of distinct claims because
+several claims were re-verdicted after pipeline fixes across iterations.
+This is \emph{operational telemetry from a system under active
+development}, not a held-out benchmark evaluation: the sample is small,
+the units are not independent (the same claim appears multiple times
+across pipeline-fix iterations), and every video in the corpus is
+Indian political content in a mix of English, Hindi, and Urdu. We report
+it because the numbers are real and, we believe, still informative about
+where a deterministic-validation, verification-gated-cascade approach
+actually spends its safety margin -- but no accuracy or rate reported
+here should be read as representative of held-out performance. Table
+\ref{tab:telemetry} summarizes the raw counts referenced throughout this
+section; all figures are computed directly from the \texttt{verdicts},
+\texttt{claims}, \texttt{evidence}, \texttt{sources}, and
+\texttt{audit\_logs} tables described in Section~\ref{sec:architecture}.
+
+\begin{table}[!t]
+\caption{Corpus and telemetry summary (development-time, not a held-out benchmark)}
+\label{tab:telemetry}
+\centering
+\footnotesize
+\begin{tabular}{lr}
+\toprule
+Distinct source videos (by content hash) & 3 \\
+Reel ingestion records & 5 \\
+Extracted claims & 28 \\
+Distinct claims with $\geq$1 verdict & 16 \\
+Verdict-generation events (incl.\ re-runs) & 21 \\
+Evidence rows analyzed & 72 \\
+\quad -- classified \texttt{supports} & 22 \\
+\quad -- classified \texttt{contradicts} & 10 \\
+\quad -- classified \texttt{irrelevant} & 40 \\
+Logged search-query failures & 55 \\
+Logged successful evidence-fetch completions & 20 \\
+Total tokens logged (input / output) & 123{,}477 / 19{,}821 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Deterministic validation catch rate}
+Of 21 verdict-generation events, 15 (71.4\%) passed all three
+deterministic checks unmodified; 6 (28.6\%) were downgraded -- 5 for an
+unsupported statistic (a number in the reasoning not found in any cited
+passage) and 1 for a missing/invalid citation. At the distinct-claim
+level, 5 of 16 claims (31.3\%) had at least one verdict downgraded during
+testing. We read this as evidence that the validation layer described in
+Section~\ref{sec:validation} is not a redundant formality: on this
+corpus, it materially changed what was published for roughly
+three in ten verdict-generation events, every one of which would
+otherwise have been schema-valid and passed through unflagged.
+
+\subsection{Verification-gated cascade trigger rate}
+The local model's output failed the deterministic substantiveness check,
+triggering escalation to Gemini, in 3 of 7 logged claim-extraction
+completions (approx.\ 43\%), 2 of 5 content-generation completions (40\%),
+and 2 of 8 verdict-proposal completions (25\%). These are small counts
+and should not be read as a precise escalation rate for the underlying
+local model in general; they are, however, real, and large enough to
+show the gate firing routinely rather than rarely -- a free-only,
+no-escalation deployment on this corpus would have shipped several
+outputs that were schema-valid but substantively empty.
+
+\subsection{Evidence signal-to-noise}
+Of 72 evidence rows the evidence-analysis stage judged, 40 (55.6\%) were
+classified \texttt{irrelevant} -- the fetched source, despite being
+returned by a search query targeted at the specific claim, did not
+actually address it. This is consistent with our qualitative finding
+(Section~\ref{sec:failuremodes}) that search recall, not claim
+reasoning, is the current bottleneck: over half of retrieved-and-read
+pages contribute nothing to the eventual verdict.
+
+\subsection{Source tier distribution}
+Of sources actually retrieved and scored, the majority (54 of 72 scored
+sources) fell into the lowest \texttt{other} tier (mean reliability
+0.404), with only 8 reaching \texttt{primary\_government} (mean
+reliability 0.674) and none reaching \texttt{primary\_legal} or
+\texttt{primary\_data} in this corpus, despite the research-planning
+prompt explicitly requesting at least one primary-source-targeted query
+per claim. This gap -- the prompt asks for primary sources, but the free
+search backend rarely surfaces them, especially for
+India-specific government domains -- is, in our assessment, the most
+consequential open problem for output quality, ahead of anything in the
+LLM reasoning stages themselves; we return to it in
+Section~\ref{sec:futurework}.
+
+\subsection{An out-of-sample pilot}
+\label{sec:pilot}
+Every number above comes from the same handful of videos used during
+development. As a first, small step toward the held-out evaluation
+Section~\ref{sec:futurework} calls for, we ran TruthLens against two
+reels it had never seen, each independently fact-checked by a
+professional Indian fact-checking organization (BOOM Live, Alt News),
+sourced by fetching the organization's own article and extracting the
+original Instagram post it had embedded as evidence -- not by us
+selecting or writing the claim or the verdict. On both, TruthLens's
+reel-level verdict (\texttt{MOSTLY\_FALSE} in both cases) agreed with
+the independent ground truth (\texttt{FALSE} in both cases). We do not
+read this as a validated accuracy result -- $n=2$ -- but the process of
+running it surfaced something more informative than the label match
+itself.
+
+On the second case, the label match was coincidental rather than
+earned. The reel's caption never states the claim that was actually
+false in words; the misinformation is entirely visual (real World Cup
+celebration footage captioned as a protest). TruthLens's text-derived
+claim extraction found two tangential claims in the caption's moralizing
+language and never identified or checked the one thing that was
+actually misleading: what the video shows. \emph{Both} pilot cases follow
+this same pattern -- genuine footage, false caption about what it
+depicts -- which was also the dominant pattern among the professional
+fact-checks we surveyed while sourcing this pilot. TruthLens has no
+video-provenance or reverse-image-search capability; its architecture
+may be structurally weak against the single most common real-world
+failure mode in this domain, independent of anything about LLM
+reasoning quality. We treat this as the most important finding of this
+pilot and return to it in Section~\ref{sec:futurework}.
+
+The same run also surfaced two further bugs, both fixed the same day
+(Section~\ref{sec:failuremodes}): evidence retrieval confused two
+similarly-named but distinct organizations, and a verdict the
+deterministic validator had already downgraded still had its full
+free-text reasoning reused downstream, carrying an entity-confused,
+unsupported claim about a real organization's ideology onto a rendered
+slide. Neither is visible in the aggregate statistics above, which is
+itself worth noting: a system can look healthy on its summary numbers
+while a specific, reproducible, reputationally serious failure sits one
+level down.
+
+\section{A Taxonomy of Failure Modes Found in Live Testing}
+\label{sec:failuremodes}
+
+Beyond the aggregate statistics above, iterative live testing against a
+real deployed reel surfaced several specific, reproducible failure modes
+that we believe are under-documented in the automated fact-checking
+literature at this level of implementation detail, because they only
+appear when a system is actually run end-to-end against real content
+rather than evaluated on a static benchmark.
+
+\begin{itemize}
+\item \textbf{Schema-valid, substantively empty output.} Discovered
+  independently in three different pipeline stages (claim extraction,
+  content generation, verdict reasoning): a locally hosted model
+  produces output that satisfies its Pydantic/JSON schema -- a
+  non-empty string, a well-typed list -- while containing no actual
+  information, e.g.\ a \texttt{reasoning\_summary} composed entirely of
+  \texttt{[[evidence\_id=...]]} citation markup with zero prose. No
+  schema validation catches this class of failure; only a
+  content-level substantiveness check does (Section~\ref{sec:cascade}).
+\item \textbf{Verbatim-but-misattributed quotation.} A claim's
+  \texttt{source\_quote} can be a genuine, verbatim substring of the
+  video's on-screen text -- passing a naive ``is this a real quote''
+  check -- while still being the wrong kind of quote: a news-style
+  caption written by the video's publisher \emph{about} a person
+  (``X Attacks Y Over Z Rule''), not words that person said. Attributing
+  such a quote to the person it names, because their name appears
+  nearby, produces a fabricated first-person quotation from genuine,
+  verbatim text. We fixed this by requiring the candidate speaker's own
+  name not to appear inside the quote text itself before trusting the
+  attribution -- a person's own quote essentially never refers to them
+  self by full name.
+\item \textbf{Silent verdict/presentation inconsistency.} After
+  introducing reel-level, multi-claim verdict aggregation
+  (Section~\ref{sec:architecture}), the review dashboard continued
+  displaying the primary claim's own individual verdict as ``the''
+  verdict, while the actually-published carousel displayed the
+  separately computed reel-level verdict. The two could and did
+  disagree (one test case: dashboard showed the primary claim's
+  \texttt{UNVERIFIED}; the carousel showed the reel's aggregate
+  \texttt{MOSTLY\_TRUE}) with no error, because both values were valid
+  data -- the bug was in which one the interface trusted, not in either
+  computation. This class of failure -- two correct numbers, wrong
+  place shown -- will not be caught by any per-field validation test and
+  was only found by comparing rendered output against the database
+  directly.
+\item \textbf{Bracket-matching truncation bug.} A display-sanitization
+  regex intended to strip an internal \texttt{[VALIDATION NOTE: ...]}
+  suffix used non-greedy bracket matching, which stopped at the first
+  \texttt{]} character encountered -- the closing bracket of a Python
+  list repr \emph{inside} the note itself (e.g.\ ``Numbers
+  \texttt{['3065258', '69']} in reasoning\_summary...''), leaving the
+  note's own tail visible on a published slide. Fixed by truncating at
+  a literal marker string rather than attempting to bracket-match
+  free-form text.
+\item \textbf{Unrepresentative thumbnail selection.} A single frame
+  extracted at a hardcoded 0.5-second offset is not a reliable
+  representative thumbnail; in one case it landed on an unflattering
+  extreme close-up mid-gesture. We now sample several candidate frames
+  across the video's duration and select by a cheap grayscale-variance
+  ``visual complexity'' score, screening out blank/flat/transition
+  frames -- not real scene- or face-aware selection, but a
+  materially better floor than one fixed guess.
+\item \textbf{Entity confusion between similarly-named organizations.}
+  Found during the out-of-sample pilot (Section~\ref{sec:pilot}):
+  researching a claim about ``Karni Sena,'' evidence retrieval returned
+  a Wikipedia article about \emph{Sri Ram Sena} -- a real but different
+  Indian organization sharing the common suffix ``Sena.'' The
+  evidence-analysis stage labeled this source's stance as
+  \texttt{contradicts} rather than \texttt{irrelevant}: an article about
+  a different entity does not contradict a claim about this one, it
+  simply does not address it. Name-collision entity disambiguation is
+  not currently checked anywhere in the pipeline.
+\item \textbf{Downgraded reasoning reused as trusted input downstream.}
+  Also found during the out-of-sample pilot, and the more serious of the
+  two: the verdict-proposal model, given the mismatched Sri Ram Sena
+  evidence above, wrote that this ``suggests an unrelated organization
+  with violent ideology'' -- a real hallucination the deterministic
+  validator correctly downgraded (for an unrelated reason: an unsupported
+  number elsewhere in the same reasoning text). But downgrading a
+  verdict only forces its \emph{label} to \texttt{UNVERIFIED}; it does
+  not redact the free-text \texttt{reasoning\_summary} the model wrote
+  to justify its original, rejected verdict, because there is no
+  reliable way to isolate just the offending sentence from otherwise
+  -reasonable-looking prose. That full text was still being reused
+  verbatim in two places -- an evidence card's displayed answer text, and
+  as raw input material for the separate overall ``why'' paragraph LLM
+  call, which wove it into the actual rendered slide. This is a real
+  instance of exactly the failure class the validation architecture
+  (Section~\ref{sec:validation}) exists to prevent, in a genuine gap in
+  that architecture's coverage: validation applied to whether a verdict
+  is safe to \emph{label}, not to whether its reasoning text is safe to
+  \emph{quote}. Fixed by treating any non-\texttt{passed}
+  \texttt{validation\_status} as disqualifying for reuse of that
+  verdict's free text anywhere, replacing it with a generic,
+  non-fabricated note instead. This never reached a real audience --
+  the fact-check stayed in the internal review queue -- but the
+  underlying entity-confusion in evidence retrieval is unfixed and
+  could resurface in a form these particular checks don't catch.
+\end{itemize}
+
+We consider this taxonomy, and the general lesson that most of these
+failures were only discoverable by running the full system against real
+content and inspecting rendered output rather than by unit-testing
+individual functions in isolation, to be as practically important a
+contribution of this work as any single architectural component.
+
+\section{Discussion and Threats to Validity}
+\label{sec:discussion}
+
+\textbf{Small, non-independent sample.} The telemetry in
+Section~\ref{sec:evaluation} is drawn from repeated testing against a
+handful of real videos, not independent draws from a target population;
+several statistics (e.g.\ the 28.6\% validation-downgrade rate) could
+shift substantially with a larger, held-out corpus. We report exact
+counts, not just percentages, throughout so a reader can judge this
+directly.
+
+\textbf{Single domain, single language mix.} All evaluated content is
+Indian political short-form video with English/Hindi/Urdu mixed
+transcripts. Source-tiering domain lists and the research-planning
+prompt's primary-source guidance were not tuned for, and have not been
+tested against, other national contexts.
+
+\textbf{No systematic bias audit.} Section~\ref{sec:relatedwork}
+discusses documented partisan asymmetry in frontier LLMs; TruthLens
+mitigates this only via prompt-level instruction (the neutrality
+clause), which is not verified against a labeled bias-evaluation set.
+
+\textbf{No comparison baseline.} We have not run a naive single-shot
+``ask an LLM to fact-check this claim'' baseline under identical
+conditions to quantify how much the pipeline architecture (versus the
+underlying model) contributes to output quality. This is the most
+direct way to substantiate the paper's central claim and is the top
+item in Section~\ref{sec:futurework}.
+
+\section{Future Work}
+\label{sec:futurework}
+
+\begin{enumerate}
+\item \textbf{A held-out, labeled benchmark.} Curate a labeled set of
+  short-form political video claims, disjoint from any content used
+  during development, with ground-truth verdicts from independent human
+  reviewers (ideally with inter-annotator agreement reported), and
+  report precision/recall/F1 against it -- the single change that would
+  most improve this paper's evidentiary standing.
+\item \textbf{A naive-baseline comparison.} Run a single-shot,
+  no-pipeline LLM fact-check over the same claims and report the
+  validation-downgrade rate and accuracy difference, to isolate the
+  contribution of pipeline architecture from the contribution of the
+  underlying model.
+\item \textbf{Video-provenance verification.} The out-of-sample pilot
+  (Section~\ref{sec:pilot}) found both tested cases, and the majority of
+  professional fact-checks surveyed while sourcing it, follow the same
+  pattern: genuine footage recaptioned with a false claim about what it
+  shows or where it's from. TruthLens has no mechanism to check this --
+  claim extraction works from transcript/OCR/caption text, and a
+  purely-visual false claim (wrong location, wrong event, wrong date) is
+  invisible to it regardless of how good the downstream reasoning is.
+  Reverse-image/video search against known reference footage, or at
+  minimum flagging when a claim about a video's provenance cannot be
+  checked from text alone (rather than silently checking a different,
+  tangential claim instead), would target what the pilot suggests is the
+  dominant real-world failure mode in this domain -- likely higher
+  leverage than any of the LLM-reasoning-focused items below.
+\item \textbf{Primary-source retrieval.} Section~\ref{sec:evaluation}'s
+  most actionable finding: only 8 of 72 retrieved sources in our corpus
+  reached the \texttt{primary\_government} tier and none reached
+  \texttt{primary\_legal}/\texttt{primary\_data}, despite explicit
+  prompt-level requests for primary-source queries. Concrete next
+  steps: structured queries against known government/legislative
+  document APIs and domain allow-lists (e.g.\ \texttt{.gov.in},
+  \texttt{pib.gov.in}, \texttt{indiankanoon.org}) rather than relying on
+  a general-purpose web search engine to surface them incidentally.
+\item \textbf{Systematic bias evaluation.} Apply an existing partisan-
+  asymmetry evaluation methodology (Section~\ref{sec:relatedwork}) to
+  TruthLens's own verdicts across politically matched claim pairs.
+\item \textbf{Cross-lingual and cross-domain generalization.} Test
+  source tiering and research-planning prompts against non-Indian
+  political content and languages beyond the current English/Hindi/Urdu
+  mix.
+\item \textbf{Calibration.} Compare TruthLens's reported confidence
+  bands against empirical correctness rates once a labeled benchmark
+  exists (Item 1), to check whether ``very high confidence'' verdicts
+  are in fact more often correct than ``moderate confidence'' ones.
+\end{enumerate}
+
+\section{Conclusion}
+
+TruthLens demonstrates that a substantial fraction of the ``does the
+model hallucinate'' problem in LLM-based fact-checking is addressable
+architecturally rather than only through better prompting or a more
+capable model: a deterministic, non-LLM validation layer applied after
+generation caught 28.6\% of generated verdicts in our development
+corpus, and an explicit distinction between genuine null results and
+infrastructure failure prevents an entire class of false confidence.
+These results come from a small, non-independent development corpus and
+should be read as preliminary telemetry, not a benchmark evaluation --
+but the failure modes they surfaced (schema-valid-but-empty output,
+verbatim-but-misattributed quotation, silent presentation
+inconsistency) are, we believe, general enough to matter to any team
+building an LLM pipeline whose output will be published and trusted.
+The most direct path to strengthening every claim in this paper is the
+held-out benchmark and naive-baseline comparison described in
+Section~\ref{sec:futurework}, which we intend to pursue as this work
+continues.
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\end{document}
