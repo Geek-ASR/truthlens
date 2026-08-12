@@ -1,14 +1,16 @@
 # Ground Truth Status
 
-## Current dataset: 5 items, all Tier 1
+## Current dataset: 7 items, all Tier 1
 
-| ID | Verdict | Source org | Political actor | Claim type |
-|---|---|---|---|---|
-| item-0001 | FALSE | BOOM Live | BJP | provenance |
-| item-0002 | FALSE | Alt News | Karni Sena | provenance (visual) |
-| item-0003 | FALSE | BOOM Live | CJP | visual (AI-generated) |
-| item-0004 | TRUE | BOOM Live | Delhi Police (govt) | provenance |
-| item-0005 | MISLEADING | Factly | Congress | provenance |
+| ID | Verdict | Source org | Political actor | Claim type | Language |
+|---|---|---|---|---|---|
+| item-0001 | FALSE | BOOM Live | BJP | provenance | en |
+| item-0002 | FALSE | Alt News | Karni Sena | provenance (visual) | en |
+| item-0003 | FALSE | BOOM Live | CJP | visual (AI-generated) | en |
+| item-0004 | TRUE | BOOM Live | Delhi Police (govt) | provenance | en |
+| item-0005 | MISLEADING | Factly | Congress | provenance | en |
+| item-0006 | FALSE | BOOM Live (Hindi) | none (disaster misinfo) | event (visual, AI-generated) | en caption |
+| item-0007 | FALSE | Alt News (Hindi) | BJP | misleading_context | hi (spoken) |
 
 Every label above is the independent professional organization's own
 published verdict (see `ANNOTATION_GUIDELINES.md` Task A, Tier 1) — not
@@ -53,11 +55,20 @@ an oversight:
 
 ## Dataset composition gaps (from `dataset/SOURCING_LOG.md`, restated here for visibility)
 
-- All 5 items are provenance/visual-type claims — no statistic, quote,
-  law/policy, or historical-fact claim type yet.
-- All 5 items are English-language — no Hindi/Urdu-mixed transcript item
-  yet, despite that being a stated target and a real part of the
-  system's deployment domain.
-- n=5 is too small for any of RQ3/RQ5/RQ6 to produce a statistically
+- 4 of 7 items are `provenance`-type claims; `statistic`, `quote`,
+  `law_policy`, `historical`, and `true_claim` remain entirely
+  unrepresented. Pass 2's sourcing log records a real (not yet
+  confirmed as structural) difficulty finding statistic-type claims
+  with a specific Instagram embed, as opposed to WhatsApp/X.
+- 6 of 7 items are FALSE-verdict — a possible structural property of
+  Tier-1 sourcing (professional fact-checkers publish far more debunks
+  than confirmations), flagged in `SOURCING_LOG.md` as worth stating in
+  the paper's own dataset-construction discussion, not just as a gap to
+  keep chasing.
+- 1 of 7 items (item-0007) has confirmed Hindi spoken content — real
+  progress from pass 1's all-English set, though a genuinely
+  code-switched (Hindi+English within the same transcript) item, the
+  project's actual stated target domain, is still not represented.
+- n=7 is too small for any of RQ3/RQ5/RQ6 to produce a statistically
   meaningful result as-is; `EXPERIMENT_PLAN.md` already treats these as
   conditional/small-sample for exactly this reason.

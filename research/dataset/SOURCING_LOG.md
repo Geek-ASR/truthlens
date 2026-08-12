@@ -6,11 +6,33 @@ rate from checking 22 articles and found nothing new), every candidate
 actually fetched and evaluated during this session is logged below,
 hits and misses both — not just the successes.
 
-## Result: 3 new Tier-1 items found, 5 candidates actively fetched and verified
+## Result after two sourcing passes: 5 new Tier-1 items found, 7 candidates actively fetched and verified
 
 Combined with the 2 pre-existing items from `PROTOCOL.md`, `items.jsonl`
-now has **5 items total** — real progress toward the 20-30 target, not
+now has **7 items total** — real progress toward the 20-30 target, not
 yet there, reported as exactly what it is.
+
+## Pass 2 (targeted at the two gaps pass 1 left open: non-provenance claim types, Hindi/Urdu content)
+
+| # | Outlet | Article | Instagram embed found? | Live? | Outcome |
+|---|---|---|---|---|---|
+| 6 | BOOM Hindi | AI-generated/staged videos falsely linked to Assam floods | Yes, 2 URLs | Yes (checked both) | **HIT — item-0006.** Non-political-actor (disaster misinformation), closes the "all 5 items had a partisan actor" gap. |
+| 7 | Alt News Hindi | BJP leader (Tajinder Bagga) shared clipped video of "Naara-e-Taqbeer" slogans at CJP protest | Yes, 1 URL | Yes | **HIT — item-0007.** First confirmed-Hindi-spoken-content item; first `misleading_context` (selective cropping, not fabrication or misidentification) claim type. |
+| 8 | (search only, no article fetched) | `crore`/`lakh` statistic claims, BOOM/Alt News | Search returned no specific Instagram-embedded statistic fact-check | — | **NO HIT** — pure numeric/statistic claims did not surface a matching Instagram-specific fact-check this pass. |
+| 9 | (search only) | PIB Fact Check financial-scheme deepfakes (Nirmala Sitharaman investment scheme) | Multiple candidates seen, none individually fetched/confirmed to have a specific Instagram (vs. X/WhatsApp) embed | — | **NOT PURSUED** — real backlog item, not a confirmed miss; needs a direct fetch to resolve either way. |
+| 10 | (search only) | Global (Trump/US economy) fact-checks | Off-topic — search drifted to US politics despite Indian-outlet site filters | — | **NO HIT**, query design problem not a sourcing problem |
+| 11 | (search only) | Factly + "statistics" + Instagram | Search did not surface Factly-specific results at all | — | **NO HIT** |
+
+**Honest pattern observed, not yet confirmed as a real trend**: pure
+statistic/numeric claims (a % figure, a budget number, an economic
+indicator) are proving much harder to source from a *specific,
+Instagram-embedded* fact-check than provenance/visual claims are —
+plausibly because detailed statistical misinformation spreads more via
+WhatsApp forwards and X screenshots (text-native platforms) than via
+Instagram (a video/image-native platform), which would be a genuine,
+citable finding about this dataset's domain if it holds up under more
+searching, not just a search-skill problem. Flagged for the next
+sourcing pass rather than assumed.
 
 ## Candidates actively fetched (article content + liveness of the Instagram URL both checked)
 
@@ -50,25 +72,30 @@ checking older (pre-July 2026) and lower-profile candidates from the
 backlog above, to see if the rate holds or reverts toward `PROTOCOL.md`'s
 figure. Reported here rather than assumed, per Rule 1.
 
-## Composition check against `DATASET_SPEC.md`'s diversity targets, at n=5
+## Composition check against `DATASET_SPEC.md`'s diversity targets, at n=7 (after pass 2)
 
-- Visual/provenance items: 5 of 5 (all items so far are provenance-type
-  misinformation — real footage/photo, wrong context or wrong
-  identification). **This is a real, disclosed skew**, not a target met:
-  the dataset needs non-provenance claim types too (statistic, quote,
-  law/policy, historical) to test claim coverage on ordinary spoken/
-  transcript claims, not only visual ones. Next sourcing pass should
-  prioritize this gap over more provenance items.
-- Verdict label spread: FALSE ×3 (item-0001, 0002, 0003), TRUE ×1
-  (item-0004), MISLEADING ×1 (item-0005). Meaningfully more balanced
-  than the original 2-item all-FALSE set.
-- Political actor spread: BJP, Karni Sena, CJP, Delhi Police
-  (government), Congress — five distinct actors/institutions across 5
-  items, no repeats. Good early diversity for RQ5, though n=5 is far too
-  small to support any bias conclusion yet.
-- Language: all 5 items are English-language posts/captions (even where
-  the broader event involves Hindi-speaking participants). The
-  Hindi/Urdu-mixed-transcript target from `DATASET_SPEC.md` is **not yet
-  met** and is a real gap for the next pass — English-language political
-  Instagram content was simply what this session's searches surfaced
-  first.
+- Claim type spread: provenance ×4, visual ×1, event ×1, misleading_context
+  ×1. Better than pass 1's all-provenance set, but **statistic, quote,
+  law_policy, historical, and true_claim (a claim that just turns out to
+  be straightforwardly accurate, framed as such from the start) are
+  still entirely unrepresented.** This remains the dataset's biggest
+  compositional gap.
+- Verdict label spread: FALSE ×5, TRUE ×1, MISLEADING ×1. Still
+  FALSE-heavy — a real, disclosed skew, not a target met. Professional
+  fact-checkers publish far more "this is false" than "this is true"
+  verdicts by the nature of what's newsworthy to debunk, so this skew
+  may be a structural property of Tier-1 sourcing itself, not just a
+  sampling gap this project can search its way out of — worth stating
+  in the paper's dataset-construction discussion rather than treated as
+  a temporary gap.
+- Political actor spread: BJP ×2, Karni Sena, CJP, Delhi Police
+  (government), Congress, none (disaster misinformation) — six distinct
+  actors/institutions across 7 items. Good early diversity for RQ5,
+  though n=7 is still far too small to support any bias conclusion.
+- Language: 6 English, 1 Hindi (item-0007, confirmed via the fact
+  -checker's own description of the spoken content, not just the
+  caption). The Hindi/Urdu-mixed-transcript target is now **partially**
+  met — one real item exists, but the project's stated target domain
+  (English/Hindi/Urdu *mixed* transcripts, per the existing paper's own
+  framing) isn't fully represented by a single monolingual-Hindi item;
+  a genuinely code-switched item is still a gap.
