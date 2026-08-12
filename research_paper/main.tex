@@ -70,10 +70,16 @@ system's text-derived claim extraction missed the actual visual
 misinformation (real footage recaptioned with a false claim about what
 it shows), and one run exposed a real gap in validation coverage that
 let a downgraded verdict's hallucinated reasoning reach a rendered
-slide, which we traced and fixed the same day. We describe the larger
-evaluation this motivates and a taxonomy of concrete failure modes
-discovered through live testing that we believe generalize to other
-LLM-pipeline fact-checking systems.
+slide, which we traced and fixed the same day. A first, deliberately
+narrow naive-baseline comparison on the same two claims found the
+baseline abstaining (correctly recognizing it had no way to know about
+recent events) where TruthLens's pipeline reached a substantive,
+correct-at-the-label answer -- a result we are careful to attribute to
+search access rather than to any demonstrated advantage in TruthLens's
+specific architecture, pending a search-equipped baseline. We describe
+the larger evaluation this motivates and a taxonomy of concrete failure
+modes discovered through live testing that we believe generalize to
+other LLM-pipeline fact-checking systems.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -595,6 +601,33 @@ itself worth noting: a system can look healthy on its summary numbers
 while a specific, reproducible, reputationally serious failure sits one
 level down.
 
+\subsection{A first naive-baseline comparison}
+\label{sec:naivebaseline}
+Using the same two pilot claims, we ran a genuinely naive baseline: the
+claim text sent directly to the same LLM TruthLens uses by default
+(Llama 3.2 via Ollama), with a bare prompt asking for a verdict and
+reasoning -- no claim decomposition, no search, no retrieved evidence,
+no validation. On both claims the naive baseline answered
+\texttt{UNVERIFIABLE}, where TruthLens's full pipeline reached
+\texttt{MOSTLY\_FALSE} (matching ground truth on both, per
+Section~\ref{sec:pilot}).
+
+We read this narrowly and are wary of overclaiming it. The naive
+baseline did not reason incorrectly -- it correctly recognized it has no
+way to know about mid-2026 events from training data alone and said so,
+rather than fabricating an answer. What separates the two columns here
+is access to current information via search, not any demonstrated
+advantage in claim decomposition, source tiering, or verdict reasoning
+specifically. This two-claim comparison mostly shows that having
+\emph{any} search access beats having none, which is a much lower bar
+than validating TruthLens's specific multi-stage architecture against a
+simpler competitor that also has search. A fairer ablation -- one
+search query plus a single LLM call over the results, isolating what
+TruthLens's multi-stage design adds beyond ``search plus one model
+call'' -- is needed before this comparison can support a stronger
+claim, and is now the more precisely scoped version of
+Section~\ref{sec:futurework}'s baseline item.
+
 \section{A Taxonomy of Failure Modes Found in Live Testing}
 \label{sec:failuremodes}
 
@@ -724,12 +757,15 @@ discusses documented partisan asymmetry in frontier LLMs; TruthLens
 mitigates this only via prompt-level instruction (the neutrality
 clause), which is not verified against a labeled bias-evaluation set.
 
-\textbf{No comparison baseline.} We have not run a naive single-shot
-``ask an LLM to fact-check this claim'' baseline under identical
-conditions to quantify how much the pipeline architecture (versus the
-underlying model) contributes to output quality. This is the most
-direct way to substantiate the paper's central claim and is the top
-item in Section~\ref{sec:futurework}.
+\textbf{Baseline comparison is preliminary and too coarse.} We ran a
+naive single-shot baseline on the two pilot claims
+(Section~\ref{sec:naivebaseline}), but at $n=2$, and in a form that
+mostly isolates ``has search access'' rather than ``has TruthLens's
+specific multi-stage architecture.'' A baseline that also has search --
+disentangling the value of retrieval itself from the value of
+TruthLens's decomposition/tiering/validation design -- is still needed
+and is the most direct way to substantiate the paper's central
+architectural claim.
 
 \section{Future Work}
 \label{sec:futurework}
@@ -741,11 +777,15 @@ item in Section~\ref{sec:futurework}.
   reviewers (ideally with inter-annotator agreement reported), and
   report precision/recall/F1 against it -- the single change that would
   most improve this paper's evidentiary standing.
-\item \textbf{A naive-baseline comparison.} Run a single-shot,
-  no-pipeline LLM fact-check over the same claims and report the
-  validation-downgrade rate and accuracy difference, to isolate the
-  contribution of pipeline architecture from the contribution of the
-  underlying model.
+\item \textbf{A search-equipped baseline comparison.} Our first attempt
+  (Section~\ref{sec:naivebaseline}) used a baseline with no search
+  access at all, which mostly showed that search access matters --
+  unsurprising, and not the comparison that actually matters most. The
+  needed version gives the baseline one web search and a single LLM
+  call over the raw results, holding retrieval access constant so the
+  comparison isolates what TruthLens's multi-stage decomposition,
+  source tiering, and deterministic validation specifically add beyond
+  ``search plus one model call.''
 \item \textbf{Video-provenance verification.} The out-of-sample pilot
   (Section~\ref{sec:pilot}) found both tested cases, and the majority of
   professional fact-checks surveyed while sourcing it, follow the same

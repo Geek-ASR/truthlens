@@ -144,16 +144,30 @@ works:
   live reel IS the exact post making the false claim (not just a source
   video referenced within a claim about a different, now-dead post).
 
-Both are being run through `POST /api/reels/quick` to check TruthLens's
-own output against these independent verdicts — see
-`../STATUS.md` for the result once available.
+Both were run through `POST /api/reels/quick` to check TruthLens's own
+output against these independent verdicts — see `results.md` for full
+results (both matched ground truth at the label level; bm-0002 revealed
+a real validation-coverage bug, since fixed) and a naive-baseline
+comparison on the same two claims.
 
-**Real constraint found while doing this:** most fact-check articles
-describe or screenshot the misleading post rather than linking a
-persistently live URL — the actual originating post is often already
-taken down or only in an archive.is snapshot by the time the fact-check
-is published, which yt-dlp/auto_fetch cannot retrieve. Only articles
-where the outlet *embedded* the original (or a directly relevant source)
-video as evidence reliably yield a fetchable URL. This will bottleneck
-how fast the corpus can grow — worth factoring into the "how many reels
-are feasible" scoping conversation.
+**Real constraint found while doing this, now with a real hit-rate
+number.** Most fact-check articles describe or screenshot the
+misleading post rather than linking a persistently live URL — the
+actual originating post is often already taken down or only in an
+archive.is snapshot by the time the fact-check is published, which
+yt-dlp/auto_fetch cannot retrieve. Only articles where the outlet
+*embedded* the original (or a directly relevant source) video as
+evidence reliably yield a fetchable URL. After bm-0001/bm-0002, a second
+pass checked 22 more recent BOOM Live and Alt News articles (raw-HTML
+embed extraction, same method) and found zero more usable live
+Instagram embeds — a combined hit rate of roughly 2 in 26 articles
+checked (~8%). This is a real ceiling on how fast this specific sourcing
+method can grow the corpus, not a fluke of the first search. Scaling
+past a handful of entries this way will likely require either: querying
+more outlets (Factly returned HTTP 403 to automated fetches; The Quint's
+WebQoof doesn't surface full URLs in an easily fetchable list view; try
+Newschecker, India Today Fact Check, and Vishvas News next), accepting a
+lower yield and just checking more articles, or loosening Tier 1 to
+accept a fact-checked *claim* even when the specific original post the
+outlet covered is no longer live, and independently sourcing a
+different, still-live post making the same claim.

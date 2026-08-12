@@ -136,3 +136,40 @@ Work item, arguably ahead of primary-source retrieval.
    as "solved forever": the underlying entity-confusion in evidence
    retrieval (Karni Sena / Sri Ram Sena) is unaddressed and could recur
    in a form the current checks don't catch.
+
+## Naive-baseline comparison (paper Section VIII, item 2)
+
+`run_naive_baseline.py` sends each benchmark claim's text directly to
+the same LLM TruthLens uses by default (Llama 3.2 via Ollama, through
+`get_llm_provider()`), with a bare system prompt asking for a
+TRUE/FALSE/MIXED/UNVERIFIABLE verdict and reasoning — no claim
+decomposition, no search, no retrieved evidence, no validation. Real
+run, real model, `naive_baseline_results.jsonl` has the raw output.
+
+| Claim | Ground truth | Naive baseline (no pipeline) | TruthLens (full pipeline) |
+|---|---|---|---|
+| bm-0001 (NEET video) | FALSE | **UNVERIFIABLE** | MOSTLY_FALSE (matches) |
+| bm-0002 (Mexico World Cup video) | FALSE | **UNVERIFIABLE** | MOSTLY_FALSE (matches, for the wrong reason — see above) |
+
+**Read this carefully — it's a real result, but not the one it might
+look like at first.** The naive baseline didn't guess wrong; it
+correctly recognized it has no way to know about mid-2026 events and
+said so, rather than fabricating an answer. That's honest, appropriate
+model behavior, not a failure of reasoning. What actually separates the
+two columns is **access to current information via search**, not
+sophistication of reasoning: TruthLens reaches a substantive (and
+correct-at-the-label-level) answer here specifically *because* its
+pipeline can retrieve real-time evidence the base model's training data
+doesn't contain, not because of anything more subtle in claim
+decomposition or verdict reasoning.
+
+**This means the comparison, as currently scoped, mostly demonstrates
+the value of having any web-search access at all** — a much lower bar
+than validating TruthLens's specific architecture (multi-stage
+decomposition, source tiering, deterministic validation) against a
+simpler competitor that also has search. A fairer, more informative
+ablation for future work: a baseline that gets a single web search and
+one LLM call over the results, isolating what TruthLens's *specific*
+multi-stage design adds beyond "search plus one model call" — the
+current two-row table can't distinguish those two things, and shouldn't
+be read as though it does.
