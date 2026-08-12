@@ -146,14 +146,29 @@ def _find_quote_claim(claims: list[Claim]) -> Claim | None:
 
 
 def _speaker_name(quote_claim: Claim | None, reel_creator_handle: str | None) -> str | None:
-    if quote_claim is not None:
+    if quote_claim is not None and quote_claim.source_quote:
+        quote_text_lower = quote_claim.source_quote.lower()
         for entity in quote_claim.entities or []:
             name = entity.get("name")
             # Grounding check: only trust a Person entity as the speaker
             # if its name actually appears in THIS claim's own text — not
             # just anywhere in the claim-extraction output for the reel.
-            if "person" in (entity.get("type") or "").lower() and name and name in quote_claim.text:
-                return name
+            if "person" not in (entity.get("type") or "").lower() or not name or name not in quote_claim.text:
+                continue
+            # Second check, found live on a real reel
+            # (docs/CURRENT_ARCHITECTURE.md): source_quote can be genuine
+            # verbatim on-screen text that still isn't this person's own
+            # words — e.g. a news-style caption like "Kejriwal Attacks
+            # Centre Over New 3-Hour Takedown Rule", written by the
+            # publisher ABOUT him, in the third person. A person's own
+            # quote essentially never refers to themselves by name, so if
+            # any part of their name shows up inside the quote text
+            # itself, treat it as third-person description rather than
+            # trusting it as first-person speech.
+            name_parts = [p.lower() for p in name.split() if len(p) > 2]
+            if any(part in quote_text_lower for part in name_parts):
+                continue
+            return name
     return reel_creator_handle
 
 
