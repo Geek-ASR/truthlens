@@ -6,14 +6,20 @@
 \usepackage{textcomp}
 \usepackage{xcolor}
 \usepackage{booktabs}
+\usepackage{pifont}
 \usepackage{url}
 \usepackage[hidelinks]{hyperref}
 
 % ============================================================================
-% STATUS (remove before submission): this draft is honest about what is and
-% is not yet backed by rigorous evaluation. Search "TODO" for open items.
-% See research_paper/SOURCES.md for the citation-verification trail and
-% research_paper/STATUS.md for the overall project status and next steps.
+% STATUS (remove before submission): this draft reflects the Day 1-9 IEEE
+% evaluation program (research/EXPERIMENT_PLAN.md and sibling documents under
+% research/). Every number below traces to a versioned artifact under
+% research/results/ or research/*.csv; see research/DAY8_RESULTS.md,
+% research/VALIDATOR_EVALUATION.md, research/EVIDENCE_EVALUATION.md,
+% research/MULTIMODAL_EVALUATION.md, and research/BIAS_CALIBRATION_EFFICIENCY.md
+% for the full derivations. Day 10 (venue selection, line-by-line audit,
+% figure production, page-count trim) has not yet run. Search "TODO" for open
+% items. See research_paper/SOURCES.md for the citation-verification trail.
 % ============================================================================
 
 \begin{document}
@@ -33,197 +39,145 @@ Email: adityarekhe1030@gmail.com}
 
 \begin{abstract}
 Short-form video is now a primary vector for political misinformation, yet
-most automated fact-checking research targets text -- tweets, news
-sentences, or curated claim lists -- and most LLM-based fact-checking
-systems are evaluated on whether they reach a correct final label, not on
-whether the intermediate evidence chain that produced that label is real.
-We present TruthLens, a fact-checking pipeline for short-form political
-video (Instagram Reels, in the deployed case study) that enforces a strict
-evidence-before-verdict ordering -- atomic claim decomposition, multi-query
-web research, tiered source retrieval, per-source evidence extraction, and
-only then a claim-level verdict -- and, distinctively, subjects every
-LLM-generated verdict to a deterministic, non-LLM validation pass before
-it can be published. The validator checks that every cited piece of
-evidence actually exists, that every cited source was actually fetched,
-and that every number asserted in the model's reasoning actually appears
-in a cited passage; verdicts that fail are automatically downgraded rather
-than silently trusted. We further introduce an explicit distinction
-between \texttt{UNVERIFIED} (evidence was genuinely sought and found
-insufficient) and \texttt{RESEARCH\_FAILED} (the retrieval infrastructure
-itself broke), so that an infrastructure failure can never be published as
-if it were a considered null result, and a cost-aware model-escalation
-pattern in which a free, locally-hosted model is used by default and a
-paid model is invoked only when a deterministic ``is this output
-substantively grounded'' check fails. We report preliminary operational
-telemetry collected during iterative development -- including that
-deterministic validation downgraded 28.6\% (6 of 21) of generated verdicts
-in our test corpus, and that the free local model required escalation on
-25--43\% of invocations depending on pipeline stage -- and are explicit
-about what these numbers do and do not establish: they come from a small,
-non-independent, single-domain test corpus accumulated during debugging,
-not a held-out benchmark. A small first step toward a real held-out
-check -- two reels TruthLens had never seen, each independently
-fact-checked by a professional Indian fact-checking organization --
-found its verdict agreeing with the independent ground truth in both
-cases, but also surfaced a more consequential result: on both, the
-system's text-derived claim extraction missed the actual visual
-misinformation (real footage recaptioned with a false claim about what
-it shows), and one run exposed a real gap in validation coverage that
-let a downgraded verdict's hallucinated reasoning reach a rendered
-slide, which we traced and fixed the same day. A first, deliberately
-narrow naive-baseline comparison on the same two claims found the
-baseline abstaining (correctly recognizing it had no way to know about
-recent events) where TruthLens's pipeline reached a substantive,
-correct-at-the-label answer -- a result we are careful to attribute to
-search access rather than to any demonstrated advantage in TruthLens's
-specific architecture, pending a search-equipped baseline. Extending
-ingestion to single-image posts (not just video) surfaced a fabricated
-headline number in the process -- ``4,000 crore rupees'' rendered as an
-invented, and arithmetically wrong, ``\$1 Billion'' -- caught only after
-adding a dedicated deterministic check, since the model violated an
-explicit prompt instruction not to introduce new numbers. We further
-close a gap our own evaluation flagged as the most consequential open
-problem for output quality: retrieval was rarely reaching primary
-government/legal sources despite prompt-level requests for them
-(8 of 72 sources, \textasciitilde11\%, in our initial corpus); enforcing
-a domain allow-list at the search-call level itself, the same mechanism
-already used for fact-checking-organization sources, raised this to 19
-of 20 (95\%) across live-tested queries, while surfacing an honest
-residual limitation of its own -- unreliable full-page-text retrieval
-specifically on \texttt{.gov.in} domains, left unresolved. We also extend
-the validation methodology beyond verdict labels to grounded corrections:
-when a claim is not simply true, TruthLens now surfaces what the same
-evidence establishes instead, held to the identical grounding standard,
-while deliberately not attempting the further step of predicting
-downstream consequences, which would require exactly the kind of
-ungrounded generation this paper argues against. A third live test found
-two further real bugs outside the LLM reasoning stages entirely: claim
-extraction silently accepting schema-valid but empty-string claims, and
-a provider wrapper's error handling written against the wrong exception
-hierarchy for the API surface actually in use, which let a routine
-rate-limit condition crash an in-flight request after roughly forty
-minutes instead of failing fast -- notably, a pre-existing unit test for
-that exact code path had mocked the same wrong exception type the
-production code mishandled, passing throughout despite providing no real
-coverage. Both are fixed and reverified live, though this specific post
-did not yield a finished fact-check, a mixed result we report rather
-than omit. We describe the larger evaluation this motivates and a
-taxonomy of concrete failure modes discovered through live testing that
-we believe generalize to other LLM-pipeline fact-checking systems.
+most automated fact-checking systems are evaluated on whether they reach a
+correct final label, not on whether the evidence chain that produced it is
+real, and few are evaluated against independent, held-out ground truth at
+all. We present TruthLens, a verification-gated pipeline for short-form
+political video (Instagram Reels) that decomposes a post into atomic claims,
+researches each against the open web, and subjects every LLM-generated
+verdict to a deterministic, non-LLM validator before publication --
+checking citation existence, source-fetch existence, numeric grounding, and,
+newly, label/reasoning consistency. We evaluate TruthLens on a held-out
+benchmark of 9 real Instagram posts independently fact-checked by
+professional Indian fact-checking organizations (BOOM Live, Alt News,
+Factly), disjoint from all development data, against three baselines that
+hold the underlying model and search infrastructure constant (LLM-only;
+single-shot search+LLM; search+RAG+LLM). On the paired six-item subset where
+every configuration produced a verdict, full TruthLens (33.3\%, 2/6) does not
+outperform a single-shot search baseline (66.7\%, 4/6) -- a result we report
+first and most prominently because it is the least flattering, and because
+it traces to two specific, independently diagnosed component failures
+(claim extraction returning zero verifiable claims on degraded audio for two
+items; two validator false negatives on the other two) rather than a
+mysterious general weakness. A separate, controlled claim-decomposition
+ablation ($n=4$) shows decomposition and deterministic aggregation
+\emph{does} help once claim extraction has more than one claim to work with
+(50.0\% vs.\ 25.0\% accuracy), isolating where this architecture's advantage
+does, and does not, currently materialize. We further show that two general,
+ground-truth-independent fixes made in direct response to the headline
+finding measurably improve validator recall (16.7\%$\to$40\%, on the same 9
+cases, 100\% precision throughout) without moving reel-level accuracy at
+all -- a concrete demonstration that verdict-label accuracy and output
+trustworthiness are different, independently-moving properties, which we
+argue is closer to this architecture's actual value proposition than a
+label-accuracy contest against simpler baselines. We report the evidence
+-quality picture behind these results (a primary-source domain-restriction
+fix moving source-tier classification into government/legal tiers from
+$\sim$11\% to 95\% of retrieved sources; a distinct, still-open gap between
+finding topically-relevant primary sources (68.75\%) and extracting usable
+evidence from them (18.75\%); a bug found and fixed mid-evaluation in which
+47.1\% of real evidence rows carried an empty explanation field), a
+multimodal claim-coverage experiment in which OCR-derived evidence recovered
+a claim audio transcription missed entirely, and honestly scoped
+non-results for political-bias and confidence-calibration questions that
+this dataset's size cannot yet support. Every number in this paper is
+reported with its exact sample size and, where a proportion, a Wilson
+confidence interval; where an experiment could not be run at a
+scientifically meaningful scale, we say so rather than force it.
 \end{abstract}
 
 \begin{IEEEkeywords}
 automated fact-checking, large language models, hallucination mitigation,
 retrieval-augmented generation, misinformation detection, short-form video,
-claim verification, source credibility
+claim verification, source credibility, ablation study
 \end{IEEEkeywords}
 
 \section{Introduction}
+\label{sec:introduction}
 
 Political misinformation increasingly spreads through short-form video --
 Instagram Reels, YouTube Shorts, TikTok -- rather than text
 \cite{shang2021tiktec}. This shift matters for automated fact-checking
-research in two ways that are easy to underestimate. First, the input is
-multi-modal and lossy: a claim may be spoken (transcript), displayed as
-on-screen text (OCR), or only implied by a caption, and any system that
-treats a reel as a single block of text discards exactly the structure a
-fact-checker needs to attribute who said what. Second, and more
-consequentially, the dominant existing evaluation paradigm for automated
-fact-checking -- did the system output the correct veracity label for a
-claim, measured against a benchmark such as FEVER \cite{thorne2018fever}
-or LIAR \cite{wang2017liar} -- says nothing about whether the evidence the
-system cites in support of that label is real. An LLM asked to
-``fact-check this claim'' can produce a fluent, well-cited-looking verdict
-whose citations point to sources it never retrieved, or whose numbers
-never appeared in any source it read. This is the specific failure mode
-this paper is about.
+research in two ways. First, the input is multi-modal and lossy: a claim may
+be spoken (transcript), displayed as on-screen text (OCR), or only implied
+by a caption, and a system that treats a reel as a single block of text
+discards exactly the structure a fact-checker needs. Second, and more
+consequentially, the dominant evaluation paradigm for automated
+fact-checking -- did the system output the correct veracity label, measured
+against a benchmark such as FEVER \cite{thorne2018fever} or LIAR
+\cite{wang2017liar} -- says nothing about whether the evidence a system
+cites in support of that label is real, or whether a correct label was
+reached by checking the actual claim being made rather than a different,
+tangential one. An LLM asked to fact-check a claim can produce a fluent,
+well-cited verdict whose citations point to sources it never retrieved,
+whose numbers never appeared in any source it read, or whose confident label
+contradicts its own stated reasoning.
 
-We built and iteratively debugged TruthLens, a pipeline that ingests a
-political short-form video, decomposes it into atomic factual claims,
-researches each claim against the open web, and produces a
-carousel-style, cited, claim-by-claim fact-check -- while trying to make
-that specific failure mode (correct-sounding but ungrounded output)
-structurally difficult rather than merely discouraged by prompting. The
-central design principle, stated as a hard constraint throughout
-development, is \textbf{evidence before verdict}: the system is not
-permitted to propose a verdict and then search for support; it must
-search first, and a verdict can only be built from evidence rows that
-already exist in the database at the time the verdict-proposal model is
-invoked.
+We built TruthLens to make that failure mode structurally difficult rather
+than merely discouraged by prompting. TruthLens ingests a political
+short-form video (or photo post), decomposes it into atomic factual claims,
+researches each against the open web through a tiered-source retrieval
+process, and only then proposes a claim-level verdict -- a hard
+\textbf{evidence-before-verdict} ordering enforced architecturally, not just
+by instruction (Section~\ref{sec:architecture}). Every LLM-generated verdict
+is additionally subject to a deterministic, non-LLM validation layer before
+it can be published, and every pipeline stage escalates from a free,
+locally hosted model to a paid one only when a deterministic quality gate
+specific to that stage's own failure modes fails.
 
-Enforcing this ordering architecturally is necessary but not sufficient,
-because even a model given only real, already-fetched evidence can still
-hallucinate -- inventing a citation to evidence that was never actually
-supplied, asserting a number the source never stated, or (a failure mode
-we discovered live, not anticipated in advance) padding a
-\texttt{reasoning\_summary} field entirely with internal citation markup
-and no actual prose, which is schema-valid (a non-empty string) while
-being substantively empty. TruthLens's second contribution is therefore a
-deterministic, non-LLM validation layer that re-checks every LLM output
-against ground truth already in the database before it is allowed to
-reach a reader, downgrading rather than trusting outputs that fail.
+This paper reports the first evaluation of TruthLens against independent,
+held-out ground truth, rather than development-time telemetry alone. We
+curated a 9-item benchmark of real Instagram posts, each independently
+fact-checked by a professional Indian fact-checking organization (BOOM Live,
+Alt News, Factly), disjoint from every post used during development
+(Section~\ref{sec:dataset}), and compared TruthLens against three baselines
+that hold the underlying model and search infrastructure constant --
+isolating what TruthLens's specific multi-stage architecture adds beyond raw
+search access (Section~\ref{sec:expmethodology}). We report every result
+this comparison produced, including one that is not flattering: on the
+paired subset where every configuration completed, full TruthLens does not
+outperform a single-shot search-and-LLM baseline. We report this first and
+explain, with reference to specific, independently diagnosed component
+failures, why (Section~\ref{sec:results}) -- and we report a companion
+result, a controlled ablation of claim decomposition, where the same
+architecture's specific mechanism \emph{does} demonstrably help
+(Section~\ref{sec:ablation}). We treat both as more scientifically useful
+than a single flattering headline number would have been.
 
-This paper makes the following contributions:
+This work is organized around six research questions, matching TruthLens's
+own architectural claims one-to-one so that each is either supported by a
+specific experiment or explicitly withdrawn: whether deterministic
+verification reduces unsupported output (RQ1); whether multi-stage
+decomposition and retrieval beat single-shot search (RQ2); whether
+multimodal extraction improves coverage of non-textual misinformation
+(RQ3); whether source-tiering improves evidence quality (RQ4); whether the
+system maintains comparable standards across political actors (RQ5); and
+whether its stated confidence correlates with correctness (RQ6). Section
+\ref{sec:contributions} states these formally alongside this paper's
+specific, experimentally-supported contributions.
 
-\begin{enumerate}
-\item An architecture and reference implementation for evidence-grounded,
-  multi-claim fact-checking of short-form video, including atomic claim
-  decomposition with verbatim-quote grounding, multi-tier source
-  credibility scoring, and deterministic (non-LLM) aggregation of
-  per-claim verdicts into a single auditable reel-level verdict
-  (Section~\ref{sec:architecture}).
-\item A deterministic post-hoc validation methodology -- citation
-  existence, source-fetch existence, and number-grounding checks -- that
-  catches a measurable fraction of ungrounded LLM output without
-  requiring a second, equally fallible LLM call to police the first
-  (Section~\ref{sec:methodology}).
-\item An explicit \texttt{RESEARCH\_FAILED} vs.\ \texttt{UNVERIFIED}
-  distinction, and a publication gate that refuses to let infrastructure
-  failure masquerade as a considered null result -- an instance of the
-  broader selective-prediction principle that a system should distinguish
-  ``I looked and found nothing'' from ``I could not look''
-  (Section~\ref{sec:methodology}).
-\item A cost-aware escalation pattern -- default to a free, local model;
-  escalate to a paid model only when a deterministic substantiveness
-  check fails -- evaluated, as preliminary telemetry, on how often
-  escalation actually triggers per pipeline stage
-  (Section~\ref{sec:evaluation}).
-\item A concrete taxonomy of failure modes discovered through live,
-  iterative testing against a real deployed reel, several of which (a
-  paraphrase misattributed as a direct quote; a dashboard verdict that
-  silently disagreed with the published carousel verdict; a
-  bracket-matching validation-note regex that truncated at the wrong
-  bracket) are not, to our knowledge, previously documented in the
-  automated fact-checking literature at this level of implementation
-  detail (Section~\ref{sec:failuremodes}).
-\item An extension of the validation methodology from verdict labels to
-  grounded corrections and context -- what the evidence establishes
-  instead of a false or unverified claim, held to the same deterministic
-  grounding standard as the verdict itself -- together with an explicit,
-  motivated decision not to extend it further into predicting
-  consequences, which would require ungrounded generation of exactly the
-  kind this paper's architecture exists to prevent
-  (Section~\ref{sec:corrections}).
-\end{enumerate}
-
-We are explicit throughout about the evidentiary status of our claims.
-Section~\ref{sec:evaluation} reports real, measured telemetry from
-TruthLens's own audit log, not simulated or projected numbers -- but that
-telemetry comes from a small corpus (three distinct source videos, 16
-distinct claims, 21 verdict-generation events including re-runs across
-pipeline-fix iterations) accumulated during debugging rather than a
-frozen, held-out benchmark, and we describe in
-Section~\ref{sec:futurework} the larger evaluation required before any
-accuracy claim here should be treated as representative.
+We are explicit throughout about the evidentiary status of every claim: 9
+held-out items (6 with a resolved verdict from every configuration),
+single-annotator Tier-2 judgment where used, and RQ5/RQ6 explicitly
+deferred rather than forced past what this sample size can support
+(Section~\ref{sec:bce}). Sections~\ref{sec:threats} and
+\ref{sec:futurework} state exactly what would need to change before any
+number here should be read as a stable, generalizable estimate.
 
 \section{Related Work}
 \label{sec:relatedwork}
 
-Automated fact-checking and LLM factuality evaluation have both grown
-into large enough literatures to warrant their own surveys
+Automated fact-checking and LLM factuality evaluation have both grown into
+large enough literatures to warrant their own surveys
 \cite{rahman2025hallucinationtotruth,vykopal2024genaisurvey}; we focus below
-on the specific sub-areas TruthLens draws on and departs from, rather
-than attempting a comprehensive survey ourselves.
+on the specific sub-areas TruthLens draws on and departs from, rather than
+attempting a comprehensive survey ourselves. None of the ideas below --
+retrieval-augmented LLM fact-checking, claim decomposition, source-tiering,
+or multimodal misinformation detection -- originate with this work; our
+contribution, argued for in Section~\ref{sec:contributions} and evaluated in
+Sections~\ref{sec:results}--\ref{sec:bce}, is a specific combination of them
+gated by deterministic verification, evaluated honestly including where it
+does not yet outperform simpler alternatives.
 
 \subsection{Claim detection and decomposition}
 Claim detection for fact-checking spans monolingual, multilingual, and
@@ -235,29 +189,32 @@ SVM to rank sentences from political debate transcripts by how worth
 fact-checking they are. TruthLens's claim-extraction stage performs a
 related but distinct task: rather than ranking existing sentences, an LLM
 decomposes a transcript, OCR stream, and caption into new atomic
-claims, splitting compound statements (e.g. ``X happened, and because of
-it Y happened'') into independently checkable parts, following the
-general claim-decomposition strategy used in systems such as ProgramFC,
-which decomposes complex claims into sub-questions before per-question
-retrieval. We extend this with a grounding requirement specific to
-video: each extracted claim's \texttt{source\_quote}, when present, must
+claims, splitting compound statements into independently checkable parts,
+following the general claim-decomposition strategy used in systems such as
+ProgramFC, which decomposes complex claims into sub-questions before
+per-question retrieval. We extend this with a grounding requirement specific
+to video: each extracted claim's \texttt{source\_quote}, when present, must
 be a verbatim substring of the actual transcript/OCR text, checked
-deterministically, not merely asserted by the model.
+deterministically, not merely asserted by the model. Section~\ref{sec:ablation}
+reports the first controlled measurement, on real held-out data, of whether
+this decomposition step actually improves downstream verdict correctness
+relative to researching only the single highest-importance claim.
 
 \subsection{Fact-checking benchmarks}
 FEVER \cite{thorne2018fever} (Wikipedia-derived claims, Supports/
 Refutes/NotEnoughInfo) and LIAR \cite{wang2017liar} (12.8K PolitiFact
 statements, six-way truthfulness) are the dominant benchmarks for
-claim-verification models, and both evaluate a system's final label
-against ground truth without examining whether the evidence chain that
-produced the label is real. TruthLens's evaluation gap
-(Section~\ref{sec:futurework}) is precisely that we do not yet have a
-FEVER/LIAR-scale held-out benchmark for our own domain (Indian political
-short-form video); closing that gap, likely by curating a small
-labeled set in the style of these benchmarks rather than reusing them
-directly (our claims arrive multi-modally and in Hindi/Urdu/English
-mixed transcripts, which neither benchmark covers), is the single most
-important item of future work.
+claim-verification models, and both evaluate a system's final label against
+ground truth without examining whether the evidence chain that produced the
+label is real. TruthLens's own benchmark (Section~\ref{sec:dataset}) is a
+first, deliberately modest step toward the same kind of independent,
+held-out evaluation for our domain -- 9 Tier-1 items, three orders of
+magnitude smaller than FEVER or LIAR, sourced from real Indian professional
+fact-checks of Instagram posts rather than curated from Wikipedia or
+PolitiFact, and not yet at a scale that supports the same statistical
+claims. Reaching that scale, at the sourcing hit-rate this domain actually
+supports ($\sim$8\%, Section~\ref{sec:dataset}), remains the single most
+important item of future work (Section~\ref{sec:futurework}).
 
 \subsection{LLM hallucination and grounding verification}
 A growing body of work targets citation and grounding hallucination in
@@ -266,28 +223,36 @@ leading commercial legal AI research tools found each hallucinates on
 17--33\% of queries \cite{magesh2024hallucinationfree}, and recent
 systems such as CiteCheck \cite{khajavi2026citecheck} detect hallucinated
 references by grounding each citation against external sources with a
-structured LLM verifier. Our validation layer (Section~\ref{sec:methodology})
+structured LLM verifier. Our validation layer (Section~\ref{sec:validation})
 shares the goal but differs in mechanism: rather than using a second LLM
 call to judge whether a citation is plausible, TruthLens's checks are
-deterministic set-membership and substring tests against data the
-pipeline itself already fetched (does the cited \texttt{evidence\_id}
-exist; was the cited source actually retrieved; does the asserted number
-appear in the cited passage's stored text). This trades generality (we
-cannot catch a hallucination that happens to reuse a real, cited evidence
-ID incorrectly) for auditability and zero marginal LLM cost per check. A
-recent analysis of citation-grounding oracles in the legal domain is a
-useful caution for exactly this kind of check: it shows that an apparent
-hallucination rate measured by verifying citations against a reference
-graph is highly sensitive to that graph's coverage, not just to the
-model being measured, with the same responses scoring 15--21\%
-``hallucinated'' against a sparse snapshot of a citation registry and
-under 1.1\% against a denser one built from the same source
-\cite{ovcharov2026oracle}. TruthLens's own number-grounding check has an
-analogous blind spot: it can only confirm a number against sources the
-pipeline itself fetched, so it cannot distinguish ``this number is
-fabricated'' from ``this number is real but supported only by a source
-we did not retrieve.'' We flag this as an open limitation rather than a
-solved problem.
+deterministic set-membership and substring tests against data the pipeline
+itself already fetched (does the cited \texttt{evidence\_id} exist; was the
+cited source actually retrieved; does the asserted number appear in the
+cited passage's stored text; does the reasoning's own stated conclusion
+match its label). This trades generality (we cannot catch a hallucination
+that happens to reuse a real, cited evidence ID incorrectly, or reasoning
+phrased differently from the phrasings we have observed and checked for --
+Section~\ref{sec:evidencevalidation} discloses this latter limitation as a
+concrete, measured threat to validity, not a hypothetical one) for
+auditability and zero marginal LLM cost per check. A recent analysis of
+citation-grounding oracles in the legal domain is a useful caution for
+exactly this kind of check: it shows that an apparent hallucination rate
+measured by verifying citations against a reference graph is highly
+sensitive to that graph's coverage, not just to the model being measured,
+with the same responses scoring 15--21\% ``hallucinated'' against a sparse
+snapshot of a citation registry and under 1.1\% against a denser one built
+from the same source \cite{ovcharov2026oracle}. TruthLens's own
+number-grounding check has an analogous blind spot: it can only confirm a
+number against sources the pipeline itself fetched, so it cannot
+distinguish ``this number is fabricated'' from ``this number is real but
+supported only by a source we did not retrieve.'' We flag this as an open
+limitation rather than a solved problem, and follow Rule 8 of our own
+evaluation protocol throughout in not calling any of these rates a
+``hallucination rate'' without human annotation behind it -- we use
+\emph{grounding-constraint violation rate} for what the deterministic
+validator itself checks, and \emph{unsupported generation rate} for the
+human-judged quantity in Section~\ref{sec:evidencevalidation}.
 
 \subsection{Political fact-checking with LLMs}
 Most directly relevant to TruthLens's domain, DeVerna et al.\
@@ -298,10 +263,21 @@ political fact-checking accuracy, while providing curated, high-quality
 context improved macro-F1 by an average of 233\% across models. This is
 strong independent evidence for TruthLens's core design bet: that
 pipeline-level evidence curation (multi-query research planning, source
-tiering, per-source relevance filtering) matters more than which LLM
-does the final reasoning step. We view TruthLens as, in part, an
-applied instantiation and extension of that finding to a harder,
-multi-modal input domain.
+tiering, per-source relevance filtering) matters more than which LLM does
+the final reasoning step. Our own headline result (Section~\ref{sec:results})
+complicates a naive reading of this at small $n$ rather than contradicting
+it: TruthLens's curation-heavy architecture underperformed a single-shot
+search baseline on our 6-item paired sample, but the deficit traces to
+claim-extraction \emph{coverage} failures upstream of curation (two items
+with zero verifiable claims extracted at all) and two validator false
+negatives, not to curation itself failing when it runs -- and our
+claim-decomposition ablation (Section~\ref{sec:ablation}) shows a
+curation-adjacent mechanism (decomposition plus deterministic aggregation)
+delivering a real accuracy gain once it has claims to work with. We view
+TruthLens as, in part, an applied instantiation and extension of
+DeVerna et al.'s finding to a harder, multi-modal input domain, with this
+paper's contribution being an honest account of where that instantiation
+currently succeeds and where it does not.
 
 \subsection{Short-form video misinformation}
 TikTec \cite{shang2021tiktec} detects misleading COVID-19 short videos on
@@ -314,20 +290,25 @@ misinformation classifier over the video as a whole, TruthLens performs
 open-domain, claim-level, cited verification against live web evidence,
 closer in spirit to FEVER-style verification than to TikTec-style
 classification, but applied to video-derived claims rather than
-Wikipedia sentences.
+Wikipedia sentences. Section~\ref{sec:multimodalanalysis} reports a
+structural finding relevant to this whole line of work: in the majority of
+our Tier-1 sample, the false or misleading claim does not appear anywhere in
+the specific post's own transcript, caption, or on-screen text at all --
+consistent with genuine footage being recirculated under a new, false
+caption elsewhere, a pattern neither TikTec-style classification nor
+TruthLens's own text-derived claim extraction currently addresses.
 
 \subsection{Political neutrality of automated fact-checkers}
-LLMs are not neutral instruments; recent evaluations document
-measurable partisan asymmetries in frontier models under politically
-charged prompts \cite{peng2026partisan}. Because a visibly biased
-automated fact-checker is worse than none for a politically sensitive
-application, every TruthLens system prompt includes an explicit
-neutrality clause instructing the model to apply identical evidentiary
-standards regardless of which political actor is named and to be
-equally willing to conclude a claim is true or false for any side. We
-have not run a systematic bias audit of TruthLens's own output (see
-Section~\ref{sec:futurework}); this is a limitation, not a resolved
-claim.
+LLMs are not neutral instruments; recent evaluations document measurable
+partisan asymmetries in frontier models under politically charged prompts
+\cite{peng2026partisan}. Because a visibly biased automated fact-checker is
+worse than none for a politically sensitive application, every TruthLens
+system prompt includes an explicit neutrality clause instructing the model
+to apply identical evidentiary standards regardless of which political
+actor is named. We attempted a quantitative bias evaluation as RQ5 of this
+program and report, in Section~\ref{sec:bce}, exactly why it could not be
+run at a meaningful sample size rather than either skip it silently or force
+a result our data cannot support.
 
 \subsection{Cost-aware model cascading}
 FrugalGPT \cite{chen2023frugalgpt} demonstrated that routing most queries
@@ -338,23 +319,100 @@ constraint: every stage defaults to a \emph{free, locally hosted} model
 (Llama 3.2 via Ollama) rather than a cheap paid one, and escalates to a
 paid model (Gemini) only when a deterministic quality gate -- not a
 learned cost/accuracy predictor as in FrugalGPT -- detects that the local
-model's output is schema-valid but substantively empty.
+model's output is schema-valid but substantively deficient in a way
+specific to that stage (Section~\ref{sec:cascade}).
 
-\section{System Architecture}
+\section{Research Questions and Contributions}
+\label{sec:contributions}
+
+Table~\ref{tab:rqs} states the six research questions this program was
+designed against, where each is answered, and its evidentiary status,
+following Rule 12 of our own governing protocol: an RQ that cannot be
+evaluated at a meaningful sample size is reported as deferred, not silently
+dropped or forced.
+
+\begin{table*}[!t]
+\caption{Research questions, where answered, and status}
+\label{tab:rqs}
+\centering
+\footnotesize
+\begin{tabular}{p{0.04\linewidth}p{0.55\linewidth}p{0.35\linewidth}}
+\toprule
+RQ & Question & Status \\
+\midrule
+1 & Does deterministic post-hoc validation reduce unsupported verdict output? & Yes, directional (\S\ref{sec:evidencevalidation}, $n=9$) \\
+2 & Does multi-stage decomposition + retrieval beat single-shot search+LLM? & Not on this sample, end-to-end (\S\ref{sec:results}); yes for decomposition specifically (\S\ref{sec:ablation}, $n=4$) \\
+3 & Does multimodal extraction improve coverage of non-textual misinformation? & Directional yes (\S\ref{sec:multimodalanalysis}, $n=6$) \\
+4 & Does source-tiering improve evidence quality? & Yes for tier classification; gap remains to usable evidence (\S\ref{sec:evidencevalidation}) \\
+5 & Comparable standards across political actors? & Deferred -- no matched pairs exist (\S\ref{sec:bce}) \\
+6 & Does confidence correlate with correctness? & Deferred -- sample too small to calibrate (\S\ref{sec:bce}) \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+This paper makes the following contributions, limited to what the
+experiments in Sections~\ref{sec:results}--\ref{sec:bce} actually support:
+
+\begin{enumerate}
+\item \textbf{A held-out, Tier-1 evaluation benchmark and controlled
+  baseline/ablation comparison} (Sections~\ref{sec:expmethodology}--
+  \ref{sec:dataset}), the first evaluation of TruthLens against independent
+  professional ground truth rather than development-time telemetry, holding
+  model and search infrastructure constant across every configuration so
+  that measured differences are attributable to architecture.
+\item \textbf{An empirical demonstration that verdict-label accuracy and
+  output trustworthiness are separable, independently-moving properties.}
+  Two general, ground-truth-independent validator fixes made in direct
+  response to this program's headline finding measurably improved validator
+  recall (16.7\%$\to$40\%, $n=9$, 100\% precision throughout,
+  Section~\ref{sec:evidencevalidation}) while leaving reel-level accuracy
+  completely unchanged (2/6 before and after) -- a concrete case where a
+  system got measurably more trustworthy without becoming more
+  ``accurate'' by the bucket-matching metric standard benchmarks use.
+\item \textbf{A controlled claim-decomposition ablation} isolating the one
+  component-level result in this program where TruthLens's specific
+  architectural mechanism demonstrably outperformed a simpler alternative
+  (50.0\% vs.\ 25.0\% accuracy, $n=4$, Section~\ref{sec:ablation}), reported
+  with the same prominence as the headline negative result rather than
+  buried beneath it.
+\item \textbf{A four-way evidence-quality analysis} that separates source
+  -tier classification, topical relevance, fetch success, and usable
+  -evidence extraction into four distinct, independently reported metrics
+  (Section~\ref{sec:evidencevalidation}), showing the system's retrieval
+  finds real, on-topic primary sources at a meaningfully higher rate
+  (68.75\%) than its own usable-evidence rate (18.75\%) would suggest --
+  the bottleneck is source specificity, not retrieval relevance.
+\item \textbf{A cross-referenced taxonomy of real failure modes}
+  (Section~\ref{sec:failuremodes}), each found only by running the complete
+  system against real content end-to-end and each independently fixed with
+  a deterministic check and a regression test built from the exact real
+  case that surfaced it, offered as a practically-oriented complement to
+  the benchmark numbers above.
+\end{enumerate}
+
+TruthLens does not claim to have invented retrieval-augmented LLM
+fact-checking, claim decomposition, source-credibility tiering, or
+multimodal misinformation detection -- each independently pre-dates this
+work, as Section~\ref{sec:relatedwork} discusses. Its contribution is the
+specific combination of these mechanisms gated by deterministic,
+non-LLM verification, evaluated against independent ground truth including
+where that combination does not yet outperform a simpler alternative.
+
+\section{TruthLens Architecture}
 \label{sec:architecture}
 
 TruthLens is a FastAPI backend with a PostgreSQL/pgvector datastore, a
-Next.js review dashboard, and an object store (S3-compatible) for media
-and rendered output. The pipeline runs in the following strict order for
-every reel, and no stage may begin before the stage before it has
-persisted its output to the database:
+Next.js review dashboard, and an object store (S3-compatible) for media and
+rendered output. The pipeline runs in the following strict order for every
+reel, and no stage may begin before the stage before it has persisted its
+output to the database:
 
 \begin{enumerate}
 \item \textbf{Ingestion.} The source video is downloaded (or manually
-  uploaded), audio is extracted and transcribed, on-screen text is
-  sampled and OCR'd at a fixed interval, and a representative thumbnail
-  frame is selected. A single-image (photo) post follows a parallel path
-  with no video stream at all (Section~\ref{sec:multimodal}).
+  uploaded), audio is extracted and transcribed, on-screen text is sampled
+  and OCR'd at a fixed interval, and a representative thumbnail frame is
+  selected. A single-image (photo) post follows a parallel path with no
+  video stream at all (Section~\ref{sec:multimodal}).
 \item \textbf{Claim extraction.} An LLM decomposes the transcript, OCR
   text, and caption into atomic claims, each classified as
   \texttt{factual}, \texttt{opinion}, \texttt{prediction},
@@ -365,951 +423,1509 @@ persisted its output to the database:
   at least one query aimed at primary sources (official/government
   domains) when plausible.
 \item \textbf{Search and fetch.} Each query is run against a search
-  provider; result pages are fetched and their full text extracted
-  (not just the search snippet).
+  provider; result pages are fetched and their full text extracted (not
+  just the search snippet).
 \item \textbf{Evidence analysis.} For each fetched source, an LLM judges
   stance (\texttt{supports}/\texttt{contradicts}/\texttt{provides\_
   context}/\texttt{irrelevant}) against the claim, grounded in that
   source's actual extracted text only.
 \item \textbf{Verdict proposal.} Given the claim and its full evidence
-  matrix (every evidence row, with source reliability and stance), an
-  LLM proposes a verdict label, confidence, and cited evidence IDs.
-\item \textbf{Deterministic validation} (Section~\ref{sec:methodology}).
+  matrix (every evidence row, with source reliability and stance), an LLM
+  proposes a verdict label, confidence, and cited evidence IDs.
+\item \textbf{Deterministic validation} (Section~\ref{sec:validation}).
 \item \textbf{Overall-verdict aggregation.} Once every claim covered by a
   fact-check has a validated verdict, a fixed rule table -- not an LLM
   call -- derives one reel-level verdict.
 \item \textbf{Content assembly and rendering.} A carousel of slides
   (headline poster, claims/quote, evidence, conclusion) is assembled,
-  drawing almost all content directly from already-validated database
-  rows; only headline phrasing and a short ``why'' paragraph pass
-  through one additional narrow, schema-constrained LLM call each, both
-  with their own grounding checks (Section~\ref{sec:methodology}).
+  drawing almost all content directly from already-validated database rows;
+  only headline phrasing and a short ``why'' paragraph pass through one
+  additional narrow, schema-constrained LLM call each, both with their own
+  grounding checks (Section~\ref{sec:cascade}).
 \end{enumerate}
 
 \subsection{Source tiering}
-Every retrieved source is scored along an 8-dimension weighted
-reliability rubric and assigned to one of eight tiers:
-\texttt{primary\_government}, \texttt{primary\_legal},
-\texttt{primary\_data}, \texttt{news\_wire}, \texttt{established\_news},
-\texttt{academic}, \texttt{factcheck\_org}, or \texttt{other}. Tier
-membership determines both which sources are eligible to be surfaced as
-a claim's ``primary source'' citation on the rendered carousel and, in
-aggregate, the reliability-weighted confidence of the evidence matrix
-handed to the verdict-proposal stage.
+Every retrieved source is scored along an 8-dimension weighted reliability
+rubric and assigned to one of eight tiers: \texttt{primary\_government},
+\texttt{primary\_legal}, \texttt{primary\_data}, \texttt{news\_wire},
+\texttt{established\_news}, \texttt{academic}, \texttt{factcheck\_org}, or
+\texttt{other}. Tier membership determines both which sources are eligible
+to be surfaced as a claim's ``primary source'' citation on the rendered
+carousel and, in aggregate, the reliability-weighted confidence of the
+evidence matrix handed to the verdict-proposal stage. RQ4
+(Section~\ref{sec:evidencevalidation}) evaluates this mechanism directly.
 
 \subsection{Multi-claim, reel-level verdicts}
-An earlier version of TruthLens built one fact-check per claim; the
-current version builds one fact-check per \emph{reel}, covering every
-verifiable claim extracted from it, because a single short-form video
-routinely makes several claims of differing veracity, and collapsing
-them into one per-claim verdict discards exactly the ``partially true,
-partially misleading'' structure a reader needs. The rule table in
-Section~\ref{sec:methodology} governs how per-claim verdicts combine
-into the one verdict actually shown on the published carousel.
+TruthLens builds one fact-check per \emph{reel}, covering every verifiable
+claim extracted from it, because a single short-form video routinely makes
+several claims of differing veracity, and collapsing them into one
+per-claim verdict discards exactly the ``partially true, partially
+misleading'' structure a reader needs. A fixed rule table governs how
+per-claim verdicts combine into the one verdict actually shown on the
+published carousel (Section~\ref{sec:aggregation}); Section~\ref{sec:ablation}
+reports the first controlled test of whether this multi-claim structure
+itself improves accuracy over researching only the single highest
+-importance claim.
 
 \subsection{Multi-modal ingestion: video and photo posts}
 \label{sec:multimodal}
-Not every short-form political post is a video. TruthLens originally
-handled only content with a video stream; a real post
-(Section~\ref{sec:secondpilot}) exposed this as a hard failure rather
-than a degraded case. We added a parallel photo-post ingestion path:
+Not every short-form political post is a video. TruthLens handles both:
 when the video downloader reports no video stream at all, the pipeline
 falls back to the post's Open Graph metadata (image URL, caption,
-engagement counts) fetched directly from the page rather than through
-the video-download tool, which does not expose a photo-only code path.
-A new \texttt{media\_type} field (\texttt{video}/\texttt{photo}) drives
-branching at exactly one point downstream: audio extraction and
-transcription are skipped for a photo (there is no audio), but OCR and
-vision-context analysis needed no new code at all, because both already
-operated on a plain list of image paths rather than assuming a video --
-a single photo is a one-element case of the same interface a video's
-sampled frames already satisfy. This is a small but relevant point for
-system design in this domain: designing the frame-analysis interface
-around ``a list of images'' rather than ``frames extracted from a
-video'' made a later, unplanned input modality nearly free to add.
+engagement counts) fetched directly from the page rather than through the
+video-download tool, which does not expose a photo-only code path. A
+\texttt{media\_type} field (\texttt{video}/\texttt{photo}) drives branching
+at exactly one point downstream: audio extraction and transcription are
+skipped for a photo (there is no audio), but OCR and vision-context
+analysis needed no new code at all, because both already operated on a
+plain list of image paths rather than assuming a video -- a single photo is
+a one-element case of the same interface a video's sampled frames already
+satisfy. Section~\ref{sec:multimodalanalysis} evaluates claim coverage
+across this system's three real input-modality conditions (text-only,
++OCR, +OCR+vision) on real ingested held-out data.
 
-\section{Methodology: Making the Model More Trustworthy, Not Just More Capable}
+\subsection{Making the model more trustworthy, not just more capable}
 \label{sec:methodology}
+Across this project we have found that making TruthLens's output more
+trustworthy is substantially a question about the pipeline around the model
+rather than the model itself. This subsection describes the mechanisms we
+built for this purpose; Sections~\ref{sec:results}--\ref{sec:bce} evaluate
+whether, and how well, each actually works.
 
-The paper's title question -- how to make the model ``really better'' for
-this purpose -- is, in our experience building TruthLens, substantially a
-question about the pipeline around the model rather than the model
-itself. This section describes the four mechanisms we found to matter
-most.
-
-\subsection{Deterministic anti-hallucination validation}
+\subsubsection{Deterministic anti-hallucination validation}
 \label{sec:validation}
 After the verdict-proposal LLM call returns a structured
 \texttt{VerdictProposal} (label, confidence, reasoning, cited evidence
-IDs), TruthLens runs three checks against data already in the database,
-none of which invoke an LLM:
+IDs), TruthLens runs four checks against data already in the database, none
+of which invoke an LLM:
 
 \begin{itemize}
 \item \textbf{Citation existence:} every ID in \texttt{cited\_evidence\_
-  ids} must correspond to an evidence row that was actually passed to
-  the model in its evidence matrix.
+  ids} must correspond to an evidence row that was actually passed to the
+  model in its evidence matrix.
 \item \textbf{Source-fetch existence:} every cited evidence row's source
-  must have a stored, successfully fetched full-text passage --- a
-  citation cannot point at a source the pipeline only planned to fetch.
+  must have a stored, successfully fetched full-text passage -- a citation
+  cannot point at a source the pipeline only planned to fetch.
 \item \textbf{Number grounding:} every numeral appearing in the model's
-  \texttt{reasoning\_summary} is extracted and checked for appearance in
-  at least one cited source's stored passage text.
+  \texttt{reasoning\_summary} is extracted and checked for appearance in at
+  least one cited source's stored passage text. UUID-shaped hex sequences
+  (from internal citation markup) are stripped before number extraction --
+  a real bug, described in Section~\ref{sec:failuremodes}, in which digits
+  from a cited evidence ID's own UUID were being extracted as apparent
+  ``unsupported statistics.''
+\item \textbf{Reasoning/label consistency (new).} A verdict whose own
+  \texttt{reasoning\_summary} states that no reliable evidence was found
+  (matched against a fixed phrase list, e.g.\ ``does not provide any
+  reliable,'' ``no reliable sources'') but whose label is a confident
+  value other than \texttt{UNVERIFIED} is downgraded to
+  \texttt{UNVERIFIED}. Added in direct response to Section
+  \ref{sec:evidencevalidation}'s finding that this specific pattern was
+  the largest single category of validator false negative; its
+  circularity as a threat to validity is disclosed, not hidden, in
+  Section~\ref{sec:evidencevalidation}.
 \end{itemize}
 
-A verdict that fails any check is not discarded -- it is
-\emph{downgraded}: persisted with a \texttt{validation\_status} other
-than \texttt{passed}, an appended, clearly delimited
-\texttt{[VALIDATION NOTE: ...]} explaining what failed, and excluded
-from citation lists shown to a reader. This preserves the model's
-underlying verdict label (still potentially useful to a human reviewer)
-while refusing to let its specific, unverified justification reach a
-reader unflagged.
+A verdict that fails any check is not discarded -- it is \emph{downgraded}:
+persisted with a \texttt{validation\_status} other than \texttt{passed},
+an appended, clearly delimited \texttt{[VALIDATION NOTE: ...]} explaining
+what failed, and excluded from citation lists shown to a reader. This
+preserves the model's underlying verdict label (still potentially useful to
+a human reviewer) while refusing to let its specific, unverified
+justification reach a reader unflagged.
 
-\subsection{The \texttt{RESEARCH\_FAILED} / \texttt{UNVERIFIED} distinction}
+\subsubsection{The \texttt{RESEARCH\_FAILED} / \texttt{UNVERIFIED} distinction}
 \texttt{UNVERIFIED} is a legitimate, informative output: it means the
 system genuinely searched and found insufficient evidence to support or
-refute a claim. Early in development, TruthLens conflated this with a
-second, very different situation -- the search backend itself returning
-zero usable results because of a missing API key or provider
-misconfiguration -- and both surfaced identically as
-\texttt{UNVERIFIED}, indistinguishable to a reader from a considered
-null result. We introduced a distinct \texttt{RESEARCH\_FAILED} claim
-status, raised only when \emph{all} queries for a claim fail at the
-infrastructure level (not when queries succeed but return no relevant
-results), and a publication gate that refuses to build a fact-check
-whose primary claim is \texttt{RESEARCH\_FAILED}. This is a direct,
-domain-specific instance of the broader selective-prediction principle
-that a system should distinguish ``I don't know'' from ``I could not
-check''.
+refute a claim. A distinct \texttt{RESEARCH\_FAILED} claim status is raised
+only when \emph{all} queries for a claim fail at the infrastructure level
+(not when queries succeed but return no relevant results), and a
+publication gate refuses to build a fact-check whose primary claim is
+\texttt{RESEARCH\_FAILED}. This is a direct, domain-specific instance of
+the broader selective-prediction principle that a system should distinguish
+``I don't know'' from ``I could not check.''
 
-\subsection{Verification-gated model cascading}
+\subsubsection{Verification-gated model cascading}
 \label{sec:cascade}
-Every pipeline stage defaults to a free, locally hosted model. Three
-stages -- claim extraction, content generation (headline/why-paragraph),
-and verdict proposal -- additionally run a deterministic
-\emph{substantiveness check} on the local model's output before
-accepting it:
+Every pipeline stage defaults to a free, locally hosted model. Five stages
+-- claim extraction, evidence analysis, vision-context analysis, content
+generation (headline/why-paragraph), and verdict proposal -- additionally
+run a deterministic \emph{substantiveness check} on the local model's
+output before accepting it:
 
 \begin{itemize}
-\item Claim extraction, grounding: is the extraction \emph{grounded},
-  i.e.\ do at least half of the extracted verifiable claims have a
-  \texttt{source\_quote} that is an actual substring of the combined
-  transcript/OCR/caption text?
-\item Claim extraction, substantiveness: does at least one extracted
-  claim have non-empty \texttt{text}? Added after a real failure found
-  live (Section~\ref{sec:thirdpilot}): a locally hosted model returned
-  claims with \texttt{text=""} for content that plainly had checkable
-  claims in it -- schema-valid, but with nothing for the rest of the
-  pipeline to act on, and invisible to the grounding check above, which
-  only ever evaluates \emph{verifiable} claims and is a no-op when every
-  returned claim is non-verifiable, exactly what happened here. An
-  extraction with zero claims at all is not treated as a failure by this
-  check -- a genuine "found nothing" is a legitimate outcome, not a
-  quality problem to retry.
-\item Content generation / verdict reasoning: after stripping internal
-  citation markup (\texttt{[[evidence\_id=...]]} blocks), does the
-  remaining prose contain at least six real words? This check exists
-  because we discovered, live, that a locally hosted model would
-  sometimes produce a \texttt{reasoning\_summary} composed
-  \emph{entirely} of citation markup with no prose at all -- schema-valid
-  (a non-empty string), but explaining nothing to a reader.
+\item \textbf{Claim extraction, grounding:} do at least half of the
+  extracted verifiable claims have a \texttt{source\_quote} that is an
+  actual substring of the combined transcript/OCR/caption text?
+\item \textbf{Claim extraction, substantiveness:} does at least one
+  extracted claim have non-empty \texttt{text}? An extraction with zero
+  claims at all is not treated as a failure by this check -- a genuine
+  ``found nothing'' is a legitimate outcome, not a quality problem to
+  retry.
+\item \textbf{Evidence analysis, substantiveness (new).} Does the
+  per-source \texttt{explanation} field contain non-empty text? Added
+  after Section~\ref{sec:evidencevalidation} found 47.1\% (32 of 68) of
+  real evidence rows from a live pipeline run carried an empty
+  explanation -- a stance label with no auditable reason behind it. Unlike
+  the other checks in this list, this one fires once per retrieved source,
+  not once per claim, since this is the one stage that calls the LLM per
+  source.
+\item \textbf{Vision-context, prompt-echo detection (new).} Does the
+  \texttt{scene\_description}'s own vocabulary overlap substantially with
+  the vision system prompt's vocabulary, rather than describing new visual
+  content? Added after this exact pattern -- the local vision model
+  echoing fragments of its own instructions back as if they were a scene
+  description -- recurred across at least four separate real reels
+  (Section~\ref{sec:multimodalanalysis}). Calibrated against every real
+  garbled and real coherent example collected this project: garbled
+  outputs scored 0.26--0.29 on a word-overlap-with-prompt ratio; coherent
+  descriptions scored 0.00--0.12; the threshold is set at 0.20, in the gap
+  between them.
+\item \textbf{Content generation / verdict reasoning:} after stripping
+  internal citation markup, does the remaining prose contain at least six
+  real words? This check exists because a locally hosted model would
+  sometimes produce a \texttt{reasoning\_summary} composed entirely of
+  citation markup with no prose at all -- schema-valid, but explaining
+  nothing to a reader.
 \end{itemize}
 
 On failure, the same call is retried once against a stronger paid model
-(Gemini) with an identical prompt, and the retry (whichever model
-produced it) is logged. This differs from a classic cascade
-\cite{chen2023frugalgpt} in that the escalation trigger is a
-deterministic grounding/substantiveness predicate specific to this
-domain's failure modes, not a learned or generic confidence estimate.
+(Gemini) with an identical prompt, and the retry (whichever model produced
+it) is logged. This differs from a classic cascade \cite{chen2023frugalgpt}
+in that the escalation trigger is a deterministic grounding/substantiveness
+predicate specific to that stage's own observed failure modes, not a
+learned or generic confidence estimate. Illustrative development-time
+telemetry (predating the frozen held-out evaluation reported from
+Section~\ref{sec:expmethodology} onward, and not part of it) found this
+gate firing on 3 of 7 claim-extraction completions, 2 of 5 content
+-generation completions, and 2 of 8 verdict-proposal completions -- small,
+non-independent counts, but large enough to show the gate firing routinely
+rather than rarely.
 
-\subsection{Deterministic overall-verdict aggregation}
+\subsubsection{Deterministic overall-verdict aggregation}
+\label{sec:aggregation}
 Once every claim covered by a fact-check has a verdict, TruthLens derives
 one reel-level verdict via a fixed rule table over the \emph{set} of
-per-claim verdict labels (weighted by whether a claim is
-``major,'' importance $\geq 0.5$) -- for example, all claims
-\texttt{TRUE} yields overall \texttt{TRUE}; a mix containing both
-\texttt{TRUE}/\texttt{MOSTLY\_TRUE} and \texttt{FALSE} yields
-\texttt{MISLEADING}. This is a plain combinatorial function, not a
-further LLM call, so the single highest-stakes number in the product --
-the verdict shown on the published carousel's first slide -- remains
-fully auditable from already-validated per-claim verdicts rather than
-resting on a second, opaque judgment.
+per-claim verdict labels (weighted by whether a claim is ``major,''
+importance $\geq 0.5$) -- for example, all claims \texttt{TRUE} yields
+overall \texttt{TRUE}; a mix containing both \texttt{TRUE}/
+\texttt{MOSTLY\_TRUE} and \texttt{FALSE} yields \texttt{MISLEADING}. This is
+a plain combinatorial function, not a further LLM call, so the single
+highest-stakes number in the product -- the verdict shown on the published
+carousel's first slide -- remains fully auditable from already-validated
+per-claim verdicts rather than resting on a second, opaque judgment.
+Section~\ref{sec:ablation} evaluates this mechanism directly.
 
-\subsection{Grounded corrections: what the evidence shows instead}
+\subsubsection{Grounded corrections: what the evidence shows instead}
 \label{sec:corrections}
 A verdict of \texttt{FALSE} or \texttt{UNVERIFIED} alone is a weak
-deliverable -- professional fact-checkers do not stop at ``this is
-false''; they say what is actually true, with a source. We extended the
-verdict-proposal call (rather than adding a new one) with two optional
-fields, \texttt{corrected\_fact} and \texttt{context\_note}, populated
-from the same evidence matrix already given to that stage and held to
-the identical ``nothing not already in the evidence'' rule as
-\texttt{reasoning\_summary}. \texttt{corrected\_fact} is the specific
-alternative fact the evidence establishes (a different number, a
-different date), left null rather than guessed when no such alternative
+deliverable -- professional fact-checkers do not stop at ``this is false'';
+they say what is actually true, with a source. The verdict-proposal call
+carries two optional fields, \texttt{corrected\_fact} and
+\texttt{context\_note}, populated from the same evidence matrix already
+given to that stage and held to the identical ``nothing not already in the
+evidence'' rule as \texttt{reasoning\_summary}. \texttt{corrected\_fact} is
+the specific alternative fact the evidence establishes (a different number,
+a different date), left null rather than guessed when no such alternative
 is established; \texttt{context\_note} is background the evidence itself
-states, never the model's own speculation.
+states, never the model's own speculation. We deliberately did not build
+the natural next request -- speculation about downstream consequences of a
+claim -- because that is forward-looking generation with no evidence to
+ground it against, exactly the failure category Section~\ref{sec:validation}'s
+architecture exists to prevent. Both fields are validated independently of
+\texttt{reasoning\_summary} and, whenever the \emph{parent} verdict fails
+validation, neither field is trusted for display even if it individually
+passed its own check.
 
-We deliberately did not build the natural next request -- speculation
-about downstream consequences of a claim. Predicting what a false or
-misleading claim about a real political actor might lead to is
-forward-looking generation with no evidence to ground it against, which
-is exactly the failure category Section~\ref{sec:validation}'s
-architecture exists to prevent. Scoping it out is a design decision, not
-an oversight, and we note it here because the boundary between
-``grounded context'' (safe, and built) and ``predicted consequences''
-(ungrounded, and not built) is precisely the line this paper's whole
-argument is drawn along.
+\section{Experimental Methodology}
+\label{sec:expmethodology}
 
-Both fields are validated independently of \texttt{reasoning\_summary},
-against numbers found anywhere in the claim's full evidence matrix
-rather than only the sources cited for the main verdict -- a correction
-can legitimately draw on a different source than the one that
-determined the label. This independent check uses every digit in a
-number, not just those with two or more digits as
-Section~\ref{sec:validation}'s original number check does: that
-threshold exists to avoid flagging incidental meta-numbers in longer
-prose (``we reviewed 3 sources''), but \texttt{corrected\_fact} and
-\texttt{context\_note} are short, specific, single-sentence fields where
-no such incidental number should appear, and a single-digit fabrication
-(Section~\ref{sec:failuremodes}'s ``\$1 Billion'') would otherwise slip
-through uncaught. Finally, whenever the \emph{parent} verdict fails
-validation, neither field is trusted for display even if it
-individually passed its own check -- the same ``don't reuse anything
-from an already-unreliable call'' rule already applied to
-\texttt{reasoning\_summary} (Section~\ref{sec:failuremodes}).
+\subsection{Central research question and design}
+The central question motivating this evaluation: can a verification-gated,
+evidence-grounded architecture reduce unsupported fact-checking outputs
+while preserving or improving factual correctness in short-form political
+media? We answer this via a controlled comparison across five system
+configurations, all run against the same underlying local model
+(\texttt{llama3.2} via Ollama) and, where the configuration has search
+access at all, the same search provider (DuckDuckGo) TruthLens itself uses
+in production -- holding model and search-infrastructure quality constant so
+that a measured difference is attributable to architecture, not to a
+cheap-model-vs.-expensive-model confound.
 
-\section{Evaluation}
-\label{sec:evaluation}
+\subsection{System configurations}
+\begin{enumerate}
+\item \textbf{LLM-only (Baseline 1).} Claim text $\to$ \texttt{llama3.2}
+  $\to$ verdict. No search, no retrieved evidence, no validation.
+\item \textbf{Search + LLM (Baseline 2).} Claim $\to$ one DuckDuckGo search
+  (top-5 title/snippet pairs, no full-page fetch) $\to$ a single LLM call
+  $\to$ verdict. The claim text is passed to search verbatim -- no
+  research-planning stage -- the single most important architectural
+  difference from Baseline 3 and from TruthLens itself.
+\item \textbf{Search + RAG + LLM (Baseline 3).} Claim $\to$ search $\to$
+  full-page fetch and text extraction for each result (reusing TruthLens's
+  own fetch logic) $\to$ a single LLM call over the concatenated passages
+  $\to$ verdict. Differs from Baseline 2 only in retrieval depth, isolating
+  that variable from multi-stage decomposition and per-source evidence
+  analysis, neither of which either baseline performs.
+\item \textbf{TruthLens minus validation (Baseline 4).} The real pipeline,
+  unmodified, except that \texttt{validate\_verdict()}'s outcome is
+  recorded but never applied to what is persisted -- implemented as a
+  runtime configuration flag (\texttt{SKIP\_VALIDATION}) rather than a
+  forked codepath, so this configuration can never silently drift from the
+  real system. This is the primary ablation for RQ1.
+\item \textbf{Full TruthLens.} The system exactly as it exists at the
+  frozen evaluation tag, unmodified.
+\end{enumerate}
 
-\subsection{What this section is, and is not}
-We report real telemetry recorded in TruthLens's own audit log during
-iterative development and live debugging against a small corpus: five
-ingested reel records over three distinct underlying videos (by
-content hash), yielding 28 extracted claims (16 marked verifiable and
-carried through to a verdict at least once), and 21 verdict-generation
-events in total -- more than the number of distinct claims because
-several claims were re-verdicted after pipeline fixes across iterations.
-This is \emph{operational telemetry from a system under active
-development}, not a held-out benchmark evaluation: the sample is small,
-the units are not independent (the same claim appears multiple times
-across pipeline-fix iterations), and every video in the corpus is
-Indian political content in a mix of English, Hindi, and Urdu. We report
-it because the numbers are real and, we believe, still informative about
-where a deterministic-validation, verification-gated-cascade approach
-actually spends its safety margin -- but no accuracy or rate reported
-here should be read as representative of held-out performance. Table
-\ref{tab:telemetry} summarizes the raw counts referenced throughout this
-section; all figures are computed directly from the \texttt{verdicts},
-\texttt{claims}, \texttt{evidence}, \texttt{sources}, and
-\texttt{audit\_logs} tables described in Section~\ref{sec:architecture}.
+Claim decomposition, source tiering, per-source evidence analysis, and
+deterministic validation are each present only in the full system (and,
+for validation, deliberately absent in Baseline 4) -- Baselines 1--3
+operate on the claim as already extracted by TruthLens's own
+claim-extraction stage, since evaluating claim extraction itself is RQ3's
+job, not RQ2's. A real infrastructure bug was found and fixed while
+building Baselines 2--3: the first working draft called the same provider
+-factory function every production pipeline stage uses, which silently
+returns a Gemini-fallback-wrapped provider whenever an API key is
+configured in the environment -- giving both baselines the same
+failure-rescue mechanism TruthLens's own architecture was being evaluated
+for having. Fixed by importing the local-only provider directly in both
+baseline scripts, caught during smoke testing before any number was
+reported anywhere (Section~\ref{sec:failuremodes}).
 
-\begin{table}[!t]
-\caption{Corpus and telemetry summary (development-time, not a held-out benchmark)}
-\label{tab:telemetry}
+\subsection{Ablations}
+Beyond Baseline 4 (the validation ablation, RQ1), two further ablations are
+in scope: a \textbf{source-tier ablation} (domain-restricted vs.\
+unrestricted retrieval, Section~\ref{sec:evidencevalidation}) and a
+\textbf{claim-decomposition ablation} (single-claim-per-reel vs.\ full
+multi-claim decomposition, Section~\ref{sec:ablation}), the latter computed
+from already-collected verdict data at zero additional LLM cost.
+
+\subsection{Metrics and statistical conventions}
+Every reported proportion states its exact numerator, denominator, and a
+95\% Wilson score confidence interval -- chosen because it remains
+well-behaved at the small sample sizes this evaluation reaches, unlike a
+normal-approximation interval. Paired comparisons between two
+configurations on the identical item set use McNemar's exact test,
+reported alongside the raw contingency table, never a bare $p$-value.
+Accuracy is computed over a fixed bucketing of \texttt{VerdictLabel} onto
+ground truth (TRUE/MOSTLY\_TRUE, FALSE/MOSTLY\_FALSE, and each of
+MISLEADING/MISSING\_CONTEXT/OUTDATED as their own bucket);
+\texttt{UNVERIFIED} is never counted as a match to any ground-truth label,
+including a ground truth that is itself contested or ambiguous -- an
+abstention is not a correct answer by construction. Full formulas for every
+metric used in this paper, including the evidence-quality and validator
+metrics used in Section~\ref{sec:evidencevalidation}, are fixed in advance
+in the project's \texttt{METRICS.md} and are not altered after seeing
+results.
+
+\subsection{Held-out discipline}
+The evaluation dataset (Section~\ref{sec:dataset}) is checked item-by-item
+against already-ingested development content and excluded on any match. No
+prompt, threshold, or model choice was changed based on this dataset's
+contents or TruthLens's performance on it from the moment an item was added
+onward; the two general fixes reported in Section~\ref{sec:evidencevalidation}
+are deliberately \emph{ground-truth-independent} -- pure functions of the
+model's own output, motivated by a general principle rather than by making
+a specific held-out item score better -- and this distinction, along with
+its limits, is argued explicitly rather than asserted (Section
+\ref{sec:evidencevalidation}). The dataset was frozen at a tagged commit
+before Baselines 1--3 were run, and the full system's own code was frozen
+at a second tag before its held-out run; any code change made after either
+freeze is logged, not silently applied.
+
+\subsection{Honest scope reductions}
+This program deliberately targets less than an ideal-scale evaluation, and
+states exactly where and why, rather than presenting a smaller study as if
+it were a larger one:
+\begin{itemize}
+\item \textbf{Dataset size: 9 items, not 50--100.} A pilot check of 26
+  professional fact-check articles found a $\sim$8\% hit rate for a usable,
+  still-live, Instagram-embedding Tier-1 candidate; reaching even 20--30
+  items would require checking on the order of 250--375 more articles, a
+  large but bounded manual task not completed within this program's window
+  (Section~\ref{sec:dataset}).
+\item \textbf{Single primary annotator, no inter-annotator agreement
+  statistic.} Tier-1 ground truth is a professional organization's own
+  published verdict, authored by no one on this project; where a
+  Tier-2 (single-annotator) judgment is used at all (draft claim-coverage
+  and evidence-relevance labels only, never a headline verdict), it is
+  explicitly marked \texttt{llm\_assisted\_draft} or single-annotator and
+  not presented as adjudicated ground truth.
+\item \textbf{RQ3, RQ5, and RQ6 are reported as directional or deferred},
+  not as generalizable rates, because the sample size does not support a
+  stronger claim (Sections~\ref{sec:multimodalanalysis}, \ref{sec:bce}).
+\item \textbf{No $p$-values from tests that assume a sample size this
+  program does not reach.} Independent-samples $t$-tests and $\chi^2$
+  tests are not used; Wilson intervals and McNemar's exact test are, and
+  are reported as descriptions of uncertainty at this sample size, not
+  claims of statistical significance.
+\end{itemize}
+
+\section{Dataset and Annotation}
+\label{sec:dataset}
+
+\subsection{Ground-truth tiers}
+\textbf{Tier 1 (used for every item in this evaluation):} the claim in the
+Instagram post has already been verdicted by an independent professional
+fact-checking organization, and that organization's article demonstrably
+references or embeds this specific post, not merely a similar claim
+elsewhere. Ground truth is their published verdict, with the article URL
+stored for auditability. \textbf{Tier 2 (specified, not used for any
+headline verdict in this evaluation):} no professional fact-check exists;
+a project annotator labels directly from primary sources under a documented
+protocol. No item is ever labeled by TruthLens itself, or by any LLM, and
+then used as ground truth.
+
+\subsection{The 9-item benchmark}
+Table~\ref{tab:dataset} lists every item. All 9 are Tier 1, sourced from
+BOOM Live, Alt News, and Factly. item-0003 (a CJP-investigated,
+AI-generated visual claim) could not be ingested after three independent
+attempts across this program (a persistent Instagram-side ``empty media
+response''), and is excluded from every table in this paper, not scored as
+a failure.
+
+\begin{table*}[!t]
+\caption{Held-out benchmark: 9 Tier-1 items (all sourced independently of TruthLens or its developer)}
+\label{tab:dataset}
 \centering
 \footnotesize
-\begin{tabular}{lr}
+\begin{tabular}{lllll}
 \toprule
-Distinct source videos (by content hash) & 3 \\
-Reel ingestion records & 5 \\
-Extracted claims & 28 \\
-Distinct claims with $\geq$1 verdict & 16 \\
-Verdict-generation events (incl.\ re-runs) & 21 \\
-Evidence rows analyzed & 72 \\
-\quad -- classified \texttt{supports} & 22 \\
-\quad -- classified \texttt{contradicts} & 10 \\
-\quad -- classified \texttt{irrelevant} & 40 \\
-Logged search-query failures & 55 \\
-Logged successful evidence-fetch completions & 20 \\
-Total tokens logged (input / output) & 123{,}477 / 19{,}821 \\
+ID & Ground truth & Source & Political actor & Claim type \\
+\midrule
+item-0001 & FALSE & BOOM Live & BJP & provenance \\
+item-0002 & FALSE & Alt News & Karni Sena & provenance (visual) \\
+item-0003$^\dagger$ & FALSE & BOOM Live & CJP & visual (AI-generated) \\
+item-0004 & TRUE & BOOM Live & Delhi Police (government) & provenance \\
+item-0005 & MISLEADING & Factly & Congress & provenance \\
+item-0006 & FALSE & BOOM Live & none (disaster misinfo) & event (visual) \\
+item-0007 & FALSE & Alt News & BJP & misleading context \\
+item-0008 & FALSE & Alt News & AAP & quote \\
+item-0009 & FALSE & Alt News & BJP & provenance \\
+\bottomrule
+\end{tabular}
+\\[2pt]
+\raggedright\footnotesize $^\dagger$Never successfully ingested; excluded from all analyses.
+\end{table*}
+
+\subsection{Sourcing method and hit rate}
+Items were sourced by searching professional fact-checking outlets for
+articles that embed a still-live Instagram post, prioritizing coverage
+gaps in claim type, language, and political actor as the set grew across
+three sourcing passes. The method's real, load-bearing constraint is a
+$\sim$8\% hit rate (2 of the first 26 fact-check articles checked yielded a
+usable, still-live, directly-embedded Instagram post) -- most professional
+fact-checks either do not embed the specific post, or the post has since
+been taken down. Every accepted item's content hash is checked against
+already-ingested development data and excluded on any match.
+
+\subsection{Inter-annotator agreement}
+No IAA statistic is computed, and none is fabricated to fill this gap.
+Tier-1 ground truth does not have an ``annotator'' in the IAA sense -- the
+label is a single organization's single published verdict, and introducing
+a second in-project annotator to re-judge it would defeat the purpose of
+using independent ground truth at all. No Tier-2 items exist in the
+frozen dataset, so the condition under which IAA would be meaningful
+(two independent annotators judging the same items) does not currently
+arise. If Tier-2 items are added with only one available annotator, this
+will continue to be reported honestly as ``single-annotator ground truth,
+no IAA computed,'' not papered over with an unearned kappa statistic.
+
+\subsection{Composition gaps, disclosed}
+Five of 9 items are \texttt{provenance}-type claims; \texttt{statistic},
+\texttt{law\_policy}, \texttt{historical}, and \texttt{true\_claim} remain
+unrepresented after three sourcing passes -- a plausible, though unproven,
+property of which claim types concentrate on Instagram specifically versus
+other platforms for this domain. Six of 9 items are \texttt{FALSE}, likely
+reflecting that professional fact-checkers publish far more debunks than
+confirmations; only item-0004 is \texttt{TRUE}. Two items (item-0007,
+item-0008) have confirmed Hindi/mixed spoken content, still a thin
+representation of the project's stated multilingual target domain. BJP now
+has 3 items (the most of any actor, alongside 6 other single-item actors),
+but none form a controlled topic/structure/difficulty match against another
+actor, which is why RQ5 (Section~\ref{sec:bce}) is deferred rather than
+attempted at $n=1$-per-comparison.
+
+\section{Results}
+\label{sec:results}
+
+\subsection{Headline finding, reported first because it is the least flattering one}
+\textbf{On the paired six-item comparison -- the only fair one, since it is
+the only item set on which every configuration produced a verdict -- full
+TruthLens (33.3\%, 2/6) does not beat either single-shot search baseline:
+Baseline 2 (Search+LLM) scores 66.7\% (4/6) and Baseline 3
+(Search+RAG+LLM) scores 50.0\% (3/6) on the same items.} This is reported
+first and prominently because our own protocol requires it, not because it
+is the most flattering framing available.
+
+This is not a mysterious overall weakness -- it traces directly to specific,
+already-diagnosed component failures, which is itself the more useful
+finding than the raw accuracy gap alone:
+\begin{itemize}
+\item \textbf{item-0006 and item-0007:} full TruthLens outputs
+  \texttt{UNVERIFIED} on both, not because it researched them and found
+  insufficient evidence, but because claim extraction found \emph{zero
+  verifiable claims} for either (Section~\ref{sec:multimodalanalysis}:
+  item-0006's transcript is badly garbled nonsense; item-0007's is
+  degraded and repetitive). Baseline 2, given only a raw claim string with
+  no claim-extraction stage to fail, happened to guess
+  \texttt{MOSTLY\_FALSE} for both, matching the ground-truth bucket by a
+  simpler, less decomposable process. TruthLens's deeper architecture had
+  no claim to work with at all; the single-shot baseline never needed one.
+\item \textbf{item-0004 and item-0005:} both systems get these wrong, but
+  for different, already-diagnosed reasons -- TruthLens's wrong verdicts
+  here are the exact two cases Section~\ref{sec:evidencevalidation}
+  identifies as validator false negatives (confident labels contradicted
+  by real Tier-1 ground truth, undetected by the citation/number-grounding
+  checks alone).
+\item \textbf{item-0001 and item-0002:} both systems get these right.
+\end{itemize}
+
+\begin{table}[!t]
+\caption{Main comparison, each configuration's own full run}
+\label{tab:table1}
+\centering
+\scriptsize
+\begin{tabular}{lrrrl}
+\toprule
+Config & $n$ & Correct & Acc.\ & 95\% CI \\
+\midrule
+B1: LLM-only & 9 & 2 & 22.2\% & [6.3,54.7] \\
+B2: Search+LLM & 9 & 7 & 77.8\% & [45.3,93.7] \\
+B3: Search+RAG+LLM & 9 & 5 & 55.6\% & [26.7,81.1] \\
+Full TruthLens & 6 & 2 & 33.3\% & [9.7,70.0] \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\subsection{Deterministic validation catch rate}
-Of 21 verdict-generation events, 15 (71.4\%) passed all three
-deterministic checks unmodified; 6 (28.6\%) were downgraded -- 5 for an
-unsupported statistic (a number in the reasoning not found in any cited
-passage) and 1 for a missing/invalid citation. At the distinct-claim
-level, 5 of 16 claims (31.3\%) had at least one verdict downgraded during
-testing. We read this as evidence that the validation layer described in
-Section~\ref{sec:validation} is not a redundant formality: on this
-corpus, it materially changed what was published for roughly
-three in ten verdict-generation events, every one of which would
-otherwise have been schema-valid and passed through unflagged.
+Table~\ref{tab:table1} reports each configuration's own full run. Baselines 1--3 ran on all 9 items (no Gemini dependency, so unaffected by a
+real quota constraint described below). Full TruthLens's number covers only
+6 -- this row is not directly comparable to the others without restricting
+to the same 6 items, which Table~\ref{tab:table2} does; both tables are
+reported, with this caveat attached, rather than the less complete one
+omitted.
 
-\subsection{Verification-gated cascade trigger rate}
-The local model's output failed the deterministic substantiveness check,
-triggering escalation to Gemini, in 3 of 7 logged claim-extraction
-completions (approx.\ 43\%), 2 of 5 content-generation completions (40\%),
-and 2 of 8 verdict-proposal completions (25\%). These are small counts
-and should not be read as a precise escalation rate for the underlying
-local model in general; they are, however, real, and large enough to
-show the gate firing routinely rather than rarely -- a free-only,
-no-escalation deployment on this corpus would have shipped several
-outputs that were schema-valid but substantively empty.
+\begin{table}[!t]
+\caption{Paired comparison, identical 6 items for every configuration}
+\label{tab:table2}
+\centering
+\scriptsize
+\begin{tabular}{lrrrl}
+\toprule
+Config & $n$ & Correct & Acc.\ & 95\% CI \\
+\midrule
+B1: LLM-only & 6 & 0 & 0.0\% & [0.0,39.0] \\
+B2: Search+LLM & 6 & 4 & 66.7\% & [30.0,90.3] \\
+B3: Search+RAG+LLM & 6 & 3 & 50.0\% & [18.8,81.2] \\
+Full TruthLens & 6 & 2 & 33.3\% & [9.7,70.0] \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-\subsection{Evidence signal-to-noise}
-Of 72 evidence rows the evidence-analysis stage judged, 40 (55.6\%) were
-classified \texttt{irrelevant} -- the fetched source, despite being
-returned by a search query targeted at the specific claim, did not
-actually address it. This is consistent with our qualitative finding
-(Section~\ref{sec:failuremodes}) that search recall, not claim
-reasoning, is the current bottleneck: over half of retrieved-and-read
-pages contribute nothing to the eventual verdict.
+Note Baseline 1's 0.0\% on this 6-item subset, below its 22.2\% on the
+full 9 -- a reminder that even baseline numbers move around at this sample
+size, and small-$n$ comparisons across different item subsets are not
+directly meaningful without exactly this kind of restriction.
 
-\subsection{Source tier distribution}
-Of sources actually retrieved and scored, the majority (54 of 72 scored
-sources) fell into the lowest \texttt{other} tier (mean reliability
-0.404), with only 8 reaching \texttt{primary\_government} (mean
-reliability 0.674) and none reaching \texttt{primary\_legal} or
-\texttt{primary\_data} in this corpus, despite the research-planning
-prompt explicitly requesting at least one primary-source-targeted query
-per claim. This gap -- the prompt asks for primary sources, but the free
-search backend rarely surfaces them, especially for
-India-specific government domains -- is, in our assessment, the most
-consequential open problem for output quality, ahead of anything in the
-LLM reasoning stages themselves; we return to it in
-Section~\ref{sec:futurework}.
+\textbf{McNemar analysis} (paired, $n=6$, Baseline 2 vs.\ Full TruthLens):
+both-correct $=2$, both-wrong $=2$, Baseline-2-only-correct $=2$,
+TruthLens-only-correct $=0$. Exact McNemar $p=0.5$ (2 discordant pairs,
+maximally underpowered -- reported for completeness, not as evidence of
+anything on its own). This is not a claim that TruthLens's architecture is
+worse than a single-shot baseline in general; it is a claim that on this
+specific, tiny, real sample, the components most responsible for its
+supposed architectural advantage (claim decomposition, deterministic
+validation) each had a real, already-diagnosed failure that happened to
+cost more than it gained. Section~\ref{sec:ablation} shows decomposition
+\emph{did} help once claim extraction actually produced multiple claims to
+aggregate -- the deficit here is claim-extraction \emph{coverage} on hard
+audio, not the decomposition/aggregation mechanism itself.
 
-\subsection{Closing the primary-source gap: a deterministic search-side
-fix}
+\subsection{A real gap found and fixed during this exact run}
+Extending the pipeline run to items 0008/0009 hit a genuine
+\texttt{MissingGreenlet} crash -- the same bug class already fixed once in
+production code -- after a per-claim exception handler called
+\texttt{db.rollback()}, the next line's synchronous attribute access on an
+already-loaded-but-now-expired ORM object crashed the whole script instead
+of recording just that one claim's failure. Fixed by capturing the needed
+values before the try block, matching the earlier production fix's
+pattern; re-verified live, the script then completed without crashing
+(Section~\ref{sec:failuremodes}).
+
+\subsection{Known, disclosed gaps in this result}
+Items 0008/0009's full-TruthLens condition is blocked by a real Gemini
+free-tier quota exhaustion, confirmed live (two consecutive 429 errors
+during this exact run, one from evidence-analysis escalation, one from
+claim-extraction escalation) -- a genuine, external, time-of-day resource
+constraint, not a system defect, and not forced past by retrying
+indefinitely. Baselines 1--3 completed for both items (no Gemini
+dependency by design). Per-class F1 and full precision/recall breakdowns
+are not computed at this sample size, where several label classes appear
+0--1 times and per-class F1 would mostly be undefined or based on a single
+observation -- a scope decision, not an omission dressed up with
+misleadingly precise zeros and ones.
+
+\section{Ablation Study}
+\label{sec:ablation}
+
+Three ablations are in scope for this program (Section
+\ref{sec:expmethodology}); this section reports the claim-decomposition
+ablation in full and summarizes the other two, cross-referencing their
+detailed writeups.
+
+\subsection{Claim decomposition (single-claim vs.\ multi-claim), $n=4$}
+Computed from already-collected verdict data (no new LLM calls), restricted
+to the 4 items with more than one verifiable claim to decompose, since
+decomposition is a no-op on a single-claim item by construction.
+
+\begin{table}[!t]
+\caption{Claim-decomposition ablation}
+\label{tab:decomposition}
+\centering
+\footnotesize
+\begin{tabular}{lrrr}
+\toprule
+Condition & $n$ & Correct & Accuracy \\
+\midrule
+Single-claim (primary only) & 4 & 1 & 25.0\% \\
+Multi-claim (full decomposition) & 4 & 2 & 50.0\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table*}[!t]
+\caption{Per-item detail (\ding{51} = correct, \ding{55} = wrong)}
+\label{tab:decomposition-detail}
+\centering
+\footnotesize
+\begin{tabular}{lccc}
+\toprule
+Item & Single-claim result & Multi-claim result & Ground truth \\
+\midrule
+item-0001 & \ding{55}\ UNVERIFIED & \ding{51}\ MOSTLY\_FALSE & FALSE \\
+item-0002 & \ding{51}\ MOSTLY\_FALSE & \ding{51}\ MOSTLY\_FALSE & FALSE \\
+item-0004 & \ding{55}\ FALSE & \ding{55}\ FALSE (no-op, 1 claim) & TRUE \\
+item-0005 & \ding{55}\ FALSE & \ding{55}\ FALSE & MISLEADING \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+This is a real, positive result for RQ2's decomposition-specific question.
+On item-0001, the single highest-importance claim landed on
+\texttt{UNVERIFIED} (a missing-citation validator downgrade), but
+aggregating all 4 extracted claims via the deterministic rule table
+(Section~\ref{sec:aggregation}) correctly recovered \texttt{MOSTLY\_FALSE}.
+$n=4$ is far too small to generalize, but this is the one component-level
+ablation in this program where TruthLens's specific architectural mechanism
+demonstrably helped rather than hurt, and we report it with the same
+prominence as Section~\ref{sec:results}'s headline negative finding, not
+buried beneath it.
+
+\subsection{Validation ablation (RQ1) -- summary}
+Baseline 4 (TruthLens minus validation) is the primary ablation for RQ1;
+its result is the unsupported-output-rate comparison in
+Section~\ref{sec:evidencevalidation} (66.7\% without validation vs.\ 55.6\%
+with it, on the original 9-case validator audit, before the two general
+fixes reported in the same section improved that further).
+
+\subsection{Source-tier ablation (RQ4) -- summary}
+Restricting research-planning queries explicitly targeting primary sources
+to a fixed government/legal domain allow-list, versus the system's normal
+unrestricted queries, is evaluated in full in
+Section~\ref{sec:evidencevalidation} (Section~\ref{sec:primarysourcefix}):
+tier-classification rate moved from $\sim$11\% to 95\% under restriction,
+measured on a different, smaller query sample than the system's normal
+operating condition, with a disclosed residual gap in full-text fetch
+reliability specific to \texttt{.gov.in} domains.
+
+\section{Evidence and Validation Analysis}
+\label{sec:evidencevalidation}
+
+\subsection{Validator methodology}
+The real production pipeline (claim extraction $\to$ research planning
+$\to$ search/fetch $\to$ evidence analysis $\to$ verdict proposal), using
+the system's actual configured providers including Gemini escalation, was
+run with \texttt{SKIP\_VALIDATION=True} so the raw proposal is always what
+is persisted, while \texttt{validate\_verdict()}'s outcome is still always
+computed and recorded -- giving both the WITHOUT-VALIDATION and (derived,
+no second LLM call) WITH-VALIDATION view from one real LLM call per claim.
+9 verifiable claims produced a resolved verdict-generation event across 4
+items (item-0001, item-0002, item-0004, item-0005); 2 items (item-0006,
+item-0007) had zero verifiable claims extracted, discussed in
+Section~\ref{sec:multimodalanalysis}. Ground truth for this analysis is a
+single, unadjudicated draft human review (this project's own, not yet
+reviewed by a second person) of whether each verdict-generation event's
+output was actually unsupported or unreliable -- every number below is
+small-sample and directional, and needs independent review before being
+treated as final.
+
+\subsection{A real bug found and fixed mid-audit}
+One of the 9 cases (item-0004) was initially downgraded for a spurious
+reason: its reasoning used a single-bracket inline citation whose bracket
+style the verdict prompt never actually specifies, and the model varied it;
+the cited UUID's own hex fragments that happen to start with digits leaked
+through the number-grounding check as apparent unsupported statistics.
+Fixed by stripping anything shaped like a UUID directly, independent of
+bracket style. This fix had a disclosed side effect, reported honestly:
+it removed an accidental protection that had been shielding a
+\emph{substantively wrong} verdict from being published as accepted --
+fixing a real false-positive bug does not, by itself, make the overall
+pipeline's output more reliable if the thing it was accidentally catching
+was a real problem for an unrelated reason (Section~\ref{sec:failuremodes}).
+
+\subsection{Original confusion matrix ($n=9$, single unadjudicated reviewer)}
+\begin{table}[!t]
+\caption{Validator confusion matrix, before the two general fixes below}
+\label{tab:validator-before}
+\centering
+\scriptsize
+\begin{tabular}{lcc}
+\toprule
+ & Validator downgrades & Validator passes \\
+\midrule
+Human: unsupported & 1 (TP) & 5 (FN) \\
+Human: fine to publish & 0 (FP) & 3 (TN) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Three of the four recorded downgrade/pass cells need one more caveat: 3 of
+the 4 recorded downgrades in this sample are ``no-op'' downgrades -- the
+raw proposal was already \texttt{UNVERIFIED} with an empty citation list,
+so the citation-existence check fires trivially on the empty set without
+actually changing the published label. These are counted as TN above
+(nothing wrong was going to be published either way), not as a meaningful
+validator ``catch'' -- a real wrinkle in how a raw ``X\% downgraded''
+headline number should be read: some unknown share of any such rate may be
+this kind of no-op, not a genuine intervention.
+
+\textbf{Validator Precision} = 1/1 = 100\% (Wilson 95\% CI: 20.7--100\%).
+\textbf{Validator Recall} = 1/6 = 16.7\% (Wilson 95\% CI: 3.0--56.4\%).
+\textbf{Validator F1} $\approx$ 28.6\%.
+
+\subsection{Unsupported output rate, WITHOUT vs.\ WITH validation}
+Of the 9 raw proposals, 6 of 9 (66.7\%) are judged, by draft human review,
+unsupported or unreliable enough that publishing them as-is would be
+misleading -- including a case where evidence about the wrong entity was
+treated as directly contradicting the claim, a case where the label
+contradicted the reasoning's own stated ``no reliable information''
+conclusion, and two cases where a confident label directly contradicts
+independent Tier-1 ground truth. Of those 6, the original three
+deterministic checks catch and downgrade only 1. \textbf{Unsupported
+output rate WITHOUT validation: 6/9 (66.7\%). WITH validation (what would
+actually be published): 5/9 (55.6\%).} Validation reduced the unsupported
+rate by roughly eleven points on this sample -- real and positive, and more
+modest than a validator downgrade rate alone might suggest about the
+validator's overall error-catching power, as opposed to its specifically
+strong citation/number-grounding-catching power.
+
+\subsection{Why recall is this low: what the original three checks cannot see}
+Every one of the 5 original false negatives fails for a reason citation
+existence, source-fetch existence, and numeric grounding structurally
+cannot detect: (1) label/reasoning inconsistency -- the model's own prose
+says no reliable information exists, yet the label is a confident
+non-\texttt{UNVERIFIED} value; (2) wrong-entity evidence treated as
+directly relevant; (3) vague, thinly-grounded reasoning that still clears
+a bare word-count substantiveness bar; (4) a verdict that is simply,
+factually wrong relative to independent ground truth, which no citation
+-existence check can catch if the model misweighs real, present evidence
+rather than citing evidence that does not exist. Category (1) motivated the
+new Check 4 (Section~\ref{sec:validation}).
+
+\subsection{Addendum: retroactive re-scoring after two general fixes, with a circularity caveat}
+After the headline finding in Section~\ref{sec:results}, two general,
+deterministic fixes were added to \texttt{validate\_verdict()}: the
+UUID-leak fix above, and the new label/reasoning-consistency check
+(Section~\ref{sec:validation}). Both are pure functions of the model's own
+output, never of ground truth; re-applying them to the same 9 real cases
+costs zero new LLM calls and is not itself a form of answer-tuning.
+
+\begin{table}[!t]
+\caption{Validator confusion matrix, after the two general fixes}
+\label{tab:validator-after}
+\centering
+\scriptsize
+\begin{tabular}{lcc}
+\toprule
+ & Validator downgrades & Validator passes \\
+\midrule
+Human: unsupported & 2 (TP) & 3 (FN) \\
+Human: fine to publish & 0 (FP) & 4 (TN, all no-op) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Precision 100\% (2/2), Recall 40\% (2/5)} -- up from 16.7\%. The two
+new true positives are exactly the two most consequential original false
+negatives: a label-contradicts-its-own-reasoning case, and, more
+importantly, the case where a confident \texttt{FALSE} at confidence 0.8
+contradicted independent Tier-1 ground truth stating the claim was
+actually true -- now correctly downgraded to \texttt{UNVERIFIED}.
+
+\textbf{A real regression surfaced by this same re-scoring, reported with
+equal prominence:} one case originally counted as this audit's sole true
+positive is no longer downgraded, because the UUID-leak fix correctly
+removed the exact false trigger (digits from a cited UUID) that had been
+\emph{accidentally} catching it. The underlying real problem
+(wrong-entity evidence treated as directly relevant) remains genuinely
+uncaught; this case moves from TP to FN. Net effect: 1 TP lost, 2 TP
+gained, landing at 2 TP / 5 FN overall.
+
+\textbf{The circularity that must be disclosed, not hidden:} the new
+check's phrase list was written after reading the literal reasoning text
+of the two cases it now catches. The underlying \emph{principle} --
+reasoning stating no evidence was found should never pair with a confident
+label -- is general and references no ground truth at all, but the
+specific phrase list was calibrated on exactly the sample now used to
+report its recall improvement. This means the 40\% recall figure is
+likely optimistic about how well this check generalizes to new cases with
+different phrasing (e.g.\ ``the data does not corroborate this'') --
+untested, and stated here as a real threat to validity, not a technicality
+(Section~\ref{sec:threats}).
+
+\textbf{Reel-level accuracy did not change (2/6, unchanged from
+Section~\ref{sec:results}'s number) despite this real validator
+improvement.} This is itself a finding, not a disappointment to explain
+away, and we return to its implications in Section~\ref{sec:discussion}.
+
+\subsection{Evidence quality (RQ4): tier, stance, and diversity distribution ($n=68$ sources, 9 claims)}
+\begin{table}[!t]
+\caption{Source tier distribution ($n=68$)}
+\label{tab:tiers}
+\centering
+\footnotesize
+\begin{tabular}{lrr}
+\toprule
+Tier & Count & \% \\
+\midrule
+other & 43 & 63.2 \\
+primary\_government & 14 & 20.6 \\
+established\_news & 6 & 8.8 \\
+primary\_legal & 2 & 2.9 \\
+news\_wire & 2 & 2.9 \\
+factcheck\_org & 1 & 1.5 \\
+primary\_data & 0 & 0.0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Source-tier classification rate (primary\_government + primary\_legal +
+primary\_data): 16/68 = 23.5\% (Wilson 95\% CI: 15.0--34.9\%) on this
+sample's normal, unrestricted research-planning queries -- a different,
+real number from the domain-restricted-query result below, because these
+are different experimental conditions, not a contradiction.
+
+\begin{table}[!t]
+\caption{Evidence stance distribution ($n=68$)}
+\label{tab:stance}
+\centering
+\footnotesize
+\begin{tabular}{lrr}
+\toprule
+Stance & Count & \% \\
+\midrule
+irrelevant & 58 & 85.3 \\
+contradicts & 8 & 11.8 \\
+supports & 2 & 2.9 \\
+provides\_context & 0 & 0.0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+85.3\% of retrieved-and-analyzed sources were judged irrelevant on this
+sample -- notably higher than an earlier, smaller development-time figure
+of 55.6\% -- both real, both reported, since this ratio moves across
+samples rather than holding at one stable rate. Source diversity: 29
+distinct domains across 68 sources.
+
+\subsection{The four-way primary-source metric, not collapsed into one number}
+\begin{enumerate}
+\item \textbf{Source-tier classification rate:} 16/68 = 23.5\% (above).
+\item \textbf{Relevant primary source rate} (draft human judgment): of the
+  16 primary-tier sources, 11/16 (68.75\%) are judged topically relevant
+  to the claim's general subject. The 5 not relevant include a
+  wrong-domain case (an engineering-admissions authority returned for a
+  medical/NEET claim) and a wrong-country case (a US National Archives
+  page returned for an Indian political claim).
+\item \textbf{Primary source fetch-success rate:} 16/16 by construction of
+  an existing guarantee that the pipeline never stores a source it could
+  not fetch; whether \emph{full} text vs.\ a snippet-only fallback was
+  retrieved for each was not separately checked in this pass, a disclosed
+  gap shared with Section~\ref{sec:primarysourcefix}'s finding below.
+\item \textbf{Usable evidence extraction rate:} 3/16 = 18.75\% (stance
+  $\neq$ \texttt{irrelevant}).
+\end{enumerate}
+
+\textbf{The gap between metric 2 (68.75\%) and metric 4 (18.75\%) is the
+single most important finding of this evaluation.} The system's retrieval
+finds real, topically-appropriate primary-government/legal sources at a
+meaningfully higher rate than its own usable-evidence number would
+suggest -- the bottleneck is that most of these real sources are homepages,
+portals, or generically-relevant documents too broad to confirm or deny
+one specific atomic fact, not a failure to find relevant sources at all. A
+reader who saw only metric 4 would conclude retrieval quality is poor;
+metric 2 shows the more accurate, more nuanced picture. Both are reported
+together for exactly this reason.
+
+\subsection{A second major bug found via this data: empty explanations in 47.1\% of evidence rows}
+While reviewing real evidence rows, one stood out: a real government source
+was classified \texttt{contradicts} against an item-0002 claim with zero
+explanation text -- no way to audit why. Checking systematically: 32 of 68
+(47.1\%) real evidence rows from this run had an empty \texttt{explanation}
+field -- the same ``schema-valid but substantively empty'' failure class
+already found in other stages, never previously guarded in this one.
+Fixed with a per-source substantiveness check (Section~\ref{sec:cascade})
+and live re-verified against the exact real case that surfaced it: the
+same source, re-analyzed, produced the same \texttt{contradicts} stance,
+now with a real, specific explanation quoting the source's own restriction
+language. With the explanation visible, the stance turns out more
+defensible than it looked as an unexplained black box -- the deeper issue
+this reveals is less ``the stance was wrong'' and more that claim
+extraction had produced a claim general enough that unrelated-event
+government sources on a similar topic become plausible-looking
+``evidence'' for it, a claim-specificity problem as much as a pure
+evidence-relevance one.
+
+\subsection{Closing the primary-source gap: a deterministic search-side fix}
 \label{sec:primarysourcefix}
-The gap above motivated a concrete fix, mirroring the mechanism already
-used for \texttt{tier3\_factcheck} queries (Section~\ref{sec:methodology}):
-a research-planning query explicitly targeted at \texttt{tier1\_primary}
-is now restricted at the search-call level itself, via
-\texttt{SearchProvider.search(include\_domains=\ldots)}, to a fixed
-allow-list (\texttt{gov.in}, \texttt{nic.in}, \texttt{sansad.in},
-\texttt{rbi.org.in}, \texttt{indiankanoon.org}) -- rather than trusting a
-free-text \texttt{site:gov.in} the model writes into its own query text,
-which nothing previously verified actually stayed on those domains.
-Implementing this surfaced a second, related gap: the source-tier
-classifier itself was misclassifying genuine government sources as
-\texttt{other} because its domain hints only matched \texttt{.gov}
-variants -- missing NIC (National Informatics Centre), which hosts a
-large share of official Indian government sites under \texttt{nic.in}
-with no \texttt{.gov} substring at all (e.g.\ the National Testing
-Agency's own NEET results page), and missing \texttt{rbi.org.in}, the
-primary source for official Indian financial statistics. Both were added
-to the classifier alongside the search-side fix.
+A research-planning query explicitly targeted at primary sources is
+restricted at the search-call level itself to a fixed government/legal
+domain allow-list, rather than trusting a free-text \texttt{site:gov.in}
+the model writes into its own query, which nothing previously verified
+actually stayed on those domains. A related source-classifier gap was
+fixed alongside it (missing NIC- and RBI-hosted domain patterns). Re-running
+seven real, unscripted domain-restricted queries against the live search
+backend: four returned results, three returned none at all. Pooling the
+four that did return results (20 sources): 19 of 20 (95\%) landed in a
+primary tier, against an $\sim$11\% (8/72) baseline measured before this
+fix. Two findings temper this result. First, a query about one
+organization returned five results that were all, correctly,
+government-tier domains, but topically irrelevant -- domain restriction
+guarantees tier correctness, not topical relevance, the same pattern found
+independently above (the engineering/NEET and US/Indian mismatches).
+Second, for one query's five URLs, every full-page fetch failed (403s and
+TLS certificate errors), falling back to the search backend's own snippet
+text; we manually confirmed those snippets were still substantive, but
+full source text is being lost specifically for this domain category, and
+this reliability gap remains open, not folded into the 95\% headline
+figure, which measures tier classification of retrieved results, not
+completeness of the text behind them.
 
-We then re-ran seven real, unscripted \texttt{tier1\_primary} queries
-against the live DuckDuckGo backend (no simulated results) to check
-whether the restriction actually changes what gets retrieved. Four
-queries returned results; three returned none at all (a UP-advertising
--spending query, a social-media-takedown-rule query, and a second UP
--advertising-budget query variant each came back empty --
-\texttt{DDGSException: No results found}). Pooling the four queries that
-did return results (20 sources total, after the classifier fix above):
-18 \texttt{primary\_government}, 1 \texttt{primary\_data}, 1
-\texttt{other} -- 19 of 20 (95\%) landing in a primary tier, against the
-8 of 72 (\textasciitilde11\%) baseline reported just above. One of the
-four queries (on India's social-media intermediary rules) returned the
-actual MeitY amendment-rules PDF and \texttt{egazette.gov.in} directly;
-another (on state-wise per-capita income) returned five Rajya
-Sabha-question-citing PIB releases and NITI Aayog/EAC-PM/MoSPI pages, all
-genuinely on-topic.
+\section{Multimodal and Visual Failure Analysis}
+\label{sec:multimodalanalysis}
 
-Two findings temper this result rather than complicate it away. First, a
-query about the organization ``Karni Sena'' returned five results that
-were all, correctly, \texttt{primary\_government}-tier domains, but
-topically irrelevant -- generic government registration portals matched
-on keyword overlap, not evidence about the organization itself. Domain
-restriction guarantees tier correctness, not topical relevance; those are
-separate properties, and this fix addresses only the first. Second, for
-the per-capita-income query's five URLs, every full-page-content fetch
-failed: two \texttt{403 Forbidden} (\texttt{pib.gov.in},
-\texttt{niti.gov.in}) and three TLS certificate-verification failures
-(\texttt{eacpm.gov.in}, \texttt{invest.up.gov.in}, \texttt{mospi.gov.in}),
-falling back to the search backend's own snippet text (199--336
-characters per source). We manually confirmed those snippets were still
-substantive and on-topic -- e.g.\ real Rajya Sabha Unstarred Question
-text naming state-wise per capita income figures -- so the 95\% figure
-above is not built on empty content, but full source text is being lost
-specifically for the domain category this fix targets. We did not fix
-this: doing so would mean either relaxing certificate verification for a
-curated domain list, a real security trade-off we were not willing to
-take on without more investigation, or diagnosing the specific 403s
-further, and we did not want to ship an under-examined fix to a security
--relevant check in the same pass as the retrieval fix above. We report it
-here as a distinct, open limitation rather than folding it into the 95\%
-headline number, which measures tier classification of retrieved
-results, not the completeness of the text behind them.
+\subsection{What was run}
+Real ingestion (fetch $\to$ transcribe $\to$ OCR $\to$ vision-context) of
+the 7-item dataset as it existed at the time of this experiment, followed
+by claim extraction under three input-modality conditions:
+\texttt{text\_only} (transcript + caption), \texttt{text\_ocr} (+
+on-screen text), \texttt{text\_ocr\_vision} (+ vision-context
+description). All three conditions use the local model directly, no
+Gemini fallback, isolating the modality variable the same way the
+baselines in Section~\ref{sec:expmethodology} isolate architecture.
+TruthLens's actual architecture has exactly three distinct input signals
+feeding claim extraction -- there is no real fourth ``full multimodal''
+condition beyond all three together, so \texttt{text\_ocr\_vision}
+\emph{is} full multimodal for this system.
 
-\subsection{An out-of-sample pilot}
-\label{sec:pilot}
-Every number above comes from the same handful of videos used during
-development. As a first, small step toward the held-out evaluation
-Section~\ref{sec:futurework} calls for, we ran TruthLens against two
-reels it had never seen, each independently fact-checked by a
-professional Indian fact-checking organization (BOOM Live, Alt News),
-sourced by fetching the organization's own article and extracting the
-original Instagram post it had embedded as evidence -- not by us
-selecting or writing the claim or the verdict. On both, TruthLens's
-reel-level verdict (\texttt{MOSTLY\_FALSE} in both cases) agreed with
-the independent ground truth (\texttt{FALSE} in both cases). We do not
-read this as a validated accuracy result -- $n=2$ -- but the process of
-running it surfaced something more informative than the label match
-itself.
+\subsection{Ingestion: 6 of 7 items usable, 1 real persistent failure}
+item-0003 failed on both attempts with a persistent Instagram-side ``empty
+media response.'' item-0005 initially failed with a different yt-dlp
+``no video'' phrasing than the one already handled by the existing
+photo-post fallback (Section~\ref{sec:failuremodes}); fixed and
+re-verified live the same pass. The other 5 ingested cleanly.
 
-On the second case, the label match was coincidental rather than
-earned. The reel's caption never states the claim that was actually
-false in words; the misinformation is entirely visual (real World Cup
-celebration footage captioned as a protest). TruthLens's text-derived
-claim extraction found two tangential claims in the caption's moralizing
-language and never identified or checked the one thing that was
-actually misleading: what the video shows. \emph{Both} pilot cases follow
-this same pattern -- genuine footage, false caption about what it
-depicts -- which was also the dominant pattern among the professional
-fact-checks we surveyed while sourcing this pilot. TruthLens has no
-video-provenance or reverse-image-search capability; its architecture
-may be structurally weak against the single most common real-world
-failure mode in this domain, independent of anything about LLM
-reasoning quality. We treat this as the most important finding of this
-pilot and return to it in Section~\ref{sec:futurework}.
+\subsection{Claim coverage results ($n=6$, item-0003 excluded)}
+\begin{table}[!t]
+\caption{Claim coverage by input modality}
+\label{tab:coverage}
+\centering
+\scriptsize
+\begin{tabular}{lrrl}
+\toprule
+Condition & Covered & Coverage & 95\% CI \\
+\midrule
+text\_only & 1/6 & 16.7\% & [3.0,56.4] \\
+text\_ocr & 0/6 & 0.0\% & [0.0,39.0] \\
+text\_ocr\_vision (full) & 2/6 & 33.3\% & [9.7,70.0] \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-The same run also surfaced two further bugs, both fixed the same day
-(Section~\ref{sec:failuremodes}): evidence retrieval confused two
-similarly-named but distinct organizations, and a verdict the
-deterministic validator had already downgraded still had its full
-free-text reasoning reused downstream, carrying an entity-confused,
-unsupported claim about a real organization's ideology onto a rendered
-slide. Neither is visible in the aggregate statistics above, which is
-itself worth noting: a system can look healthy on its summary numbers
-while a specific, reproducible, reputationally serious failure sits one
-level down.
+Read these as exactly what they are: 6 single, non-repeated LLM calls per
+condition, with confidence intervals wide enough to overlap almost
+entirely. \texttt{text\_ocr} scoring below \texttt{text\_only} is a real,
+reportable result, not suppressed because it complicates the
+``more modality is better'' hypothesis -- the most likely explanation,
+itself unverified, is single-call noise compounded by a specific
+extraction failure (below), not a robust modality effect, and this
+dataset is far too small to distinguish the two.
 
-\subsection{A first naive-baseline comparison}
-\label{sec:naivebaseline}
-Using the same two pilot claims, we ran a genuinely naive baseline: the
-claim text sent directly to the same LLM TruthLens uses by default
-(Llama 3.2 via Ollama), with a bare prompt asking for a verdict and
-reasoning -- no claim decomposition, no search, no retrieved evidence,
-no validation. On both claims the naive baseline answered
-\texttt{UNVERIFIABLE}, where TruthLens's full pipeline reached
-\texttt{MOSTLY\_FALSE} (matching ground truth on both, per
-Section~\ref{sec:pilot}).
+\subsection{item-0004: the one clean, positive RQ3 result}
+The video's real transcript is badly garbled nonsense, consistent with
+known transcription reliability issues on chaotic protest audio. Real OCR,
+sampled across multiple frames, clearly and repeatedly captured on-screen
+text asserting the actual checkworthy claim (police using a nail-fitted
+baton against protesters), matching the professional fact-check's own
+verdict almost verbatim. \texttt{text\_only} extracted nothing resembling
+this claim; \texttt{text\_ocr}, despite the same real OCR text, happened
+to return one claim with empty text on this specific run (the empty-string
+-claim failure class, Section~\ref{sec:failuremodes}); \texttt{text\_ocr\_vision}
+correctly surfaced the claim, though messily (7 near-duplicate claims, one
+per noisy OCR-frame variant, rather than one deduplicated atomic claim --
+a new, unfixed failure mode, since neither existing check evaluates
+cross-claim redundancy). Net result: only the multimodal condition
+produced any usable signal for this claim, and the mechanism was OCR
+content the audio transcript had no access to at all -- a genuine,
+small-$n$ demonstration of exactly what RQ3 asks about.
 
-We read this narrowly and are wary of overclaiming it. The naive
-baseline did not reason incorrectly -- it correctly recognized it has no
-way to know about mid-2026 events from training data alone and said so,
-rather than fabricating an answer. What separates the two columns here
-is access to current information via search, not any demonstrated
-advantage in claim decomposition, source tiering, or verdict reasoning
-specifically. This two-claim comparison mostly shows that having
-\emph{any} search access beats having none, which is a much lower bar
-than validating TruthLens's specific multi-stage architecture against a
-simpler competitor that also has search. A fairer ablation -- one
-search query plus a single LLM call over the results, isolating what
-TruthLens's multi-stage design adds beyond ``search plus one model
-call'' -- is needed before this comparison can support a stronger
-claim, and is now the more precisely scoped version of
-Section~\ref{sec:futurework}'s baseline item.
+\subsection{A structural pattern limiting how much claim coverage can improve}
+Drafting atomic claims against the real ingested content surfaced a
+pattern worth stating explicitly: in 4 of 6 scoreable items, the actual
+false or misleading claim does not exist anywhere in \emph{this specific
+post's} own transcript, caption, or OCR at all -- it was added by a
+different account when recirculating the same underlying video under a new
+caption. Only item-0004 (claim genuinely on-screen) and, partially,
+item-0007 have the checkworthy claim actually present in the specific URL
+this dataset points to. This is a direct, structural consequence of how
+Tier-1 items are sourced: a fact-checker traces a viral false claim back to
+its original, differently-captioned source video, and that original
+video's URL is what enters the dataset. A majority of this dataset's items
+may therefore be structurally unwinnable for single-post claim extraction
+no matter how good modality coverage gets -- the missing capability is
+knowing how a video is being recaptioned \emph{elsewhere}
+(reverse-video-search / cross-post claim matching), which TruthLens does
+not have and has never claimed to have. We recommend this be read
+explicitly rather than let a low claim-coverage number read as simply
+``claim extraction needs to improve.''
 
-\subsection{A second out-of-sample pilot: a photo post, and a grounded correction}
-\label{sec:secondpilot}
-A user-supplied Instagram URL turned out to be a single-image post, not
-a video -- TruthLens had no path for that at all, only a hard failure.
-Building one (Section~\ref{sec:multimodal}) and testing it against this
-real post, an image captioned ``The second poorest state by income, but
-number one in publicity and propaganda'' with an overlaid graphic citing
-specific government ad-spending figures, surfaced four further real
-issues before it produced usable output, each fixed and re-verified the
-same way as Section~\ref{sec:failuremodes}'s taxonomy: an unrelated
-crash on the zero-verifiable-claims path, on-screen text read correctly
-by vision analysis but silently dropped before reaching claim
-extraction, a fabricated headline number (detailed in
-Section~\ref{sec:failuremodes}), and a missing glyph for the Indian
-Rupee sign in the rendering font. With those fixed, claim extraction correctly
-produced two specific, verifiable claims (a rupee figure for
-government ad spending; a state income ranking) and one correctly
--excluded opinion-framed claim.
+\subsection{New failure modes found this pass}
+\textbf{Near-duplicate claims from noisy OCR-frame variants, not
+deduplicated} (item-0004, above) -- not caught by any existing check, since
+both existing checks evaluate claim-level substantiveness, not cross-claim
+redundancy. \textbf{\texttt{importance} field values outside its declared
+[0,1] range}, causing outright schema-validation failure: item-0005's
+\texttt{text\_only} run failed with \texttt{importance} $= -1$; its
+\texttt{text\_ocr\_vision} run failed with a run of values 2, 3, 4, 5, 6,
+resembling a claim \emph{ordinal position} substituted for an importance
+score. Both failures occurred only because this research script
+deliberately removes the Gemini-escalation cascade to isolate the modality
+variable -- in production, \texttt{FallbackLLMProvider}'s retry would
+likely rescue both, meaning this is a real failure mode normally masked
+by the escalation cascade and visible here only because the experiment
+removed it. \textbf{The vision-output prompt-echo bug recurred 4 more
+times} in this pass (item-0002, item-0004, item-0006's
+\texttt{scene\_description}; item-0001 and item-0007 produced empty vision
+output instead). Combined with prior documented instances, this is a
+repeated, frequent failure of the vision stage specifically, not a rare,
+single-case anecdote -- motivating the general fix described in
+Section~\ref{sec:cascade}. Only item-0005's vision output was genuinely
+coherent and accurate across all 6 successfully-ingested items. This fix's
+real-world impact on Section~\ref{sec:results}'s specific accuracy numbers
+is not independently re-verified end-to-end: it only changes behavior when
+the paid fallback is available and the local model's output looks like a
+prompt echo, and the fallback's quota was already exhausted
+(Section~\ref{sec:results}) before it could be exercised against
+items 0006/0007. Those two items' underlying problem (no checkworthy claim
+in item-0006's own content at all; degraded audio for item-0007) is not
+primarily a vision-context issue, so this fix is not expected to change
+their outcome even once re-tested -- stated as an expectation, not a
+verified result, pending quota reset.
 
-This post doubled as the first live test of the corrected-fact mechanism
-(Section~\ref{sec:corrections}), and it is worth reporting exactly what
-happened rather than only the eventual success. The claim's own
-retrieved evidence already contained a specific correction -- an
-investigative piece citing the state government's own budget documents
-for a figure roughly 70\% higher than the claim stated. Across three
-consecutive calls, the default local model's verdict was downgraded
-each time, for a real and unrelated reason: its \texttt{reasoning\_
-summary} cited a number that appeared in the evidence matrix but not in
-the specific source it had formally cited. Per
-Section~\ref{sec:corrections}'s design, this correctly suppressed
-\texttt{corrected\_fact} on every one of those three calls, even though
-the field itself would likely have been fine -- the system was
-conservative in exactly the situation it should be. A call to the
-fallback model produced a clean pass: verdict \texttt{MOSTLY\_FALSE},
-and a \texttt{corrected\_fact} stating the actual figure with its
-source, which we confirmed against the underlying article's own text
-before trusting it ourselves. Rendering it surfaced one more issue --
-the new content's height was undercounted in the slide layout,
-overflowing one evidence card into the next -- fixed and re-verified
-visually. We read the three-downgrades-then-one-clean-pass pattern as a
-small but genuine demonstration of Section~\ref{sec:cascade}'s
-verification-gated design doing its job under real, not synthetic,
-conditions: the local model's own citation imprecision, not a flaw in
-the new correction mechanism, was what held the output back until a
-stronger model produced something that actually passed.
+\section{Bias, Calibration, and Efficiency Analysis}
+\label{sec:bce}
 
-\subsection{A third live test: two infrastructure bugs found, no
-finished output}
-\label{sec:thirdpilot}
-Not every live test ends in a published fact-check, and we report this
-one because it did not. A third real Instagram URL -- a noisy,
-multi-screenshot video montage with a heavily code-switched
-Hindi/Urdu/English transcript -- surfaced two further bugs, neither in
-the LLM reasoning stages this time but in the surrounding pipeline
-infrastructure.
+\subsection{Political bias (RQ5): attempted, blocked by data availability, deferred honestly}
+No genuine matched pairs exist in the current 9-item dataset (same topic,
+structure, evidence availability, and difficulty, varying only the
+political actor named): BJP has the most items (3) of any actor, but none
+are topic-matched against another single actor. Constructing real matched
+pairs requires a dedicated sourcing pass optimized for actor \emph{matching}
+rather than actor \emph{diversity}, which this program's sourcing process
+has so far optimized for -- a real, disclosed methodological choice that
+trades away this specific analysis for broader dataset coverage. Per our
+own protocol, this is not attempted as a quantitative result; it is named
+as the top open item for whoever continues this program
+(Section~\ref{sec:futurework}).
 
-First, local claim extraction returned two schema-valid claims with
-\texttt{text=""} -- empty strings -- for content whose OCR text plainly
-contained checkable claims (a document authenticity dispute, a funding
--source claim). This passed schema validation (an empty string is still
-a string) and was invisible to the existing grounding check
-(Section~\ref{sec:cascade}), which only ever evaluates \emph{verifiable}
-claims' \texttt{source\_quote} field and is a no-op whenever every
-returned claim comes back non-verifiable, exactly what happened here.
-This is the same "schema-valid but substantively empty" failure class
-already guarded against in the verdict and content-generation stages
-(Section~\ref{sec:cascade}), just not, until now, in claim extraction
-itself. Fixed with an analogous substantiveness check that escalates to
-the fallback model whenever every extracted claim is blank, plus an
-unconditional filter that never persists a blank-text claim regardless
-of which model produced it.
+What can be said qualitatively from the real data already collected, not a
+substitute for the real analysis: of the 9 real verdicts audited in
+Section~\ref{sec:evidencevalidation}, a verdict targeting a government
+body's own claim (item-0004's Delhi Police baton case) was treated no
+differently in kind by the pipeline than verdicts about party or activist
+claims -- the system was willing to reach \texttt{FALSE} against a claim
+ultimately traceable to a government actor's own public position (a
+verdict itself judged wrong for reasons unrelated to which actor was
+involved, Section~\ref{sec:evidencevalidation}). This is one data point
+showing the system does not categorically refuse to find against a
+government actor, a necessary but nowhere near sufficient condition for
+what RQ5 actually asks.
 
-Second, with that fix correctly triggering escalation more often, a
-retry call hit the fallback model's free-tier daily quota (20 requests
-per day). The specific API surface this system uses
-(an interactions-style endpoint, adopted after the older generation
-endpoint stopped accepting new API keys) raises a completely separate
-exception hierarchy from the one the provider's error handling was
-written against; we confirmed live that the rate-limit exception was
-not an instance of the caught type at all. The mismatch let a routine,
-expected failure mode -- quota exhaustion -- propagate as an unhandled
-exception instead of the intended typed error, crashing the entire
-in-flight request after some forty minutes of otherwise-successful work
-(dozens of completed local-model calls across several claims) rather
-than failing fast with a clear message. Fixed by catching the actual
-exception hierarchy the SDK uses; re-verified live post-fix that the
-identical quota-exhaustion condition now surfaces as a clean, sub-minute
-error instead of a long hang ending in a crash. Notably, a pre-existing
-unit test for this code path had mocked the same wrong exception
-hierarchy the production code was (mis)handling, so it passed
-throughout despite the underlying bug -- a reminder that a test can be
-internally consistent with buggy code and still provide no real
-coverage; it was rewritten against the SDK's actual exception classes.
+\subsection{Calibration (RQ6): not computed, per our own pre-registered fallback rule}
+Nine real confidence values exist: 0.0, 0.0, 0.1, 0.1, 0.2, 0.2, 0.2, 0.7,
+0.8. A reliability diagram or Expected Calibration Error requires enough
+items per confidence bin to mean anything; this distribution cannot meet
+our pre-registered gate (no bin with fewer than 3 items) no matter how
+bins are drawn. Per our own protocol's explicit fallback rule, no ECE or
+Brier score is reported, and no numerical confidence claim is made beyond
+what follows. One qualitative, heavily caveated observation: the two
+highest-confidence verdicts in this sample (0.7 and 0.8) are both cases
+Section~\ref{sec:evidencevalidation}'s draft human review judged unreliable
+or factually wrong, while several of the lowest-confidence verdicts
+(0.0--0.1) were appropriately cautious \texttt{UNVERIFIED} outputs. At
+$n=9$ this is not evidence of an inverse relationship between confidence
+and correctness -- it is exactly the kind of pattern a real calibration
+analysis, at real scale, would need to check for rather than assume away.
 
-With the fallback model's daily quota already spent by the time both
-fixes were verified, we were not able to complete a finished,
-fallback-quality fact-check for this specific post the same day --
-local-only extraction on this content returned zero claims, an honest
-null result rather than a crash, consistent with the low ceiling on
-small-model reasoning quality already discussed in
-Section~\ref{sec:relatedwork} and \ref{sec:futurework}. We report the
-two infrastructure fixes as real, tested, and independently verified;
-we do not report a third successful pilot, because there isn't one yet
-for this post.
+\subsection{Efficiency}
+\begin{table}[!t]
+\caption{Efficiency, real measured data}
+\label{tab:efficiency}
+\centering
+\scriptsize
+\begin{tabular}{lccc}
+\toprule
+Config & LLM calls & Latency & Cost \\
+\midrule
+B2: Search+LLM & 1 & $\sim$15.9s & \$0 \\
+B3: Search+RAG+LLM & 1 & $\sim$17.8s & \$0 \\
+Full TruthLens & $\sim$9.6/claim$^\ddagger$ & n/m & \$0/paid mix \\
+\bottomrule
+\end{tabular}
+\\[2pt]
+\raggedright\footnotesize $^\ddagger$Derived from 7.56 sources/claim
+(avg.), each requiring one evidence-analysis call, plus one
+research-planning and one verdict call per claim. n/m = not measured in
+this pass (disclosed gap, below).
+\end{table}
+
+Full TruthLens is not directly latency-comparable to the two baselines in
+this pass -- a real, disclosed gap: the validator-audit run that produced
+Section~\ref{sec:evidencevalidation}'s data did not capture per-claim
+wall-clock time. What is measurable from that same run: full TruthLens's
+real cost/time per claim is necessarily several times either baseline's,
+independent of per-call latency, simply from call count -- roughly 9.6 LLM
+calls per claim against the baselines' fixed 1. Baseline 4
+(TruthLens minus validation) has an identical call-count/token/latency
+profile to full TruthLens by construction, since \texttt{SKIP\_VALIDATION}
+changes only which content gets persisted, not which LLM calls get made;
+no separate timed pass was run for it. Baseline 1 (LLM-only) reuses timing
+from an earlier script that also did not capture latency, a pre-existing
+gap inherited rather than newly introduced here. Exact dollar cost per
+configuration (Gemini pricing was not itemized per call during this run)
+is a concrete, scoped gap for a future pass rather than estimated here.
 
 \section{A Taxonomy of Failure Modes Found in Live Testing}
 \label{sec:failuremodes}
 
-Beyond the aggregate statistics above, iterative live testing against a
-real deployed reel surfaced several specific, reproducible failure modes
-that we believe are under-documented in the automated fact-checking
+Beyond the aggregate statistics above, running the full system against
+real content end-to-end -- both during original development and during
+this evaluation program itself -- surfaced specific, reproducible failure
+modes we believe are under-documented in the automated fact-checking
 literature at this level of implementation detail, because they only
-appear when a system is actually run end-to-end against real content
-rather than evaluated on a static benchmark.
+appear when a system is run against real content rather than evaluated on
+a static benchmark. We consider this taxonomy, and the general lesson that
+most of these failures were discoverable only this way, to be as
+practically important a contribution of this work as any single
+architectural component.
 
 \begin{itemize}
-\item \textbf{Schema-valid, substantively empty output.} Discovered
-  independently in three different pipeline stages (claim extraction,
-  content generation, verdict reasoning): a locally hosted model
-  produces output that satisfies its Pydantic/JSON schema -- a
-  non-empty string, a well-typed list -- while containing no actual
-  information, e.g.\ a \texttt{reasoning\_summary} composed entirely of
-  \texttt{[[evidence\_id=...]]} citation markup with zero prose. No
-  schema validation catches this class of failure; only a
-  content-level substantiveness check does (Section~\ref{sec:cascade}).
-\item \textbf{Verbatim-but-misattributed quotation.} A claim's
-  \texttt{source\_quote} can be a genuine, verbatim substring of the
-  video's on-screen text -- passing a naive ``is this a real quote''
-  check -- while still being the wrong kind of quote: a news-style
-  caption written by the video's publisher \emph{about} a person
-  (``X Attacks Y Over Z Rule''), not words that person said. Attributing
-  such a quote to the person it names, because their name appears
-  nearby, produces a fabricated first-person quotation from genuine,
-  verbatim text. We fixed this by requiring the candidate speaker's own
-  name not to appear inside the quote text itself before trusting the
-  attribution -- a person's own quote essentially never refers to them
-  self by full name.
+\item \textbf{Schema-valid, substantively empty output.} Found
+  independently in \emph{four} different pipeline stages across this
+  project (claim extraction, content generation, verdict reasoning, and,
+  this evaluation program, evidence analysis): a locally hosted model
+  produces output that satisfies its schema -- a non-empty string, a
+  well-typed list -- while containing no actual information. No schema
+  validation catches this class of failure; only a content-level
+  substantiveness check does (Section~\ref{sec:cascade}), and each stage
+  needed its own, since the same architecture existing in one stage did
+  not transfer automatically to the next.
+\item \textbf{Verbatim-but-misattributed quotation.} A claim's source
+  quote can be a genuine, verbatim substring of the video's on-screen
+  text while still being the wrong kind of quote -- a caption written by
+  the video's publisher \emph{about} a person, not words that person said.
+  Fixed by requiring the candidate speaker's own name not to appear
+  inside the quote text itself before trusting the attribution.
 \item \textbf{Silent verdict/presentation inconsistency.} After
-  introducing reel-level, multi-claim verdict aggregation
-  (Section~\ref{sec:architecture}), the review dashboard continued
-  displaying the primary claim's own individual verdict as ``the''
-  verdict, while the actually-published carousel displayed the
-  separately computed reel-level verdict. The two could and did
-  disagree (one test case: dashboard showed the primary claim's
-  \texttt{UNVERIFIED}; the carousel showed the reel's aggregate
-  \texttt{MOSTLY\_TRUE}) with no error, because both values were valid
-  data -- the bug was in which one the interface trusted, not in either
-  computation. This class of failure -- two correct numbers, wrong
-  place shown -- will not be caught by any per-field validation test and
-  was only found by comparing rendered output against the database
-  directly.
+  introducing reel-level, multi-claim verdict aggregation, a review
+  dashboard continued displaying the primary claim's own individual
+  verdict as ``the'' verdict, while the actually-published output
+  displayed the separately computed reel-level verdict; the two could and
+  did disagree with no error, because both values were valid data. Found
+  only by comparing rendered output against the database directly.
 \item \textbf{Bracket-matching truncation bug.} A display-sanitization
-  regex intended to strip an internal \texttt{[VALIDATION NOTE: ...]}
-  suffix used non-greedy bracket matching, which stopped at the first
-  \texttt{]} character encountered -- the closing bracket of a Python
-  list repr \emph{inside} the note itself (e.g.\ ``Numbers
-  \texttt{['3065258', '69']} in reasoning\_summary...''), leaving the
-  note's own tail visible on a published slide. Fixed by truncating at
-  a literal marker string rather than attempting to bracket-match
-  free-form text.
+  regex intended to strip an internal validation-note suffix used
+  non-greedy bracket matching, which stopped at the first closing bracket
+  encountered -- the closing bracket of a Python list repr \emph{inside}
+  the note itself -- leaving the note's own tail visible on a published
+  slide. Fixed by truncating at a literal marker string rather than
+  attempting to bracket-match free-form text.
 \item \textbf{Unrepresentative thumbnail selection.} A single frame
-  extracted at a hardcoded 0.5-second offset is not a reliable
-  representative thumbnail; in one case it landed on an unflattering
-  extreme close-up mid-gesture. We now sample several candidate frames
-  across the video's duration and select by a cheap grayscale-variance
-  ``visual complexity'' score, screening out blank/flat/transition
-  frames -- not real scene- or face-aware selection, but a
-  materially better floor than one fixed guess.
+  extracted at a fixed offset is not a reliable representative thumbnail.
+  Now several candidate frames are sampled and selected by a cheap
+  grayscale-variance ``visual complexity'' score, screening out
+  blank/flat/transition frames -- not real scene- or face-aware selection,
+  but a materially better floor than one fixed guess.
 \item \textbf{Entity confusion between similarly-named organizations.}
-  Found during the out-of-sample pilot (Section~\ref{sec:pilot}):
-  researching a claim about ``Karni Sena,'' evidence retrieval returned
-  a Wikipedia article about \emph{Sri Ram Sena} -- a real but different
-  Indian organization sharing the common suffix ``Sena.'' The
-  evidence-analysis stage labeled this source's stance as
-  \texttt{contradicts} rather than \texttt{irrelevant}: an article about
-  a different entity does not contradict a claim about this one, it
-  simply does not address it. Name-collision entity disambiguation is
-  not currently checked anywhere in the pipeline.
+  Evidence retrieval for a claim about one organization returned an
+  article about a different, similarly-named one; the evidence-analysis
+  stage labeled this source's stance as \texttt{contradicts} rather than
+  \texttt{irrelevant} -- an article about a different entity does not
+  contradict a claim about this one, it simply does not address it. Not
+  currently checked anywhere in the pipeline.
 \item \textbf{Downgraded reasoning reused as trusted input downstream.}
-  Also found during the out-of-sample pilot, and the more serious of the
-  two: the verdict-proposal model, given the mismatched Sri Ram Sena
-  evidence above, wrote that this ``suggests an unrelated organization
-  with violent ideology'' -- a real hallucination the deterministic
-  validator correctly downgraded (for an unrelated reason: an unsupported
-  number elsewhere in the same reasoning text). But downgrading a
-  verdict only forces its \emph{label} to \texttt{UNVERIFIED}; it does
-  not redact the free-text \texttt{reasoning\_summary} the model wrote
-  to justify its original, rejected verdict, because there is no
-  reliable way to isolate just the offending sentence from otherwise
-  -reasonable-looking prose. That full text was still being reused
-  verbatim in two places -- an evidence card's displayed answer text, and
-  as raw input material for the separate overall ``why'' paragraph LLM
-  call, which wove it into the actual rendered slide. This is a real
-  instance of exactly the failure class the validation architecture
-  (Section~\ref{sec:validation}) exists to prevent, in a genuine gap in
-  that architecture's coverage: validation applied to whether a verdict
-  is safe to \emph{label}, not to whether its reasoning text is safe to
-  \emph{quote}. Fixed by treating any non-\texttt{passed}
-  \texttt{validation\_status} as disqualifying for reuse of that
-  verdict's free text anywhere, replacing it with a generic,
-  non-fabricated note instead. This never reached a real audience --
-  the fact-check stayed in the internal review queue -- but the
-  underlying entity-confusion in evidence retrieval is unfixed and
-  could resurface in a form these particular checks don't catch.
-\item \textbf{Single-digit fabrication in generated headlines.} Found
-  during the second pilot (Section~\ref{sec:secondpilot}):
-  \texttt{HEADLINE\_SYSTEM\_PROMPT} explicitly instructs the model never
-  to introduce a number not already in the source claim, and it did so
-  anyway, converting a claim stating ``4,000 crore rupees'' into a
-  headline reading ``\$1 Billion'' -- both invented and wrong (4,000
-  crore is roughly \$480M). This is the same failure category as the
-  organization-confusion case above (a free-text generation stage
-  violating an explicit grounding instruction) but in a different
-  pipeline stage, which is itself the point: prompt-level instructions
-  are not self-enforcing, and each generation surface needs its own
-  deterministic check, not a single shared assumption that ``we told it
-  not to'' is sufficient anywhere. The existing number-grounding check
-  (Section~\ref{sec:validation}) ignores single-digit numbers to avoid
-  flagging incidental meta-commentary in longer prose (``3 sources'');
-  a headline is short enough that this exception does not apply, and a
-  naive reuse of that check would have missed ``\$1'' entirely. Fixed
-  with a headline-specific check requiring every digit sequence in the
-  generated headline to appear in the source claim, falling back to the
-  claim's own (already-grounded) text verbatim on failure rather than a
-  second model attempt, since a second attempt is not guaranteed not to
-  fabricate a different number.
+  A verdict-proposal model's free-text reasoning, containing an
+  entity-confusion-driven hallucination, was correctly downgraded to
+  \texttt{UNVERIFIED} at the label level -- but downgrading a verdict
+  forces only its label, not its free-text \texttt{reasoning\_summary},
+  because there is no reliable way to isolate the offending sentence from
+  otherwise-reasonable-looking prose. That full text was still being
+  reused verbatim downstream. Fixed by treating any non-\texttt{passed}
+  validation status as disqualifying for reuse of that verdict's free
+  text anywhere.
+\item \textbf{Single-digit fabrication in generated headlines.} A
+  headline-generation prompt explicitly instructing the model never to
+  introduce a number not already in the source claim did so anyway,
+  converting ``4,000 crore rupees'' into an invented, arithmetically
+  wrong ``\$1 Billion.'' The existing number-grounding check ignores
+  single-digit numbers to avoid flagging incidental meta-commentary in
+  longer prose, an exception that does not apply to a headline this
+  short. Fixed with a headline-specific check requiring every digit
+  sequence in the generated headline to appear in the source claim,
+  falling back to the claim's own already-grounded text verbatim on
+  failure.
 \item \textbf{Vision-read text silently discarded before claim
-  extraction.} Also found during the second pilot: vision analysis of
-  the photo correctly read a specific figure and timeframe off an
-  on-screen graphic into a dedicated ``visible text'' field, distinct
-  from a separate, vaguer scene-description field -- but claim
-  extraction's prompt only ever included the latter. The specific,
-  checkable content a vision model had already extracted was available
-  in the database and simply never reached the stage that needed it,
-  which is a different class of problem from every other entry in this
-  taxonomy: not a hallucination, but a real signal being thrown away
-  before it could be used. Fixed by including the on-screen-text field
-  with the same weight as OCR output, distinct from the advisory-only
-  scene description.
+  extraction.} Vision analysis of a photo correctly read a specific
+  figure and timeframe off an on-screen graphic into a dedicated
+  ``visible text'' field, distinct from a vaguer scene-description field
+  -- but claim extraction's prompt only ever included the latter. Not a
+  hallucination, but a real signal thrown away before it could be used.
+  Fixed by including the on-screen-text field with the same weight as OCR
+  output.
 \item \textbf{Missing glyph rendering as a blank box.} The bundled
-  rendering fonts have no glyph for the Indian Rupee sign, which
-  rendered as a placeholder box on a published slide showing a
-  government spending figure -- a routine character in this specific
-  domain's claims, not an edge case. Fixed with a character substitution
-  applied only at render time, leaving the underlying data untouched
-  everywhere else (captions, API responses, the dashboard).
+  rendering fonts have no glyph for the Indian Rupee sign, a routine
+  character in this domain's claims, not an edge case. Fixed with a
+  character substitution applied only at render time.
 \item \textbf{Vision-transcription accuracy, left unresolved.} Distinct
-  from the discarded-field bug above: the same vision analysis
-  occasionally misreads the text it is looking at. One quote box
-  displayed on a published slide read as truncated words ("sp." for
-  "spent," "pu" for "publicity") interrupted by a single stray
-  Devanagari character standing in for a number, where the underlying
-  claim record correctly identified the same on-screen text as
-  ``spent \ldots{} 4,000 crore.'' This corrupted only the
-  \emph{display} quote; the claim text used for research and verdicts
-  was unaffected, so it did not change any conclusion, but it is a real,
-  visible defect we chose not to patch with an unverified heuristic (for
-  instance, flagging isolated non-Latin characters in otherwise-Latin
-  text) rather than risk a fix with an unknown false-positive rate. This
-  is qualitatively different from every fixed entry above: an accuracy
-  limitation of the underlying vision model itself, not a gap in the
-  pipeline's use of it, and it does not have a clean deterministic fix
-  the way a grounding check does.
-\item \textbf{Empty-string claims passing schema validation.} Found
-  during the third live test (Section~\ref{sec:thirdpilot}): a locally
-  hosted model returned claims with \texttt{text=""} for content whose
-  OCR plainly contained checkable claims. A non-empty-string type
-  constraint does not require a non-empty \emph{string} -- the same
-  category of gap as the citation-only \texttt{reasoning\_summary} entry
-  above, but in claim extraction rather than verdict reasoning, and
-  invisible to that stage's existing grounding check specifically
-  because the check only evaluates \emph{verifiable} claims and treats
-  zero verifiable claims as trivially fine, which is correct for a
-  genuine "nothing here" extraction but blind to "something here, just
-  empty." Fixed with a dedicated substantiveness check
-  (Section~\ref{sec:cascade}) plus an unconditional filter that never
-  persists a blank-text claim regardless of which model produced it.
+  from the prompt-echo bug below: the same vision analysis occasionally
+  misreads the text it is looking at (truncated words, a stray character
+  standing in for a digit) without discarding or fabricating it wholesale.
+  This is an accuracy limitation of the underlying vision model itself,
+  not a gap in the pipeline's use of it, and we chose not to patch it with
+  an unverified heuristic rather than risk a fix with an unknown
+  false-positive rate.
+\item \textbf{Empty-string claims passing schema validation.} A locally
+  hosted model returned claims with empty text for content whose OCR
+  plainly contained checkable claims -- a non-empty-string type
+  constraint does not require a non-empty \emph{string}. Fixed with a
+  dedicated substantiveness check plus an unconditional filter that never
+  persists a blank-text claim.
 \item \textbf{An except clause written against the wrong SDK exception
-  hierarchy.} Also found during the third live test: escalating to the
-  fallback model correctly triggered more often after the fix above,
-  which surfaced a second, unrelated bug -- a real rate-limit response
-  from the fallback provider's API raised an exception type the
-  provider wrapper's error handling did not recognize as an instance of
-  the class it was written to catch, because the specific API surface in
-  use (adopted after an older endpoint stopped accepting new API keys)
-  turns out to raise a separate exception hierarchy entirely. The
-  mismatch let an entirely routine, expected condition -- daily quota
-  exhaustion -- propagate as an unhandled exception rather than the
-  intended typed error, crashing an in-flight request after roughly
-  forty minutes of otherwise-successful work instead of failing fast
-  with a clear message. A pre-existing unit test for this exact code
+  hierarchy.} A real rate-limit response from the fallback provider's API
+  raised an exception type the provider wrapper's error handling did not
+  recognize, because the specific API surface in use raises a separate
+  exception hierarchy entirely. This let a routine, expected condition --
+  daily quota exhaustion -- propagate as an unhandled exception rather
+  than a clear, typed error. A pre-existing unit test for this exact code
   path had mocked the same wrong exception hierarchy the production code
-  was (mis)handling, so it passed throughout -- a concrete instance of a
-  broader risk worth naming: a test can be internally consistent with
-  buggy code, agreeing with a wrong assumption on both sides, and still
-  provide zero real coverage of the failure it was written to catch.
-  Fixed by catching the SDK's actual exception hierarchy and rewriting
-  the test against real instances of it rather than hand-constructed
-  doubles of the wrong type.
+  was mishandling, so it passed throughout -- a concrete instance of a
+  test being internally consistent with buggy code while providing zero
+  real coverage of the failure it was written to catch. Fixed by catching
+  the SDK's actual exception hierarchy and rewriting the test against real
+  instances of it.
+\item \textbf{Baseline architecture silently inheriting a rescue
+  mechanism under evaluation.} Found while building Baselines 2--3
+  (Section~\ref{sec:expmethodology}): the first working draft called the
+  same provider factory every production stage uses, which silently
+  returns a Gemini-fallback-wrapped provider whenever an API key is set in
+  the environment -- giving both ``simple'' baselines the exact
+  failure-rescue mechanism TruthLens's own architecture was being
+  evaluated for having, introduced by accident rather than by a bad
+  research decision. Caught during smoke testing before any number was
+  reported anywhere; fixed by importing the local-only provider directly.
+\item \textbf{A second, differently-phrased ``no video'' error masking a
+  fetchable photo post.} item-0005 initially failed ingestion outright:
+  yt-dlp reported ``No video formats found!'' -- correct information (it
+  is a photo post) -- but the existing photo-post fallback matched only a
+  different, previously-seen phrasing (``no video in this post''). A
+  genuinely fetchable post failed hard instead of falling back to Open
+  Graph metadata. Fixed by matching against a tuple of known phrasings.
+\item \textbf{UUID hex fragments leaking through citation markup as fake
+  unsupported numbers.} Described in full in
+  Section~\ref{sec:evidencevalidation}: digits inside a cited evidence
+  ID's own UUID were being extracted by the number-grounding check as
+  apparent fabricated statistics, in two independently-discovered forms
+  (double- and single-bracket citation markup). The fix's own
+  side effect -- removing an accidental true positive from an earlier
+  validator audit -- is itself reported as a finding, not smoothed over.
+\item \textbf{47.1\% empty explanations in per-source evidence analysis.}
+  Described in full in Section~\ref{sec:evidencevalidation}: the one
+  LLM-calling pipeline stage with no substantiveness check of its own,
+  confirmed at scale once measured. Fixed with a per-source check.
+\item \textbf{Recurring vision-output prompt echo, previously
+  undercounted as a rare anecdote.} Described in full in
+  Sections~\ref{sec:cascade} and \ref{sec:multimodalanalysis}: the local
+  vision model repeatedly produces schema-valid, non-empty output that is
+  actually an echo of its own system prompt rather than a real image
+  description, found across at least 4 separate real reels this project
+  -- frequent, not rare, once actually counted. Fixed with a
+  word-overlap-with-prompt substantiveness check.
+\item \textbf{A label confidently contradicting the model's own stated
+  reasoning, undetected by any grounding check.} Described in full in
+  Section~\ref{sec:evidencevalidation}: reasoning stating no reliable
+  evidence exists, paired with a confident non-\texttt{UNVERIFIED} label
+  -- a distinct failure category from a fabricated citation or number,
+  since every citation and number involved can be entirely real. Fixed
+  with a new deterministic check, with its calibration circularity
+  explicitly disclosed as a threat to validity.
+\item \textbf{A \texttt{MissingGreenlet} crash from a stale ORM read
+  after rollback.} Found extending a research script to two new items
+  (Section~\ref{sec:results}): a per-claim exception handler's
+  \texttt{db.rollback()} expired an already-loaded ORM object, and the
+  next line's synchronous attribute access on it crashed the entire
+  script instead of recording one claim's failure -- the same bug class
+  already fixed once in production code. Fixed by capturing needed values
+  before the try block.
 \end{itemize}
 
-We consider this taxonomy, and the general lesson that most of these
-failures were only discoverable by running the full system against real
-content and inspecting rendered output rather than by unit-testing
-individual functions in isolation, to be as practically important a
-contribution of this work as any single architectural component.
+\section{Threats to Validity}
+\label{sec:threats}
 
-\section{Discussion and Threats to Validity}
+\textbf{Small, non-independent sample.} $n=9$ (6 with a resolved verdict
+from every configuration) is far below the 20--30 item target this
+program set for itself, itself already a deliberate reduction from an
+ideal 50--100 (Section~\ref{sec:expmethodology}). Every proportion in this
+paper is reported with an exact count and a Wilson interval so a reader
+can judge directly how much these numbers could move with more data --
+several, including the headline 33.3\% TruthLens accuracy figure, have
+confidence intervals wide enough to be consistent with a genuinely
+different true rate.
+
+\textbf{Single domain, single-country content.} All evaluated content is
+Indian political short-form video with English/Hindi/Urdu mixed
+transcripts. Source-tiering domain lists and research-planning prompts
+were not tuned for, and have not been tested against, other national
+contexts.
+
+\textbf{Single annotator, no inter-annotator agreement.} Every draft
+human judgment used in Sections~\ref{sec:evidencevalidation} and
+\ref{sec:multimodalanalysis} (validator TP/FP/TN/FN calls, evidence
+-relevance judgments, claim-coverage matching) comes from one
+unadjudicated reviewer on this project. Tier-1 headline verdicts
+(Section~\ref{sec:dataset}) do not have this limitation, since they are
+independent professional organizations' own published verdicts, but every
+finer-grained judgment in this paper does.
+
+\textbf{The new validator check's recall improvement is measured on the
+same sample it was calibrated against.} Section~\ref{sec:evidencevalidation}
+discloses this explicitly: the 40\% recall figure is likely optimistic
+about generalization to differently-phrased ``no evidence found''
+reasoning, since the check's specific phrase list was written after
+reading the two real cases it now catches. The general principle behind
+the check does not reference ground truth; its specific implementation
+does, in this narrow sense.
+
+\textbf{The vision-context fix's effect on headline accuracy is not
+independently re-verified.} Section~\ref{sec:multimodalanalysis} states
+this as an expectation (no effect on items 0006/0007, whose root causes
+are diagnosed as unrelated to vision quality), not a measured result,
+because the paid fallback's quota was exhausted before this could be
+tested end-to-end.
+
+\textbf{item-0003 is permanently excluded, not scored as a failure.}
+Confirmed unfetchable across three independent attempts spanning this
+entire program. This is a real content-acquisition limitation of the
+ingestion pipeline against Instagram specifically, not addressed by any
+fix in this paper.
+
+\textbf{Baseline comparison isolates architecture from model, but not
+from claim-extraction coverage.} All configurations use the same
+underlying model and, where applicable, search provider
+(Section~\ref{sec:expmethodology}), so a measured accuracy difference is
+attributable to architecture rather than model quality -- but Baselines
+1--3 receive the claim as already extracted by TruthLens's own
+claim-extraction stage, which means the headline comparison in
+Section~\ref{sec:results} cannot separate ``TruthLens's downstream
+architecture underperforms'' from ``TruthLens's own claim extraction gave
+its downstream architecture nothing to work with for 2 of 6 items,'' and
+Section~\ref{sec:results} argues explicitly for the latter reading on this
+sample.
+
+\textbf{The primary-source-retrieval fix is measured on tier
+classification, not full-text completeness}, and on a query sample
+distinct from Section~\ref{sec:evidencevalidation}'s main evidence
+-quality run. The \texttt{.gov.in} full-page-fetch reliability gap
+(403s, TLS failures) that this measurement surfaced remains open,
+unresolved rather than merely undiscussed.
+
+\textbf{RQ5 and RQ6 are not evaluated, by design, not by omission.} Both
+are explicitly deferred per our own pre-registered fallback rules
+(Section~\ref{sec:bce}) rather than reported with an underpowered number
+dressed up as a finding.
+
+\section{Discussion}
 \label{sec:discussion}
 
-\textbf{Small, non-independent sample.} The telemetry in
-Section~\ref{sec:evaluation} is drawn from repeated testing against a
-handful of real videos, not independent draws from a target population;
-several statistics (e.g.\ the 28.6\% validation-downgrade rate) could
-shift substantially with a larger, held-out corpus. We report exact
-counts, not just percentages, throughout so a reader can judge this
-directly.
+The result we consider most important in this program is not the headline
+accuracy gap in Section~\ref{sec:results}, but what Section
+\ref{sec:evidencevalidation}'s addendum demonstrates alongside it: two
+general, ground-truth-independent fixes moved validator recall from 16.7\%
+to 40\% -- a real, measured improvement in whether the system's published
+reasoning can be trusted -- while reel-level bucket accuracy stayed exactly
+at 2/6 throughout. \textbf{Label accuracy and output trustworthiness are
+different axes that can move independently}, and this is a concrete,
+observed demonstration of exactly that, not an inference from theory. A
+benchmark that only reports label accuracy would have shown this system
+making no progress at all during a pass of work that materially reduced
+how often it publishes a confidently wrong verdict its own reasoning does
+not support. We think this reframing is closer to this architecture's
+actual value proposition -- an evidence-before-verdict pipeline gated by
+deterministic verification -- than a label-accuracy contest against
+simpler baselines, and we would rather a reader take this away than the
+raw Table~\ref{tab:table2} number alone.
 
-\textbf{Single domain, single language mix.} All evaluated content is
-Indian political short-form video with English/Hindi/Urdu mixed
-transcripts. Source-tiering domain lists and the research-planning
-prompt's primary-source guidance were not tuned for, and have not been
-tested against, other national contexts.
+That said, the headline comparison is real and is not explained away by
+the reframing above. On a paired 6-item sample, a single-shot search
+baseline beat full TruthLens by a wide margin, and the causes are
+specific and diagnosed rather than mysterious: claim-extraction coverage
+failure on 2 of 6 items (Section~\ref{sec:multimodalanalysis} documents
+why -- badly degraded audio, and a post with no checkworthy claim in its
+own content), and validator false negatives on the other 2 wrong items
+(the same false negatives Section~\ref{sec:evidencevalidation} directly
+targets). This localizes the problem: it is not evidence that
+decomposition, tiering, or per-source evidence analysis are bad ideas in
+general -- Section~\ref{sec:ablation}'s claim-decomposition ablation shows
+the opposite, a real accuracy gain from decomposition once claim
+extraction has more than one claim to aggregate. It is evidence that this
+specific implementation's upstream claim-extraction coverage and
+downstream validator recall are the two places where more work would
+actually move the headline number, a far more actionable conclusion than
+``the architecture underperforms.''
 
-\textbf{No systematic bias audit.} Section~\ref{sec:relatedwork}
-discusses documented partisan asymmetry in frontier LLMs; TruthLens
-mitigates this only via prompt-level instruction (the neutrality
-clause), which is not verified against a labeled bias-evaluation set.
+This also gives a more precise reading of DeVerna et al.'s finding
+\cite{deverna2025curatedcontext} that curated context matters more than
+reasoning ability for political fact-checking. Our result does not
+contradict theirs -- when TruthLens's curation pipeline had claims to
+curate evidence for, its component-level mechanisms (decomposition,
+aggregation) helped; when it did not (zero claims extracted), no amount of
+downstream curation quality could compensate. The lesson we draw is that
+curation-heavy architectures should be evaluated, and diagnosed, at the
+component level, not only at the end-to-end label-accuracy level a
+FEVER/LIAR-style benchmark would report -- an end-to-end number alone
+would have shown only the negative result, not the specific, fixable
+reasons behind it.
 
-\textbf{Baseline comparison is preliminary and too coarse.} We ran a
-naive single-shot baseline on the two pilot claims
-(Section~\ref{sec:naivebaseline}), but at $n=2$, and in a form that
-mostly isolates ``has search access'' rather than ``has TruthLens's
-specific multi-stage architecture.'' A baseline that also has search --
-disentangling the value of retrieval itself from the value of
-TruthLens's decomposition/tiering/validation design -- is still needed
-and is the most direct way to substantiate the paper's central
-architectural claim.
-
-\textbf{Grounded corrections and photo-post ingestion are each tested on
-essentially one real case.} Section~\ref{sec:corrections}'s
-\texttt{corrected\_fact} mechanism produced a clean, verified result
-exactly once, after being correctly suppressed on three prior calls for
-an unrelated reason (Section~\ref{sec:secondpilot}); how often it
-actually fires with a specific, grounded correction on a broader corpus
--- as opposed to correctly returning null when the evidence does not
-establish one -- is unknown. Photo-post ingestion (Section~\ref{sec:multimodal})
-is similarly tested against a single real post. Both are real,
-verified, working code paths, not simulated, but neither has been
-exercised at anything like the scale needed to report a meaningful
-success rate.
-
-\textbf{The primary-source fix is measured on tier classification, not
-on full-text completeness.} Section~\ref{sec:primarysourcefix}'s 95\%
-figure describes what tier the retrieved sources were classified into,
-across a pool of only 20 sources from 4 successful queries out of 7
-attempted. It does not describe whether the system retrieved those
-sources' full text: for one of the four queries, every page fetch
-failed (403s and TLS certificate errors) and the pipeline fell back to
-search-snippet text throughout. We manually spot-checked that the
-snippets were substantive, but this was not verified systematically, and
-the underlying \texttt{.gov.in} fetch-reliability gap is unresolved,
-not merely undiscussed.
-
-\textbf{The third live test's fixes are infrastructure-hardening, not a
-new capability, and are each validated by one live failure and one live
-re-verification.} Section~\ref{sec:thirdpilot}'s two fixes (blank-claim
-substantiveness checking; the corrected exception hierarchy) were each
-triggered exactly once by real conditions and confirmed fixed by
-reproducing the same condition once more post-fix -- not exercised
-across a range of inputs. The daily quota limit on the fallback provider
-also means this specific failure mode (a rate-limit exception escaping
-unhandled) is, by construction, rare to trigger deliberately without
-either exhausting real quota or mocking the SDK, which is what the
-rewritten unit test now does; live re-triggering was possible here only
-because a real pipeline run happened to exhaust the quota during
-testing, not because we engineered the condition on demand.
+Finally, we note what this program deliberately did not do: it did not
+tune any prompt, threshold, or model choice on the frozen held-out
+dataset's contents (Section~\ref{sec:expmethodology}), and the two general
+fixes made in response to the headline finding were built to be
+ground-truth-independent, with the one place that assumption is imperfect
+(the new validator check's phrase-list calibration) disclosed as a named
+threat to validity rather than presented as a clean win. We would rather
+report a real 33.3\% with an honest account of why than a higher number
+we could not defend the provenance of.
 
 \section{Future Work}
 \label{sec:futurework}
 
 \begin{enumerate}
-\item \textbf{A held-out, labeled benchmark.} Curate a labeled set of
-  short-form political video claims, disjoint from any content used
-  during development, with ground-truth verdicts from independent human
-  reviewers (ideally with inter-annotator agreement reported), and
-  report precision/recall/F1 against it -- the single change that would
-  most improve this paper's evidentiary standing.
-\item \textbf{A search-equipped baseline comparison.} Our first attempt
-  (Section~\ref{sec:naivebaseline}) used a baseline with no search
-  access at all, which mostly showed that search access matters --
-  unsurprising, and not the comparison that actually matters most. The
-  needed version gives the baseline one web search and a single LLM
-  call over the raw results, holding retrieval access constant so the
-  comparison isolates what TruthLens's multi-stage decomposition,
-  source tiering, and deterministic validation specifically add beyond
-  ``search plus one model call.''
-\item \textbf{Video-provenance verification.} The out-of-sample pilot
-  (Section~\ref{sec:pilot}) found both tested cases, and the majority of
-  professional fact-checks surveyed while sourcing it, follow the same
-  pattern: genuine footage recaptioned with a false claim about what it
-  shows or where it's from. TruthLens has no mechanism to check this --
-  claim extraction works from transcript/OCR/caption text, and a
-  purely-visual false claim (wrong location, wrong event, wrong date) is
-  invisible to it regardless of how good the downstream reasoning is.
-  Reverse-image/video search against known reference footage, or at
-  minimum flagging when a claim about a video's provenance cannot be
-  checked from text alone (rather than silently checking a different,
-  tangential claim instead), would target what the pilot suggests is the
-  dominant real-world failure mode in this domain -- likely higher
-  leverage than any of the LLM-reasoning-focused items below.
-\item \textbf{Vision-transcription accuracy.} Section~\ref{sec:failuremodes}
-  documents a case where vision analysis of an on-screen graphic
-  introduced a stray character and truncated words into an otherwise
-  -correct reading. This did not affect any conclusion in that instance
-  (the separately-extracted claim text was correct), but it is an
-  accuracy limitation of the underlying vision model itself, not
-  something a grounding check can catch the way a fabricated number can
-  -- the text was present, just imprecisely transcribed. Systematically
-  measuring this rate (e.g.\ character-level edit distance between
-  vision-read text and a human transcription on a small sample) would
-  clarify whether it is rare noise or frequent enough to need a
-  dedicated mitigation.
-\item \textbf{Primary-source retrieval -- substantially addressed, one
-  gap remaining.} The domain-allow-list fix this item originally called
-  for is now implemented and live-tested
-  (Section~\ref{sec:primarysourcefix}): a dedicated
-  \texttt{tier1\_primary} query restricted to government/legal domains at
-  the search-call level, plus a related source-classifier fix
-  (\texttt{nic.in}, \texttt{rbi.org.in}), moved pooled primary-tier
-  retrieval from 8 of 72 (\textasciitilde11\%) to 19 of 20 (95\%) across
-  four real queries -- with the honest caveats that 3 of 7 real queries
-  returned no results at all, and that domain-correctness does not imply
-  topical relevance (the ``Karni Sena'' case). What remains open: a
-  page-fetch reliability gap specific to \texttt{.gov.in} domains (403s
-  and TLS certificate failures on several ministry/state sites, currently
-  masked by falling back to search-snippet text), which needs either a
-  deliberately scoped certificate-verification exception or further
-  diagnosis of the specific failures, not attempted this pass.
-\item \textbf{Systematic bias evaluation.} Apply an existing partisan-
-  asymmetry evaluation methodology (Section~\ref{sec:relatedwork}) to
-  TruthLens's own verdicts across politically matched claim pairs.
-\item \textbf{Cross-lingual and cross-domain generalization.} Test
-  source tiering and research-planning prompts against non-Indian
-  political content and languages beyond the current English/Hindi/Urdu
-  mix.
-\item \textbf{Calibration.} Compare TruthLens's reported confidence
-  bands against empirical correctness rates once a labeled benchmark
-  exists (Item 1), to check whether ``very high confidence'' verdicts
-  are in fact more often correct than ``moderate confidence'' ones.
+\item \textbf{Scale the held-out benchmark past $n=9$.} The single most
+  direct way to strengthen every claim in this paper. At this program's
+  observed $\sim$8\% Tier-1 sourcing hit rate, reaching 20--30 items
+  requires checking on the order of 250--375 more professional
+  fact-check articles -- a large, bounded, literal task, not a
+  methodological unknown.
+\item \textbf{Diagnose and close claim-extraction coverage failures on
+  degraded audio.} Section~\ref{sec:results} traces 2 of the headline
+  comparison's 4 wrong TruthLens cases directly to zero-verifiable-claim
+  extractions; this is now the most concretely motivated, highest-leverage
+  open item for improving end-to-end accuracy specifically.
+\item \textbf{Video-provenance verification.} Section
+  \ref{sec:multimodalanalysis}'s structural finding -- a majority of this
+  dataset's items have their actual false claim living outside the
+  specific post's own content, consistent with genuine footage
+  recirculated under a new caption -- is, on this evidence, a larger
+  ceiling on end-to-end accuracy than any LLM-reasoning-focused fix.
+  TruthLens has no reverse-image/video-search capability and has never
+  claimed one.
+\item \textbf{Test the new validator check against phrasings it was not
+  calibrated on.} A genuine test of the label/reasoning-consistency
+  check's generalization needs new cases this check was never looked at
+  while being written (Section~\ref{sec:evidencevalidation}'s disclosed
+  circularity) -- a concrete, scoped, named item.
+\item \textbf{Complete items 0008/0009's full-TruthLens condition and
+  re-verify the vision-context fix end-to-end}, both blocked by the same
+  Gemini free-tier quota exhaustion (Section~\ref{sec:results}), once
+  quota resets.
+\item \textbf{A dedicated matched-pair sourcing pass for RQ5.} Bias
+  evaluation needs items sourced for topic/structure/difficulty match
+  across political actors, not actor diversity -- a different sourcing
+  objective than this program has pursued (Section~\ref{sec:bce}).
+\item \textbf{Calibration, once the dataset is large enough to bin.}
+  Section~\ref{sec:bce}'s pre-registered gate (no confidence bin under 3
+  items) was not met at $n=9$; revisit once it is.
+\item \textbf{A second, independent annotator}, to compute a real
+  inter-annotator agreement statistic on Tier-2 items and on the draft
+  judgments underlying Section~\ref{sec:evidencevalidation}
+  and~\ref{sec:multimodalanalysis} (Section~\ref{sec:dataset}).
+\item \textbf{The \texttt{.gov.in} full-page-fetch reliability gap}
+  (Section~\ref{sec:primarysourcefix}) -- 403s and TLS certificate
+  failures specific to this domain category -- remains open; closing it
+  needs either a deliberately scoped certificate-verification exception
+  or further diagnosis of the specific failures, not attempted in this
+  program.
+\item \textbf{Near-duplicate OCR-frame-variant claim deduplication}
+  (Section~\ref{sec:multimodalanalysis}), a concrete, scoped, and as yet
+  unfixed gap.
 \end{enumerate}
 
 \section{Conclusion}
 
-TruthLens demonstrates that a substantial fraction of the ``does the
-model hallucinate'' problem in LLM-based fact-checking is addressable
-architecturally rather than only through better prompting or a more
-capable model: a deterministic, non-LLM validation layer applied after
-generation caught 28.6\% of generated verdicts in our development
-corpus, and an explicit distinction between genuine null results and
-infrastructure failure prevents an entire class of false confidence.
-These results come from a small, non-independent development corpus and
-should be read as preliminary telemetry, not a benchmark evaluation --
-but the failure modes they surfaced (schema-valid-but-empty output,
-verbatim-but-misattributed quotation, silent presentation
-inconsistency, single-digit numeric fabrication in a generated headline,
-a correctly-extracted signal silently discarded before it reached the
-stage that needed it) are, we believe, general enough to matter to any
-team building an LLM pipeline whose output will be published and
-trusted -- and general enough, in the case of the headline fabrication,
-to recur in a newly added feature (photo-post ingestion) despite the
-underlying validation architecture already existing, because grounding
-has to be re-applied at every new generation surface rather than assumed
-to transfer. Extending the same validation methodology from verdict
-labels to grounded corrections (Section~\ref{sec:corrections}) is a
-first step toward the kind of output actually useful to a reader --
-not just ``false,'' but what the evidence shows instead -- while the
-explicit decision not to extend it into predicting consequences marks
-where we believe grounded fact-checking has to stop and speculation
-would begin. Closing the primary-source retrieval gap our own evaluation
-had flagged (Section~\ref{sec:primarysourcefix}) shows the same pattern
-at the retrieval stage rather than the generation stage: a deterministic,
-already-proven mechanism (domain-restricted search) applied to a
-previously-unenforced prompt-level request moved primary-tier retrieval
-from \textasciitilde11\% to 95\% in live testing, while honestly
-surfacing a distinct, unresolved reliability gap in fetching full page
-text from \texttt{.gov.in} domains specifically -- a reminder that fixing
-one measured gap tends to reveal the next one, not eliminate the need for
-further measurement. A third live test (Section~\ref{sec:thirdpilot})
-found the same "schema-valid-but-empty" pattern recurring in a third
-pipeline stage (claim extraction, after verdict reasoning and content
-generation) despite two prior fixes for the identical failure class --
-reinforcing that grounding checks do not generalize across stages
-automatically -- and, separately, a wrong-exception-hierarchy bug that
-a same-purpose unit test had not caught because it mocked the identical
-wrong assumption the production code made; both are fixed, though the
-specific post that surfaced them still has no finished fact-check,
-reported here rather than quietly dropped. The most direct path to
-strengthening every claim in
-this paper is the held-out benchmark and search-equipped baseline
-comparison described in Section~\ref{sec:futurework}, which we intend to
-pursue as this work continues.
+This paper reports the first evaluation of TruthLens against independent,
+held-out ground truth, and we lead with the least flattering result it
+produced: on a paired 6-item sample, full TruthLens does not outperform a
+single-shot search-and-LLM baseline. We report this first because our own
+protocol requires it, and because tracing it -- to claim-extraction
+coverage failures on 2 items and validator false negatives on 2 others,
+both independently diagnosed rather than inferred -- is more scientifically
+useful than a flattering aggregate number would have been. Set against
+this, a controlled claim-decomposition ablation shows the same
+architecture's specific mechanism delivering a real accuracy gain (50.0\%
+vs.\ 25.0\%, $n=4$) once claim extraction has more than one claim to
+aggregate, localizing where this design's advantage does and does not
+currently materialize rather than leaving it as an unresolved contradiction.
+Most importantly, we show that two general, ground-truth-independent
+fixes made in direct response to the headline finding measurably improved
+validator recall (16.7\%$\to$40\%, 100\% precision throughout) while
+leaving reel-level accuracy completely unchanged -- a concrete
+demonstration that verdict-label accuracy and output trustworthiness are
+separable properties of a fact-checking system, and, we argue, the more
+important axis for an architecture whose entire premise is
+evidence-before-verdict rather than label-matching. We report the
+evidence-quality analysis behind these results in full, including a
+gap between finding topically-relevant primary sources (68.75\%) and
+extracting usable evidence from them (18.75\%) that we consider a more
+actionable diagnosis than either number alone, a multimodal claim
+-coverage result in which OCR-derived evidence recovered a claim audio
+transcription missed entirely, and a structural finding -- most of this
+dataset's actual false claims live outside the specific post being
+fact-checked -- that we believe sets a real ceiling on single-post claim
+extraction regardless of how much its component quality improves. We
+report RQ5 (bias) and RQ6 (calibration) as deferred, not forced, because
+this dataset's size cannot yet support either, consistent with the
+discipline we tried to hold throughout this program: report what the data
+shows, including when that is a negative result, a deferred question, or a
+threat to validity in our own fix. The taxonomy of concrete failure modes
+in Section~\ref{sec:failuremodes} -- 20 entries, roughly a third of them
+found and fixed during this evaluation program itself, each with a
+deterministic check and a regression test built from the real case that
+surfaced it -- is, we believe, as practically useful a contribution as any
+single number in the tables above, because most of these failures are
+only discoverable by running a complete system against real content, not
+by unit-testing components in isolation. Scaling the held-out benchmark
+past $n=9$, closing the claim-extraction coverage gap this evaluation
+diagnosed, and running the matched-pair and calibration analyses this
+paper explicitly withholds are the concrete next steps, not vague future
+work, and are where we intend to take this program next.
 
 \bibliographystyle{IEEEtran}
 \bibliography{references}
