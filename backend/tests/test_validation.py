@@ -157,6 +157,36 @@ def test_ignores_numbers_inside_internal_citation_markup():
     assert outcome.status == ValidationStatus.passed
 
 
+def test_ignores_numbers_inside_single_bracket_citation_markup():
+    # Real bug found live during the Day 5 validator audit
+    # (research/VALIDATOR_EVALUATION.md, item-0004): the verdict prompt
+    # never specifies a bracket format for inline citations, and this
+    # time the model used a SINGLE bracket ("[evidence_id=...]") rather
+    # than the double-bracket form the existing test above covers.
+    # _INTERNAL_MARKUP_PATTERN only strips "[[...]]", so the UUID's own
+    # hex fragments that happen to start with digits ("737", "49", "840"
+    # from "e9aad959-737f-49b4-840f-f75c4b378594") leaked through and
+    # got flagged as unsupported statistics -- wrongly downgrading an
+    # otherwise reasonable verdict that actually did cite real evidence.
+    source = _make_source(
+        relevant_passage="Delhi Police have been accused of using nail-studded batons against protesters."
+    )
+    evidence_id = uuid.uuid4()
+    proposal = VerdictProposal(
+        verdict=VerdictLabel.FALSE,
+        confidence=0.0,
+        reasoning_summary=(
+            "[evidence_id=e9aad959-737f-49b4-840f-f75c4b378594] According to factcheck.org, Delhi "
+            "Police have been accused of using nail-studded batons against protesters in the past."
+        ),
+        cited_evidence_ids=[evidence_id],
+    )
+
+    outcome = validate_verdict(proposal, {evidence_id: object()}, {evidence_id: source})
+
+    assert outcome.status == ValidationStatus.passed
+
+
 def test_ignores_small_meta_numbers_that_dont_need_source_support():
     source = _make_source(relevant_passage="General discussion with no specific figures.")
     evidence_id = uuid.uuid4()

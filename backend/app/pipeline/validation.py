@@ -18,6 +18,19 @@ _URL_PATTERN = re.compile(r"https?://\S+")
 # needing evidence support, and this markup is already validated
 # separately (Check 1, cited-evidence-id existence).
 _INTERNAL_MARKUP_PATTERN = re.compile(r"\[\[.*?\]\]", re.DOTALL)
+# The prompt never actually specifies a bracket format for inline
+# citations -- the model sometimes uses double brackets (the pattern
+# above), sometimes a single bracket, e.g. "[evidence_id=e9aad959-737f-
+# 49b4-840f-f75c4b378594]". Found live (research/VALIDATOR_EVALUATION.md):
+# the single-bracket form isn't stripped by _INTERNAL_MARKUP_PATTERN, so
+# hex fragments that happen to start with digits ("737", "49", "840"
+# from that UUID) leaked through as "unsupported numbers," wrongly
+# downgrading an otherwise-reasonable verdict. Rather than chase every
+# bracket style the model might invent, strip anything shaped like a
+# UUID directly, wherever it appears in the text (bracketed or not) --
+# a UUID is never a legitimate statistic needing grounding, regardless
+# of what markup does or doesn't wrap it.
+_UUID_PATTERN = re.compile(r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b", re.IGNORECASE)
 
 _CAPPED_CONFIDENCE = 0.4
 
@@ -50,7 +63,8 @@ def _numbers_needing_support(text: str) -> list[str]:
     # handled structurally via cited_evidence_ids; a URL appearing in the
     # prose is incidental, not a statistic.
     text_without_markup = _INTERNAL_MARKUP_PATTERN.sub("", text)
-    text_without_urls = _URL_PATTERN.sub("", text_without_markup)
+    text_without_uuids = _UUID_PATTERN.sub("", text_without_markup)
+    text_without_urls = _URL_PATTERN.sub("", text_without_uuids)
     found = _NUMBER_PATTERN.findall(text_without_urls)
     return [n for n in found if len(re.sub(r"[,.%]", "", n)) >= _MIN_DIGITS_TO_CHECK]
 
@@ -65,7 +79,8 @@ def _all_numbers(text: str) -> list[str]:
     # -grounding check, which exists because "$1 Billion" (single-digit
     # "1") would otherwise slip past a >=2-digit filter entirely.
     text_without_markup = _INTERNAL_MARKUP_PATTERN.sub("", text)
-    text_without_urls = _URL_PATTERN.sub("", text_without_markup)
+    text_without_uuids = _UUID_PATTERN.sub("", text_without_markup)
+    text_without_urls = _URL_PATTERN.sub("", text_without_uuids)
     return _NUMBER_PATTERN.findall(text_without_urls)
 
 

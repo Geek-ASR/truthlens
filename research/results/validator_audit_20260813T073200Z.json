@@ -1,0 +1,244 @@
+[
+  {
+    "outcome_type": "resolved",
+    "claim_id": "d81496e8-073d-46bb-8df7-b181257a1554",
+    "claim_text": "A student scored or is expected to score 681 out of 720 in the NEET exam.",
+    "verdict_id": "734a9b97-4dc9-4c9b-aa05-521320b03e20",
+    "without_validation": {
+      "verdict": "UNVERIFIED",
+      "confidence": 0.1,
+      "reasoning_summary": "The provided evidence matrix contains no information regarding any specific student scoring or expecting to score 681 out of 720 in the NEET exam. As all submitted sources are marked as irrelevant, the claim cannot be verified.",
+      "cited_evidence_ids": [],
+      "corrected_fact": "null, strictly no information in evidence matrix to verify alternative score or student detail.",
+      "context_note": null
+    },
+    "with_validation": {
+      "verdict": "UNVERIFIED",
+      "reasoning_summary": "The provided evidence matrix contains no information regarding any specific student scoring or expecting to score 681 out of 720 in the NEET exam. As all submitted sources are marked as irrelevant, the claim cannot be verified.\n\n[VALIDATION NOTE: Verdict cited evidence not present in this claim's evidence matrix.]"
+    },
+    "validation_status": "downgraded_missing_citation",
+    "validation_notes": [
+      "Verdict cited evidence not present in this claim's evidence matrix."
+    ],
+    "n_evidence_rows": 6,
+    "n_sources": 6,
+    "item_id": "item-0001"
+  },
+  {
+    "outcome_type": "resolved",
+    "claim_id": "ddfdd0c8-ff16-42ca-b5b5-aba054a3773c",
+    "claim_text": "The student receiving the NEET score is the son of a paan shop owner.",
+    "verdict_id": "aa6904cd-c346-4a5c-b790-53889b041034",
+    "without_validation": {
+      "verdict": "MISLEADING",
+      "confidence": 0.2,
+      "reasoning_summary": "[The claim that the student receiving the NEET score is the son of a paan shop owner] contradicts evidence from source [cf38358f-46ae-47be-9e1d-d76e2c00234b](https://www.indiatimes.com/news/india/paan-vendors-daughter-cracks-neet-525525.html) which states that Lakshmi Shivasali's father, Manjunath, is a paan shop owner. This source directly contradicts the claim and provides evidence of an actual instance where someone receiving NEET score has such relationship.",
+      "cited_evidence_ids": [
+        "cf38358f-46ae-47be-9e1d-d76e2c00234b"
+      ],
+      "corrected_fact": null,
+      "context_note": null
+    },
+    "with_validation": {
+      "verdict": "UNVERIFIED",
+      "reasoning_summary": "[The claim that the student receiving the NEET score is the son of a paan shop owner] contradicts evidence from source [cf38358f-46ae-47be-9e1d-d76e2c00234b](https://www.indiatimes.com/news/india/paan-vendors-daughter-cracks-neet-525525.html) which states that Lakshmi Shivasali's father, Manjunath, is a paan shop owner. This source directly contradicts the claim and provides evidence of an actual instance where someone receiving NEET score has such relationship.\n\n[VALIDATION NOTE: Numbers ['46', '47'] in reasoning_summary do not appear in any cited source passage.]"
+    },
+    "validation_status": "downgraded_unsupported_stat",
+    "validation_notes": [
+      "Numbers ['46', '47'] in reasoning_summary do not appear in any cited source passage."
+    ],
+    "n_evidence_rows": 6,
+    "n_sources": 6,
+    "item_id": "item-0001"
+  },
+  {
+    "outcome_type": "resolved",
+    "claim_id": "0336b50e-e0dd-4d3c-9202-762ca3e58c05",
+    "claim_text": "Banaras Hindu University (BHU) is a medical college located in Uttar Pradesh, India.",
+    "verdict_id": "a848f499-54ab-4008-9b20-1e7965d3059c",
+    "without_validation": {
+      "verdict": "MOSTLY_FALSE",
+      "confidence": 0.2,
+      "reasoning_summary": "[1] The Institute of Medical Sciences (IMS) is a part of Banaras Hindu University and does not imply that BHU itself is a medical college.[[2]] [[3]], which states 'BHU' as the name for Kashi Hindu University.",
+      "cited_evidence_ids": [
+        "840a13ad-f9c7-44a2-81b6-e1cef2b20f74",
+        "36e371fb-451c-4cbb-95d9-65181915b858"
+      ],
+      "corrected_fact": null,
+      "context_note": "[[3]] BHU is referred to as Kashi Hindu University in this source text."
+    },
+    "with_validation": {
+      "verdict": "MOSTLY_FALSE",
+      "reasoning_summary": "[1] The Institute of Medical Sciences (IMS) is a part of Banaras Hindu University and does not imply that BHU itself is a medical college.[[2]] [[3]], which states 'BHU' as the name for Kashi Hindu University."
+    },
+    "validation_status": "passed",
+    "validation_notes": [],
+    "n_evidence_rows": 11,
+    "n_sources": 11,
+    "item_id": "item-0001"
+  },
+  {
+    "outcome_type": "resolved",
+    "claim_id": "2b3fe4e7-4103-47f7-9744-508d67287283",
+    "claim_text": "A NEET score of 681 allows admission into top medical colleges in India, such as Banaras Hindu University (BHU).",
+    "verdict_id": "75c063b3-2722-4ddb-b2d4-ba4edc7e32cb",
+    "without_validation": {
+      "verdict": "UNVERIFIED",
+      "confidence": 0.1,
+      "reasoning_summary": "The provided evidence matrix does not contain any sources evaluating or providing cut-off score data for Banaras Hindu University (BHU) or other top medical colleges in India. Because all retrieved sources are marked as irrelevant to the specific claim regarding a NEET score of 681, there is insufficient evidence to verify or refute the claim.",
+      "cited_evidence_ids": [],
+      "corrected_fact": "null, or null directly depending on output formatting rules, so simply setting to JSON null value null.",
+      "context_note": null
+    },
+    "with_validation": {
+      "verdict": "UNVERIFIED",
+      "reasoning_summary": "The provided evidence matrix does not contain any sources evaluating or providing cut-off score data for Banaras Hindu University (BHU) or other top medical colleges in India. Because all retrieved sources are marked as irrelevant to the specific claim regarding a NEET score of 681, there is insufficient evidence to verify or refute the claim.\n\n[VALIDATION NOTE: Verdict cited evidence not present in this claim's evidence matrix.]"
+    },
+    "validation_status": "downgraded_missing_citation",
+    "validation_notes": [
+      "Verdict cited evidence not present in this claim's evidence matrix."
+    ],
+    "n_evidence_rows": 12,
+    "n_sources": 12,
+    "item_id": "item-0001"
+  },
+  {
+    "outcome_type": "resolved",
+    "claim_id": "34800526-5642-4123-9921-7e3b7fbd9f15",
+    "claim_text": "In a democracy, every citizen has the right to express their views and protest peacefully.",
+    "verdict_id": "b81f0305-e5c8-4113-8eca-e41da07dccc3",
+    "without_validation": {
+      "verdict": "MOSTLY_FALSE",
+      "confidence": 0.7,
+      "reasoning_summary": "[1] suggests a more restricted interpretation of 'right' in general terms than what would typically support every citizen's freedom to express views.",
+      "cited_evidence_ids": [
+        "1bf59312-1d74-4e62-b44a-446760448534",
+        "e931f345-b0a9-4dc7-b775-179a0e8caf9d"
+      ],
+      "corrected_fact": null,
+      "context_note": null
+    },
+    "with_validation": {
+      "verdict": "MOSTLY_FALSE",
+      "reasoning_summary": "[1] suggests a more restricted interpretation of 'right' in general terms than what would typically support every citizen's freedom to express views."
+    },
+    "validation_status": "passed",
+    "validation_notes": [],
+    "n_evidence_rows": 9,
+    "n_sources": 9,
+    "item_id": "item-0002"
+  },
+  {
+    "outcome_type": "resolved",
+    "claim_id": "5d4df076-2d10-43da-9ad3-fe5c821dde98",
+    "claim_text": "Kunwar Vishnu Singh Rajput is an Organization Secretary of Karni Sena.",
+    "verdict_id": "f667643d-4dc4-47c8-9d1c-4a6ef628ec47",
+    "without_validation": {
+      "verdict": "MOSTLY_FALSE",
+      "confidence": 0.2,
+      "reasoning_summary": "[The evidence matrix does not provide any reliable information about Kunwar Vishnu Singh Rajput's role in Karni Sena.]",
+      "cited_evidence_ids": [
+        "e8b5a772-4398-47c6-99b7-16aa3aaa9efe"
+      ],
+      "corrected_fact": null,
+      "context_note": null
+    },
+    "with_validation": {
+      "verdict": "MOSTLY_FALSE",
+      "reasoning_summary": "[The evidence matrix does not provide any reliable information about Kunwar Vishnu Singh Rajput's role in Karni Sena.]"
+    },
+    "validation_status": "passed",
+    "validation_notes": [],
+    "n_evidence_rows": 3,
+    "n_sources": 3,
+    "item_id": "item-0002"
+  },
+  {
+    "outcome_type": "resolved",
+    "claim_id": "8dad1c21-bb51-4cef-8d1f-9305938bb2bb",
+    "claim_text": "Delhi Police are attacking children using lathis/sticks embedded with nails.",
+    "verdict_id": "26242462-cbc2-46a7-a27f-c5d7fcc0e53f",
+    "without_validation": {
+      "verdict": "FALSE",
+      "confidence": 0.0,
+      "reasoning_summary": "[evidence_id=e9aad959-737f-49b4-840f-f75c4b378594] According to factcheck.org, Delhi Police have been accused of using nail-studded batons against protesters in the past. This contradicts claims that they are attacking children with lathis/sticks embedded with nails.",
+      "cited_evidence_ids": [
+        "e9aad959-737f-49b4-840f-f75c4b378594"
+      ],
+      "corrected_fact": null,
+      "context_note": null
+    },
+    "with_validation": {
+      "verdict": "UNVERIFIED",
+      "reasoning_summary": "[evidence_id=e9aad959-737f-49b4-840f-f75c4b378594] According to factcheck.org, Delhi Police have been accused of using nail-studded batons against protesters in the past. This contradicts claims that they are attacking children with lathis/sticks embedded with nails.\n\n[VALIDATION NOTE: Numbers ['737', '49', '840'] in reasoning_summary do not appear in any cited source passage.]"
+    },
+    "validation_status": "downgraded_unsupported_stat",
+    "validation_notes": [
+      "Numbers ['737', '49', '840'] in reasoning_summary do not appear in any cited source passage."
+    ],
+    "n_evidence_rows": 12,
+    "n_sources": 12,
+    "item_id": "item-0004"
+  },
+  {
+    "outcome_type": "resolved",
+    "claim_id": "056f8350-5988-497b-bd31-285728f67821",
+    "claim_text": "Babajani Durrani held a courtesy meeting with Abhijit Dipke at Dipke's residence in Chhatrapati Sambhajinagar.",
+    "verdict_id": "714b8dd8-08c7-4534-be52-60d96c3d4f93",
+    "without_validation": {
+      "verdict": "FALSE",
+      "confidence": 0.8,
+      "reasoning_summary": "The evidence matrix does not provide any reliable sources that support or confirm a courtesy meeting between Babajani Durrani and Abhijit Dipke at his residence in Chhatrapati Sambhajinagar.",
+      "cited_evidence_ids": [
+        "4e9cd859-7266-47ee-b2eb-e331c1664cf7",
+        "8f68e70f-3759-4981-849e-e83d3d7dfbd0"
+      ],
+      "corrected_fact": null,
+      "context_note": null
+    },
+    "with_validation": {
+      "verdict": "FALSE",
+      "reasoning_summary": "The evidence matrix does not provide any reliable sources that support or confirm a courtesy meeting between Babajani Durrani and Abhijit Dipke at his residence in Chhatrapati Sambhajinagar."
+    },
+    "validation_status": "passed",
+    "validation_notes": [],
+    "n_evidence_rows": 6,
+    "n_sources": 6,
+    "item_id": "item-0005"
+  },
+  {
+    "outcome_type": "resolved",
+    "claim_id": "0a5c9958-7216-40ec-991d-370e1d402294",
+    "claim_text": "Abhijit Dipke is an activist/youth leader from the Marathwada region.",
+    "verdict_id": "a5bcb69d-9b04-415a-852d-b7e2bbd14b09",
+    "without_validation": {
+      "verdict": "UNVERIFIED",
+      "confidence": 0.0,
+      "reasoning_summary": "The provided evidence matrix contains no relevant information regarding Abhijit Dipke or whether he is an activist or youth leader from the Marathwada region. Because all available sources are irrelevant to the claim, it cannot be verified.",
+      "cited_evidence_ids": [],
+      "corrected_fact": "null, as the provided evidence does not establish any factual details regarding Abhijit Dipke.",
+      "context_note": null
+    },
+    "with_validation": {
+      "verdict": "UNVERIFIED",
+      "reasoning_summary": "The provided evidence matrix contains no relevant information regarding Abhijit Dipke or whether he is an activist or youth leader from the Marathwada region. Because all available sources are irrelevant to the claim, it cannot be verified.\n\n[VALIDATION NOTE: Verdict cited evidence not present in this claim's evidence matrix.]"
+    },
+    "validation_status": "downgraded_missing_citation",
+    "validation_notes": [
+      "Verdict cited evidence not present in this claim's evidence matrix."
+    ],
+    "n_evidence_rows": 3,
+    "n_sources": 3,
+    "item_id": "item-0005"
+  },
+  {
+    "item_id": "item-0006",
+    "outcome_type": "no_verifiable_claims",
+    "n_claims": 0
+  },
+  {
+    "item_id": "item-0007",
+    "outcome_type": "no_verifiable_claims",
+    "n_claims": 1
+  }
+]
