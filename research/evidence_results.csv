@@ -1,0 +1,17 @@
+source_type,url,evidence_analysis_stance,draft_human_topical_relevance,notes
+primary_government,https://neet.nta.nic.in/document/nta-declares-the-result-nta-scores-rank-of-the-national-eligibility-cum-entrance-test-neet-ug-2025/,irrelevant,relevant,"On-topic NEET results document, but a different year (2025) and too generic to confirm the specific 681 score"
+primary_government,https://neet.nta.nic.in/score-card-for-neet-ug-2026/,irrelevant,relevant,"Right topic and year, but a generic scorecard-lookup page, not content confirming this specific claim"
+primary_government,https://cdnbbsr.s3waas.gov.in/s37bc1ec1d9c3426357e69acd5bf320061/uploads/2026/07/20260716477215762.pdf,irrelevant,relevant,"Government-hosted NEET-related PDF, plausibly relevant, too generic for the specific claim"
+primary_government,https://neet.nta.nic.in/,irrelevant,relevant,Homepage -- right organization, no specific content
+primary_government,https://neet.nta.nic.in/,irrelevant,relevant,Duplicate homepage fetch
+primary_government,https://mcc.nic.in/ug-medical-counselling/,irrelevant,relevant,"Right authority (Medical Counselling Committee) for the BHU-admission claim, too generic"
+primary_government,https://intramcc.nic.in/,irrelevant,relevant,Right authority, generic portal page
+primary_government,https://josaa.nic.in/seat-matrix/,irrelevant,not_relevant,"JoSAA is the ENGINEERING (JEE) counselling authority, not medical/NEET -- wrong domain despite being a real primary-government source"
+primary_government,https://neet.nta.nic.in/,irrelevant,relevant,Duplicate homepage fetch
+primary_government,https://mcc.nic.in/,irrelevant,relevant,Homepage -- right organization
+primary_government,https://newsonair.gov.in/ladakh-restrictions-imposed-in-leh-after-violent-protests/,contradicts,not_relevant,"Real government source but about a DIFFERENT specific event (Leh/Ladakh Sixth Schedule protests, not Jantar Mantar/Karni Sena). Explanation (recovered after the empty-explanation fix, see below) reasonably argues the general prior-approval-requirement point IS germane to a broad 'citizens have unrestricted right to protest' claim -- defensible as evidence for the GENERAL claim as extracted, even though it is about an unrelated specific event"
+primary_government,https://www.svpnpa.gov.in/static/gallery/docs/37_managingpeaseagitation.pdf,irrelevant,not_relevant,"A police-training document on managing agitation/protest logistics -- adjacent topic, not about citizens' rights specifically"
+primary_legal,https://indiankanoon.org/doc/1248826/,contradicts,relevant,Real Indian case law on protest rights -- specific case not independently re-verified in this pass
+primary_legal,https://indiankanoon.org/doc/111867/,contradicts,relevant,Real Indian case law on protest rights -- specific case not independently re-verified in this pass
+primary_government,https://www.archives.gov/founding-docs/constitution,irrelevant,not_relevant,"The US National Archives' copy of the US CONSTITUTION -- a real primary-government source, but for the wrong country entirely. A generic 'democracy/protest rights' search query returns generic civics primary sources regardless of country."
+primary_government,https://delhipolice.gov.in/,irrelevant,relevant,"Right organization (Delhi Police) for the baton-with-nails claim, but homepage-level, no specific content about this incident"

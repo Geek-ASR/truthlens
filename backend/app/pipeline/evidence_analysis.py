@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
+from app.core.logging import get_logger
 from app.db.models import ActorType, Claim, Evidence, Source
 from app.pipeline.audit import record_audit
 from app.pipeline.source_scoring import update_after_evidence
@@ -20,7 +21,22 @@ from app.services.ai.prompts import (
 )
 from app.services.storage.s3 import get_storage_client
 
+logger = get_logger(__name__)
+
 _MAX_PASSAGE_CHARS = 8000
+
+
+def _explanation_looks_substantive(explanation: str) -> bool:
+    # Same "schema-valid but empty" failure class already guarded
+    # against in claim_extraction.py and verdict.py, found here too via
+    # real live testing (research/VALIDATOR_EVALUATION.md's Day 5 audit):
+    # 32 of 68 real evidence rows in that run had an empty
+    # `explanation` -- including one `stance=contradicts` row for a
+    # source that, on inspection, doesn't obviously contradict the
+    # claim at all, with no explanation on record to show the model's
+    # reasoning either way. Unlike the other three LLM-calling stages,
+    # this one had no substantiveness check of its own until now.
+    return bool(explanation and explanation.strip())
 
 
 async def analyze_evidence(db: AsyncSession, claim: Claim, sources: list[Source]) -> list[Evidence]:
@@ -55,6 +71,38 @@ async def analyze_evidence(db: AsyncSession, claim: Claim, sources: list[Source]
             output_schema=EvidenceAnalysisItem,
             prompt_version=EVIDENCE_ANALYSIS_PROMPT_VERSION,
         )
+
+        if (
+            settings.LLM_PROVIDER == "ollama"
+            and settings.GEMINI_API_KEY
+            and not _explanation_looks_substantive(result.parsed.explanation)
+        ):
+            logger.warning(
+                "evidence_analysis_explanation_not_substantive_retrying_via_gemini",
+                claim_id=str(claim.id),
+                source_id=str(source.id),
+                model=result.model,
+            )
+            from app.services.ai.gemini_provider import GeminiProvider
+
+            retry_result = await GeminiProvider().structured_call(
+                model=settings.LLM_MODEL_GEMINI_FALLBACK,
+                system_prompt=EVIDENCE_ANALYSIS_SYSTEM_PROMPT,
+                user_content=user_content,
+                output_schema=EvidenceAnalysisItem,
+                prompt_version=EVIDENCE_ANALYSIS_PROMPT_VERSION,
+            )
+            await record_audit(
+                db,
+                entity_type="source",
+                entity_id=source.id,
+                actor_type=ActorType.system,
+                actor="evidence_analysis",
+                action="evidence_analysis_quality_retry",
+                input_summary={"original_model": result.model},
+                output_summary={"retry_model": retry_result.model},
+            )
+            result = retry_result
 
         for key, value in result.token_usage_dict().items():
             total_tokens[key] += value
