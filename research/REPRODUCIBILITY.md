@@ -38,20 +38,20 @@ by direct code inspection of every `if settings.GEMINI_API_KEY` guard).
 ## Freeze points
 
 Two tags, not one, because the dataset and the system code were frozen
-at different points (Section~V-D/`EXPERIMENT_PLAN.md` §7):
+at different points (Section~V-C/`EXPERIMENT_PLAN.md` §7):
 ```bash
 git tag -a truthlens-pre-ieee -m "..."     # Day 1: system code + audit frozen
 git tag -a truthlens-day8-frozen -m "..."  # Day 8: dataset (9 items) + baselines/ablations frozen
 git checkout truthlens-day8-frozen         # reproduces the exact Day 8 headline-result state
 ```
 The two general validator/vision-context fixes described in
-Section~IX/`sec:validation` were made *after* `truthlens-day8-frozen`, in
+Section~IV-D/`sec:validation` were made *after* `truthlens-day8-frozen`, in
 direct response to its headline finding, and are on `main` (not tagged
 separately as of this writing) — their ground-truth-independence, not a
 tag boundary, is what keeps them from being test-set tuning (Section
-V-D/§"Held-out discipline").
+V-C/§"Ablations, metrics, and held-out discipline").
 
-## Commands verified to actually work on this date (2026-08-13)
+## Commands verified to actually work on this date (2026-08-14)
 
 ```bash
 cd backend
@@ -62,38 +62,47 @@ cd backend
 ```bash
 cd research_paper
 tectonic main.tex
-# → main.pdf, 21 pages, no undefined references, 2 trivial (<9pt) overfull-hbox
-#   warnings only
+# → main.pdf, 20 pages total; the Appendix begins on page 17 (per the
+#   2026-08-14 page-length trim -- see FINAL_REVISION_PLAN.md), no
+#   undefined references, underfull/overfull-hbox warnings only
 ```
 
 ## Regenerating every table and figure in the paper
 
 Nothing in `main.tex` is hand-typed from a raw calculation; each number
 traces to one of the commands below. Run from the repository root unless
-noted. **Figure numbers below are the actual LaTeX-compiled numbers**
-(verified against `main.pdf`'s rendered captions, not the
-`day10_figures.py` script's internal filenames, which number figures in
-generation order rather than final document order -- Fig. 1 in the
-compiled paper is the RQ-status chart because it appears in Section III,
-before the architecture diagram in Section IV, even though the
-generating script produced it last, as `fig8_rq_status.pdf`; this
-mismatch is exactly the kind of thing this section exists to catch, and
-was itself caught by rendering and reading the actual compiled pages
-rather than trusting the filenames).
+noted. **Table/figure numbers below are the actual LaTeX-compiled
+numbers as of the 2026-08-14 page-length trim** (verified directly
+against `main.pdf`'s rendered captions via `pdftotext`, not assumed from
+source order -- table and figure counters drifted repeatedly across this
+program as sections/tables were inserted, most recently when the
+Related-Work comparison table became the new Table I, pushing every
+later table down by one; the `day10_figures.py` script's own internal
+filenames still number figures in generation order, not final document
+order -- Fig. 1 in the compiled paper is the RQ-status chart because it
+appears in Section III, even though the generating script produced it
+last, as `fig8_rq_status.pdf`; this mismatch is exactly the kind of thing
+this section exists to catch, and was itself caught by rendering and
+reading the actual compiled pages rather than trusting the filenames or
+source order).
 
 | Paper artifact | Regeneration command | Reads |
 |---|---|---|
-| Table I (RQ status) | hand-authored summary of Sections VII-XI's own status lines; not machine-generated (it *describes* the other tables, it doesn't compute a new number) | — |
-| Fig. 1 (RQ status chart) | `./backend/.venv/bin/python backend/research/day10_figures.py` (`fig_rq_status`, writes `figures/fig8_rq_status.pdf`) -- a hand-set visual index of Table I's own status column, not an independent computation | — |
+| Table I (Positioning against related systems) | hand-authored literature comparison; not machine-generated | — |
+| Table II (RQ status) | hand-authored summary of Sections VII-XI's own status lines; not machine-generated (it *describes* the other tables, it doesn't compute a new number) | — |
+| Fig. 1 (RQ status chart) | `./backend/.venv/bin/python backend/research/day10_figures.py` (`fig_rq_status`, writes `figures/fig8_rq_status.pdf`) -- a hand-set visual index of Table II's own status column, not an independent computation | — |
 | Fig. 2 (architecture) | compiled directly from the `tikzpicture` in `main.tex`; no external script, no PDF asset | — |
-| Tables III/IV, Table V (decomposition) | `./backend/.venv/bin/python backend/research/day8_final_tables.py` | `research/results/baseline_*_2026*.jsonl`, `full_truthlens_reel_level_day8_v2_with_new_checks.json`, `claim_decomposition_ablation.json` → writes `research/results/day8_summary.json` |
-| Fig. 3 (Tables III/IV plotted) | `day10_figures.py`, `fig_main_results` (writes `figures/fig2_main_results.pdf`) | `research/results/day8_summary.json` (above) |
+| Table III (9-item dataset listing) | hand-authored from `research/dataset/items.jsonl`; not machine-generated, no separate regeneration script | — |
+| Table IV (main results, paired comparison), Table V (decomposition ablation, summary), Table VI (decomposition ablation, per-item detail) | `./backend/.venv/bin/python backend/research/day8_final_tables.py` | `research/results/baseline_*_2026*.jsonl`, `full_truthlens_reel_level_day8_v2_with_new_checks.json`, `claim_decomposition_ablation.json`, `baselines_corrected_per_claim_20260814.json` → writes `research/results/day8_summary.json` |
+| Fig. 3 (Table IV plotted, superseded vs.\ corrected) | `day10_figures.py`, `fig_main_results` (writes `figures/fig2_main_results.pdf`) | `research/results/day8_summary.json` (above) |
 | Fig. 4 (Table V plotted) | `day10_figures.py`, `fig_decomposition_ablation` (writes `figures/fig3_decomposition_ablation.pdf`) | `research/results/day8_summary.json` |
-| Tables VII/VIII (validator confusion matrices) | figures hardcode the published TP/FP/TN/FN counts from `research/VALIDATOR_EVALUATION.md` and its addendum, which are themselves computed by a human reviewer reading `research/results/validator_audit_20260813T073200Z.json` against `research/validator_results.csv`'s `draft_human_judgment` column -- not currently re-derivable by a script alone, since the ground truth is a human judgment call, not a formula |
+| Tables VII/VIII (validator confusion matrices, before/after) | figures hardcode the published TP/FP/TN/FN counts from `research/VALIDATOR_EVALUATION.md` and its addendum, which are themselves computed by a human reviewer reading `research/results/validator_audit_20260813T073200Z.json` against `research/validator_results.csv`'s `draft_human_judgment` column -- not currently re-derivable by a script alone, since the ground truth is a human judgment call, not a formula |
 | Fig. 5 (validator P/R before/after) | `day10_figures.py`, `fig_validator_before_after` (writes `figures/fig4_validator_before_after.pdf`) | the same hardcoded TP/FP/TN/FN counts as Tables VII/VIII, above |
 | Tables IX/X (source tier / evidence stance), Fig. 6 (evidence quality) | `day10_figures.py`, `fig_evidence_quality` (writes `figures/fig5_evidence_quality.pdf`) -- **partial gap, disclosed**: the $n{=}68$ tier/stance distribution is hardcoded from `research/EVIDENCE_EVALUATION.md`'s published table, not re-queried live, because that table was originally produced by a direct Postgres query against a `truthlens-pre-ieee`-era database that is not running in every environment (including the one this figure was regenerated in). To re-derive it: stand up the stack (`infra/docker-compose.yml` + Ollama), re-run `backend/research/validator/run_validator_audit.py`, then query `sources`/`evidence` tables directly for tier/stance counts -- not yet scripted as a single command, a concrete open item (below) |
 | Table XI (claim coverage), Fig. 7 (multimodal) | `day10_figures.py`, `fig_multimodal_coverage` (writes `figures/fig6_multimodal_coverage.pdf`) -- numbers hardcoded from `research/MULTIMODAL_EVALUATION.md`'s published table, itself produced by `backend/research/multimodal/run_claim_coverage.py` against `research/dataset/items.jsonl` and `research/annotations/atomic_claims_draft.json` (a human/LLM-assisted draft ground truth, not machine-derivable alone) |
 | Table XII (efficiency), Fig. 8 | `day10_figures.py`, `fig_efficiency` (writes `figures/fig7_efficiency.pdf`), reading `research/system_efficiency.csv` directly (a real, versioned CSV, not regenerated by a script -- see that file's own `notes` column for each row's provenance) |
+| Table XIII (per-item conditions / "when does TruthLens help") | hand-authored cross-reference of Table IV's item-level results against Section IX/X's diagnosed causes; not machine-generated | — |
+| Table XIV (Appendix: superseded $n{=}9$ baseline table) | same `day8_final_tables.py` run as Table IV, retained for the historical record and relocated to the Appendix in the 2026-08-14 trim; not cited as evidence for any claim | `research/results/baseline_*_2026*.jsonl` |
 
 To regenerate every data figure in one pass:
 ```bash

@@ -220,3 +220,20 @@ own rigor.
 4. Consider a workshop or journal track with a more generous page budget
    and an audience that explicitly values negative/methodological
    results, as an alternative to trimming a 24-page paper down to 10.
+
+---
+
+## Addendum, 2026-08-14: partial progress on item 1
+
+A trim pass moved the full failure-mode taxonomy, the superseded
+baseline table, and several evidence-quality deep-dive subsections into
+a new Appendix (excluded from IEEE TPS's page count by its own rules)
+and tightened prose throughout. Total PDF: 24pp $\to$ 20pp; the Appendix
+now begins on page 17, so the counted main body is roughly 17pp, down
+from 24pp but still not 10pp. Every table, figure, and finding these
+three reviewers evaluated is still present, unchanged in substance,
+verified against `CLAIM_EVIDENCE_MATRIX.md`. This review's other three
+items (statistical power, sentence-construction density, venue
+retargeting) were not addressed by this pass and remain open exactly as
+stated above -- this addendum reports progress on item 1 only, not a
+re-review of the trimmed draft.

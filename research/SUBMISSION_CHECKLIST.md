@@ -4,6 +4,14 @@ Status as of 2026-08-13 (Day 10). Checked items are verified true right
 now, not aspirational; unchecked items are named, scoped gaps with an
 owner action, not silently missing requirements.
 
+> **Updated, 2026-08-14**: items 16 and 36 below describe the pre-audit
+> state and are corrected inline rather than left silently wrong — see
+> `AUDIT_REPORT.md`/`RECONSTRUCTED_RESULTS.md` (baseline confound fixed,
+> headline finding reversed) and `FINAL_REVISION_PLAN.md` (page-length
+> trim, still short of the 10pp target but no longer at 21pp). All other
+> items were re-checked against the current `main.tex` and remain
+> accurate.
+
 ## Content
 
 - [x] Title, abstract, and contributions match what the experiments in
@@ -13,10 +21,15 @@ owner action, not silently missing requirements.
       `research/` (Day 10 line-by-line audit; one real error found and
       fixed — a 6-vs-7 FALSE-item miscount inherited from a stale summary
       line in `GROUND_TRUTH.md`).
-- [x] Headline negative finding (TruthLens underperforming Baseline 2 on
-      the paired 6-item set) reported first and with equal-or-greater
-      prominence than favorable results, per the governing protocol's own
-      rule.
+- [x] **(2026-08-14 update)** The headline finding changed: a
+      skeptical post-submission audit found and fixed a real
+      claim-input confound in Baselines 1–3 (`AUDIT_REPORT.md`), and
+      corrected, full TruthLens now beats 2 of 3 baselines rather than
+      trailing 2 of 3 (`RECONSTRUCTED_RESULTS.md`). The correction is
+      reported with the same discipline this item originally checked
+      for: Section VII leads with the methodological fix itself, before
+      the corrected number, with the same or greater prominence than a
+      flattering result would have gotten.
 - [x] No fabricated datasets, sources, experiments, or benchmark scores
       (nothing in this program was generated without a real, live run
       behind it — confirmed across Days 1–10, including this pass's own
@@ -33,21 +46,23 @@ owner action, not silently missing requirements.
 - [x] Visual-misinformation-detection capability is not claimed —
       Section X states plainly that TruthLens has no reverse-image/video
       -search capability and has never claimed one.
-- [ ] **Page count: 21 pages against IEEE TPS's 10-page research-track
-      limit (the best topical-fit venue found, Section "Venue" below).**
-      Not trimmed in this pass (Day 10 self-audit, `DAY10_PEER_REVIEW.md`
-      R3-4) because a mechanical cut risks reintroducing exactly the kind
-      of error this same audit caught twice already. **Owner action**:
-      a dedicated trim pass, ideally pairing every cut with a
-      re-verification of the surrounding claim, not a word-count exercise
-      alone. Candidate cuts already identified: tighten Related Work's
-      six subsections into three-to-four; move the Section XIII
-      claim-extraction-coverage caveat earlier into Section VII itself
-      (subsuming, not duplicating, its Threats-to-Validity mention);
-      shorten Taxonomy entries that already have full detail elsewhere
-      (several entries are near-duplicates of prose already in Sections
-      IX/X, kept in both places for the taxonomy's own scanability, which
-      could be earned back with cross-references instead).
+- [ ] **(2026-08-14 update) Page count: 20 pages total, Appendix begins
+      on page 17, against IEEE TPS's 10-page research-track limit (the
+      best topical-fit venue found, Section "Venue" below) — improved
+      from 21pp (pre-audit) / 24pp (post-audit, pre-trim), still not
+      met.** A 2026-08-14 trim pass moved the full failure-mode taxonomy,
+      the superseded baseline table, and several evidence-quality
+      deep-dive subsections into a new Appendix (excluded from IEEE
+      TPS's page count by its own rules) and tightened prose throughout
+      every section — the exact candidate cuts this item used to list
+      (Related Work condensed, Taxonomy moved out of the counted body)
+      are now done; see `FINAL_REVISION_PLAN.md` for what's left.
+      **Owner action**: closing the remaining gap needs either moving
+      genuinely central content out of the counted body (the
+      support-validity construct, cross-post attribution problem,
+      four-way evidence metric — each flagged as a real strength by
+      `IEEE_REVIEW.md`) or retargeting a venue with a larger page
+      budget, per that review's own recommendation.
 - [ ] Author affiliation is a visible `TODO` placeholder, not a guess
       (correct behavior for this drafting context) — **owner action**:
       Aditya fills in before any real submission.
@@ -93,15 +108,16 @@ owner action, not silently missing requirements.
     disinformation and misinformation at scale"` is an explicit named
     topic); 10-page research track, standard IEEE two-column, anonymized
     submission required. Round 1 deadline (June 15, 2026) has already
-    passed; Round 2 (Aug 15, 2026) is 2 days from today and not
-    realistically reachable given the remaining trim/polish work above.
+    passed; **Round 2 (Aug 15, 2026) is now 1 day away (checked
+    2026-08-14)** and not realistically reachable given the remaining
+    trim/polish work above and the still-unmet page limit.
     **The realistic target is this venue's 2027 cycle**, expected on a
     similar mid-year schedule.
-  - **IEEE BigData 2026** — real, open deadline (Aug 21, 2026, 8 days
-    out), Dec 14–17, 2026 in Phoenix, AZ — but a topical stretch (general
-    big-data venue, no confirmed misinformation-specific track for 2026)
-    and still an unrealistically tight timeline given the trim work
-    above.
+  - **IEEE BigData 2026** — real, open deadline (Aug 21, 2026, **7 days
+    out as of 2026-08-14**), Dec 14–17, 2026 in Phoenix, AZ — but a
+    topical stretch (general big-data venue, no confirmed
+    misinformation-specific track for 2026) and still an unrealistically
+    tight timeline given the trim work above.
   - **MisD (Misinformation Detection in the Era of LLMs) @ ICWSM** —
     excellent topical fit (LLM-based misinformation detection
     specifically), but the 2026 edition already occurred (May 26, 2026,

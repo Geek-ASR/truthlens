@@ -9,6 +9,16 @@ Day 10 audit should surface reviewer criticisms, not manufacture a clean
 bill of health. Fixes actually applied are listed at the end, along with
 concerns judged real but left open (with reasons).
 
+> **Superseded, 2026-08-14**: this review is of the pre-audit Day 9
+> draft, which had the (since-reversed) headline finding and a 21-page
+> length. A later skeptical-reviewer audit fixed a real baseline
+> confound (`AUDIT_REPORT.md`), and a follow-up trim moved the paper to
+> 20 total pages with the Appendix beginning on page 17
+> (`FINAL_REVISION_PLAN.md`). A fresh three-reviewer simulation against
+> the post-audit paper is in `IEEE_REVIEW.md` — read that one for a
+> current assessment; this document is retained as the historical Day 10
+> record.
+
 ---
 
 ## Reviewer 1: Statistical/methodological rigor

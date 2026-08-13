@@ -6,6 +6,16 @@ honest, held-out evaluation of TruthLens across Days 1–10. Every item
 below traces to a versioned artifact under `research/` or
 `research_paper/main.tex`; nothing here is summarized from memory.
 
+> **Superseded, 2026-08-14**: a subsequent skeptical-reviewer audit found
+> and fixed a real confound in the baseline comparison this report's
+> item 10 describes, **reversing the headline finding** (TruthLens now
+> beats 2 of 3 baselines rather than trailing 2 of 3) — see
+> `AUDIT_REPORT.md` and `RECONSTRUCTED_RESULTS.md`. The page count in
+> item 22 is also stale (21pp, since trimmed to 20pp with the Appendix
+> beginning on page 17) — see `FINAL_REVISION_PLAN.md` for the current
+> figure. This report is retained as an accurate historical snapshot of
+> Day 10's own state, not as a current account of the paper.
+
 1. **Title**: "TruthLens: A Verification-Gated Pipeline for
    Evidence-Grounded Fact-Checking of Short-Form Political Video"
    (unchanged since before this program — still accurate to what was

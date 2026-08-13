@@ -54,11 +54,12 @@ what remains.
       primary-source search-side fix, the entity-consistency prototype)
       into a new Appendix — excluded from IEEE TPS's page count by its
       own rules — while tightening prose density throughout every
-      remaining section. Main body went 24pp $\to$ 16pp (total PDF,
-      body+appendix: 20pp). Every number, table, figure, and finding
-      from the 24pp draft is still present somewhere (verified against
+      remaining section. Total PDF went 24pp $\to$ 20pp; the Appendix
+      now begins on page 17, so the counted main body is $\sim$17pp, not
+      24pp. Every number, table, figure, and finding from the 24pp draft
+      is still present somewhere (verified against
       `CLAIM_EVIDENCE_MATRIX.md`); nothing was silently dropped to hit
-      this number. 16pp is not 10pp: closing the remaining 6pp would
+      this number. $\sim$17pp is not 10pp: closing the remaining gap would
       require either moving genuinely central content (the support
       -validity construct, the cross-post attribution problem, the
       four-way evidence metric — each independently flagged by
