@@ -1,6 +1,6 @@
 # Ground Truth Status
 
-## Current dataset: 7 items, all Tier 1
+## Current dataset: 9 items, all Tier 1
 
 | ID | Verdict | Source org | Political actor | Claim type | Language |
 |---|---|---|---|---|---|
@@ -11,6 +11,8 @@
 | item-0005 | MISLEADING | Factly | Congress | provenance | en |
 | item-0006 | FALSE | BOOM Live (Hindi) | none (disaster misinfo) | event (visual, AI-generated) | en caption |
 | item-0007 | FALSE | Alt News (Hindi) | BJP | misleading_context | hi (spoken) |
+| item-0008 | FALSE | Alt News | AAP (cross-amplified by Congress) | quote | hi-en-mixed |
+| item-0009 | FALSE | Alt News | BJP | provenance | en |
 
 Every label above is the independent professional organization's own
 published verdict (see `ANNOTATION_GUIDELINES.md` Task A, Tier 1) — not
@@ -55,20 +57,27 @@ an oversight:
 
 ## Dataset composition gaps (from `dataset/SOURCING_LOG.md`, restated here for visibility)
 
-- 4 of 7 items are `provenance`-type claims; `statistic`, `quote`,
-  `law_policy`, `historical`, and `true_claim` remain entirely
-  unrepresented. Pass 2's sourcing log records a real (not yet
-  confirmed as structural) difficulty finding statistic-type claims
-  with a specific Instagram embed, as opposed to WhatsApp/X.
-- 6 of 7 items are FALSE-verdict — a possible structural property of
+- 5 of 9 items are `provenance`-type claims; `statistic`, `law_policy`,
+  `historical`, and `true_claim` remain entirely unrepresented after 3
+  sourcing passes. Two independent data points now (statistic claims in
+  pass 2, law_policy/historical claims in pass 3) suggest these claim
+  types may concentrate on X/WhatsApp/Facebook rather than Instagram for
+  this domain — a real, plausible property of the platform worth stating
+  in the paper if it continues to hold, not just a search gap.
+- 6 of 9 items are FALSE-verdict — a possible structural property of
   Tier-1 sourcing (professional fact-checkers publish far more debunks
-  than confirmations), flagged in `SOURCING_LOG.md` as worth stating in
-  the paper's own dataset-construction discussion, not just as a gap to
-  keep chasing.
-- 1 of 7 items (item-0007) has confirmed Hindi spoken content — real
-  progress from pass 1's all-English set, though a genuinely
-  code-switched (Hindi+English within the same transcript) item, the
-  project's actual stated target domain, is still not represented.
-- n=7 is too small for any of RQ3/RQ5/RQ6 to produce a statistically
-  meaningful result as-is; `EXPERIMENT_PLAN.md` already treats these as
+  than confirmations), already flagged as worth stating in the paper's
+  own dataset-construction discussion.
+- 2 of 9 items (item-0007, item-0008) have confirmed Hindi/mixed spoken
+  content — real progress, though a single fully code-switched
+  (Hindi+English within one transcript) item is still the most this
+  dataset has, not yet a strong representation of the project's stated
+  target domain.
+- **RQ5 (bias) remains blocked**: BJP now has 3 items (the most of any
+  actor), but none are a controlled match (same topic/structure/
+  difficulty) against another single actor — see
+  `BIAS_CALIBRATION_EFFICIENCY.md` for why this analysis is still
+  deferred rather than forced.
+- n=9 is still too small for RQ3/RQ5/RQ6 to produce a statistically
+  meaningful result; `EXPERIMENT_PLAN.md` already treats these as
   conditional/small-sample for exactly this reason.

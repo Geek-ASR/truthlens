@@ -53,6 +53,38 @@ Result: **6 of 7 fetchable**, one real, persistent failure:
   bug (see below), not an Instagram-side issue. Now fixed and
   ingesting successfully.
 
+## Pass 3 (2026-08-13, growing the dataset before Day 8 per explicit direction)
+
+Targeted at RQ5's matched-pair gap (`BIAS_CALIBRATION_EFFICIENCY.md`)
+and the still-missing `quote`/`law_policy`/`historical` claim types.
+
+| # | Outlet | Article | Instagram embed found? | Live? | Outcome |
+|---|---|---|---|---|---|
+| 12 | Alt News | Bihar education minister Mithilesh Tiwari "girls don't need education" | Yes, 1 URL (@aamaadmiparty) | Yes | **HIT — item-0008.** First `quote`-type item (audio-transcript word misrepresentation: "agitation" misheard/misreported as "education"), not provenance/visual. Real cross-party amplification (AAP source post, amplified by Indian Youth Congress, an India TV anchor, and a former Deputy CM) — the closest thing to a multi-actor case in the dataset so far, though not a controlled matched pair. |
+| 13 | Alt News | BJP leaders share old Patna video as CJP-protest hydrogen-train vandalism | Yes, 1 URL (@drsudhanshutrivedibjp) | Yes | **HIT — item-0009.** Second BJP item (alongside item-0001), same "old video recontextualized" template — adds within-actor volume, not a cross-actor match. |
+| 14 | Factly | PM Modi did not announce a free smartphone scheme (AI voice-cloned video) | Yes, 2 URLs found in article HTML | **No** — both URLs returned HTTP 200 but with no Open Graph metadata at all (unlike every other live post checked this project), consistent with the article's own phrasing ("archived versions... can be found here") implying the originals are no longer normally accessible | **NO HIT** — a real, well-documented `law_policy`-type case (AI-voice-cloned claim about a government scheme) that could not be used because the specific posts are gone. Real, disclosed miss, not silently dropped. |
+| 15 | Alt News | Photo falsely claimed as Bhagat Singh/Sukhdev/Rajguru's last rites | No Instagram URL in article (Facebook only); also predates this project's 2026 window (published 2021) | — | **NO HIT** — real `historical`-type candidate, wrong platform and too old |
+| 16 | Alt News | Morphed Mountbatten letter claiming RSS didn't join the anti-British movement | No Instagram URL in article (X/Twitter only) | — | **NO HIT** — real `historical`-type candidate, wrong platform |
+
+**Pattern reinforced**: `historical` and `law_policy` claim types continue
+to concentrate on X/Facebook/WhatsApp rather than Instagram specifically
+in this project's searches so far (3 real candidates checked this pass,
+0 had a usable Instagram embed) — consistent with, and now a second
+data point for, pass 2's hypothesis about `statistic` claims. Worth
+stating as a likely genuine property of Instagram as a misinformation
+vector for this domain (more visual/video-native, less
+text-document-native) rather than a continued search failure, though
+still not proven at this sample size.
+
+Dataset after pass 3: **9 items** (up from 7). Composition update: claim
+types now {provenance: 5, visual: 1, event: 1, misleading_context: 1,
+quote: 1} — `statistic`, `law_policy`, `historical`, `true_claim` remain
+unrepresented. Political actors: {BJP: 3, Karni Sena: 1, CJP: 1, Delhi
+Police: 1, Congress: 1, AAP: 1, none: 1} — BJP now has 3 items (still no
+controlled matched pair against another single actor on the same
+topic/structure; RQ5 remains blocked for the reasons already stated in
+`BIAS_CALIBRATION_EFFICIENCY.md`).
+
 **A real bug found and fixed via this dataset, not just documented**:
 item-0005 (a genuine photo post) failed with yt-dlp reporting `"No
 video formats found!"` — correct information, but
