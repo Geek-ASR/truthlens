@@ -64,7 +64,9 @@ an oversight:
   types may concentrate on X/WhatsApp/Facebook rather than Instagram for
   this domain — a real, plausible property of the platform worth stating
   in the paper if it continues to hold, not just a search gap.
-- 6 of 9 items are FALSE-verdict — a possible structural property of
+- 7 of 9 items are FALSE-verdict (corrected 2026-08-13: an earlier draft
+  of this line said 6, undercounting item-0009; the table above is and
+  was always the authoritative 7) — a possible structural property of
   Tier-1 sourcing (professional fact-checkers publish far more debunks
   than confirmations), already flagged as worth stating in the paper's
   own dataset-construction discussion.
