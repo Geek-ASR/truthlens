@@ -9,6 +9,8 @@
 \usepackage{pifont}
 \usepackage{url}
 \usepackage[hidelinks]{hyperref}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,shapes.multipart}
 
 % ============================================================================
 % STATUS (remove before submission): this draft reflects the Day 1-9 IEEE
@@ -350,6 +352,15 @@ RQ & Question & Status \\
 \end{tabular}
 \end{table*}
 
+\begin{figure}[!t]
+\centering
+\includegraphics[width=0.95\linewidth]{figures/fig8_rq_status.pdf}
+\caption{Status of each research question at a glance (green = supported,
+amber = directional/mixed, red = deferred). Derived from
+Table~\ref{tab:rqs}; not new data.}
+\label{fig:rqstatus}
+\end{figure}
+
 This paper makes the following contributions, limited to what the
 experiments in Sections~\ref{sec:results}--\ref{sec:bce} actually support:
 
@@ -443,6 +454,46 @@ output to the database:
   additional narrow, schema-constrained LLM call each, both with their own
   grounding checks (Section~\ref{sec:cascade}).
 \end{enumerate}
+
+\begin{figure}[!t]
+\centering
+\begin{tikzpicture}[
+  font=\scriptsize,
+  stage/.style={draw, rounded corners, minimum width=2.7cm, minimum height=0.42cm, align=center, fill=blue!6},
+  gate/.style={draw, rounded corners, minimum width=2.7cm, minimum height=0.42cm, align=center, fill=orange!12},
+  arr/.style={-{Stealth[length=1.6mm]}}
+]
+\node[stage] (n1) {1. Ingestion};
+\node[stage, below=0.14cm of n1] (n2) {2. Claim extraction};
+\node[stage, below=0.14cm of n2] (n3) {3. Research planning};
+\node[stage, below=0.14cm of n3] (n4) {4. Search \& fetch};
+\node[stage, below=0.14cm of n4] (n5) {5. Evidence analysis};
+\node[stage, below=0.14cm of n5] (n6) {6. Verdict proposal};
+\node[gate, below=0.14cm of n6] (n7) {7. Deterministic validation};
+\node[stage, below=0.14cm of n7] (n8) {8. Overall-verdict aggregation};
+\node[stage, below=0.14cm of n8] (n9) {9. Content assembly \& rendering};
+\draw[arr] (n1) -- (n2);
+\draw[arr] (n2) -- (n3);
+\draw[arr] (n3) -- (n4);
+\draw[arr] (n4) -- (n5);
+\draw[arr] (n5) -- (n6);
+\draw[arr] (n6) -- (n7);
+\draw[arr] (n7) -- (n8);
+\draw[arr] (n8) -- (n9);
+\node[align=left, right=0.15cm of n2, text width=1.7cm] {\scriptsize escalate to paid model on substantiveness-check failure};
+\draw[-{Stealth[length=1.4mm]}, dashed] (n2.east) -- ++(0.35,0);
+\node[align=left, right=0.15cm of n7, text width=1.9cm] {\scriptsize downgrades rather than trusts on any of 4 checks failing};
+\draw[-{Stealth[length=1.4mm]}, dashed] (n7.east) -- ++(0.35,0);
+\end{tikzpicture}
+\caption{The 9-stage TruthLens pipeline (Section~\ref{sec:architecture}).
+No stage begins before the one before it has persisted its output. Stage 7
+(orange) is the deterministic, non-LLM validation gate (Section
+\ref{sec:validation}); five stages (2, 5, 6, and the two content
+-generation calls inside stage 9, plus stage 5's newer sibling check) run
+their own substantiveness check before accepting local-model output
+(Section~\ref{sec:cascade}).}
+\label{fig:architecture}
+\end{figure}
 
 \subsection{Source tiering}
 Every retrieved source is scored along an 8-dimension weighted reliability
@@ -921,6 +972,16 @@ Full TruthLens & 6 & 2 & 33.3\% & [9.7,70.0] \\
 \end{tabular}
 \end{table}
 
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\linewidth]{figures/fig2_main_results.pdf}
+\caption{Tables~\ref{tab:table1} and \ref{tab:table2} plotted.
+Full TruthLens (highlighted) does not lead either comparison on this
+sample; Section~\ref{sec:discussion} argues why this is not the whole
+story.}
+\label{fig:mainresults}
+\end{figure}
+
 Note Baseline 1's 0.0\% on this 6-item subset, below its 22.2\% on the
 full 9 -- a reminder that even baseline numbers move around at this sample
 size, and small-$n$ comparisons across different item subsets are not
@@ -1008,6 +1069,15 @@ item-0005 & \ding{55}\ FALSE & \ding{55}\ FALSE & MISLEADING \\
 \bottomrule
 \end{tabular}
 \end{table*}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=0.85\linewidth]{figures/fig3_decomposition_ablation.pdf}
+\caption{Table~\ref{tab:decomposition} plotted. The one
+component-level ablation in this program where TruthLens's specific
+mechanism demonstrably outperformed a simpler alternative.}
+\label{fig:decomposition}
+\end{figure}
 
 This is a real, positive result for RQ2's decomposition-specific question.
 On item-0001, the single highest-importance claim landed on
@@ -1154,6 +1224,17 @@ Human: fine to publish & 0 (FP) & 4 (TN, all no-op) \\
 \end{tabular}
 \end{table}
 
+\begin{figure}[!t]
+\centering
+\includegraphics[width=0.85\linewidth]{figures/fig4_validator_before_after.pdf}
+\caption{Validator precision/recall before vs.\ after the two
+general fixes (Tables~\ref{tab:validator-before} and
+\ref{tab:validator-after}, $n=9$). Precision holds at 100\%; recall
+improves 16.7\%$\to$40\% -- with the calibration circularity disclosed
+in the text.}
+\label{fig:validator}
+\end{figure}
+
 \textbf{Precision 100\% (2/2), Recall 40\% (2/5)} -- up from 16.7\%. The two
 new true positives are exactly the two most consequential original false
 negatives: a label-contradicts-its-own-reasoning case, and, more
@@ -1255,6 +1336,16 @@ distinct domains across 68 sources.
   $\neq$ \texttt{irrelevant}).
 \end{enumerate}
 
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\linewidth]{figures/fig5_evidence_quality.pdf}
+\caption{Source-tier distribution, evidence-stance distribution,
+and the four-way primary-source metric ($n=68$ sources, 9 claims).
+$^*$Metric 3 holds by construction of an existing fetch guarantee, not
+independently re-measured this pass.}
+\label{fig:evidencequality}
+\end{figure}
+
 \textbf{The gap between metric 2 (68.75\%) and metric 4 (18.75\%) is the
 single most important finding of this evaluation.} The system's retrieval
 finds real, topically-appropriate primary-government/legal sources at a
@@ -1350,6 +1441,16 @@ text\_ocr\_vision (full) & 2/6 & 33.3\% & [9.7,70.0] \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=0.85\linewidth]{figures/fig6_multimodal_coverage.pdf}
+\caption{Table~\ref{tab:coverage} plotted. \texttt{text\_ocr}
+scoring below \texttt{text\_only} is reported as a real result, not
+suppressed (Section~\ref{sec:multimodalanalysis} explains the likely
+cause).}
+\label{fig:multimodal}
+\end{figure}
 
 Read these as exactly what they are: 6 single, non-repeated LLM calls per
 condition, with confidence intervals wide enough to overlap almost
@@ -1497,6 +1598,16 @@ Full TruthLens & $\sim$9.6/claim$^\ddagger$ & n/m & \$0/paid mix \\
 research-planning and one verdict call per claim. n/m = not measured in
 this pass (disclosed gap, below).
 \end{table}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=0.9\linewidth]{figures/fig7_efficiency.pdf}
+\caption{LLM calls per claim by configuration
+(research/system\_efficiency.csv). Full TruthLens's call count is
+derived from real average sources/claim, not directly measured
+end-to-end; latency is not shown, a disclosed gap (text).}
+\label{fig:efficiency}
+\end{figure}
 
 Full TruthLens is not directly latency-comparable to the two baselines in
 this pass -- a real, disclosed gap: the validator-audit run that produced
@@ -1685,6 +1796,32 @@ architectural component.
   script instead of recording one claim's failure -- the same bug class
   already fixed once in production code. Fixed by capturing needed values
   before the try block.
+\item \textbf{A table-generation script's printed output and its
+  persisted JSON summary silently disagreed, found while building this
+  paper's figures.} \texttt{day8\_final\_tables.py} reused the same two
+  variable names (\texttt{k}, \texttt{n}) across three separate
+  computations -- Table 1's full-TruthLens row, a per-baseline loop
+  building Table 2, and Table 3's decomposition ablation -- each printed
+  correctly to stdout immediately after being computed, but the summary
+  JSON was assembled at the end of the function from whatever those two
+  names last held, silently combining Table 2's third baseline's paired
+  -subset count (\texttt{n=6, k=3}) with Table 3's item count
+  (\texttt{n=4}) into a fabricated-looking \texttt{full\_truthlens\_n6:
+  \{n: 4, correct: 3\}} (75.0\%) that appeared nowhere in the script's own
+  printed tables and did not match Table~\ref{tab:table1}'s real,
+  already-published 33.3\% (2/6). This is the same failure class as the
+  silent verdict/presentation-inconsistency entry above -- two correct
+  -looking outputs from the same run, one right and one silently wrong --
+  just found in this project's own research tooling rather than
+  production code, and exactly why Figure~\ref{fig:mainresults} is
+  regenerated from, and checked against, the script's stdout rather than
+  trusted on the strength of a file simply existing. Caught only because
+  the figure was visually inspected against the table it was supposed to
+  plot before this section was finalized. Fixed by giving every
+  computation its own distinctly-named variables and by persisting
+  Table 2 explicitly (previously only printed), so the artifact a reader
+  or a script can load is no longer a smaller, silently-overlapping
+  namespace than what was shown on screen.
 \end{itemize}
 
 \section{Threats to Validity}
@@ -1915,7 +2052,7 @@ this dataset's size cannot yet support either, consistent with the
 discipline we tried to hold throughout this program: report what the data
 shows, including when that is a negative result, a deferred question, or a
 threat to validity in our own fix. The taxonomy of concrete failure modes
-in Section~\ref{sec:failuremodes} -- 20 entries, roughly a third of them
+in Section~\ref{sec:failuremodes} -- 21 entries, over a third of them
 found and fixed during this evaluation program itself, each with a
 deterministic check and a regression test built from the real case that
 surfaced it -- is, we believe, as practically useful a contribution as any

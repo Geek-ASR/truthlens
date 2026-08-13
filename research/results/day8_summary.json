@@ -13,8 +13,26 @@
       "correct": 5
     },
     "full_truthlens_n6": {
-      "n": 4,
+      "n": 6,
+      "correct": 2
+    }
+  },
+  "table2_paired_6_items": {
+    "baseline_1_llm_only": {
+      "n": 6,
+      "correct": 0
+    },
+    "baseline_2_search_llm": {
+      "n": 6,
+      "correct": 4
+    },
+    "baseline_3_search_rag_llm": {
+      "n": 6,
       "correct": 3
+    },
+    "full_truthlens": {
+      "n": 6,
+      "correct": 2
     }
   },
   "table3_claim_decomposition": {

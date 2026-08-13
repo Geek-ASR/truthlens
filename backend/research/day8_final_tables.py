@@ -62,10 +62,10 @@ def main():
         print(f"{name:<25} {n:>4} {k:>8} {k/n:>9.1%} {f'[{lo:.1%}, {hi:.1%}]':>18}")
 
     full_resolved = [r for r in full_tl if r.get("full_truthlens_label")]
-    k = sum(1 for r in full_resolved if bucket(r["full_truthlens_label"]) == bucket(r["ground_truth"]))
-    n = len(full_resolved)
-    lo, hi = wilson_ci(k, n)
-    print(f"{'Full TruthLens (n=6)':<25} {n:>4} {k:>8} {k/n:>9.1%} {f'[{lo:.1%}, {hi:.1%}]':>18}")
+    full_tl_k = sum(1 for r in full_resolved if bucket(r["full_truthlens_label"]) == bucket(r["ground_truth"]))
+    full_tl_n = len(full_resolved)
+    lo, hi = wilson_ci(full_tl_k, full_tl_n)
+    print(f"{'Full TruthLens (n=6)':<25} {full_tl_n:>4} {full_tl_k:>8} {full_tl_k/full_tl_n:>9.1%} {f'[{lo:.1%}, {hi:.1%}]':>18}")
     print()
     print("NOTE: Full TruthLens covers 6/9 items (item-0003 never")
     print("ingestable; items 0008/0009 blocked by real Gemini quota")
@@ -80,10 +80,12 @@ def main():
     print("=" * 70)
     full_ids = {r["item_id"] for r in full_resolved}
     print(f"{'Config':<25} {'n':>4} {'correct':>8} {'accuracy':>10} {'95% CI':>18}")
+    table2_paired = {}
     for name, rows in [("Baseline 1 (LLM-only)", b1), ("Baseline 2 (Search+LLM)", b2), ("Baseline 3 (Search+RAG+LLM)", b3)]:
         subset = [r for r in rows if r["item_id"] in full_ids]
-        k, n, (lo, hi) = accuracy_and_ci(subset)
-        print(f"{name:<25} {n:>4} {k:>8} {k/n:>9.1%} {f'[{lo:.1%}, {hi:.1%}]':>18}")
+        pk, pn, (lo, hi) = accuracy_and_ci(subset)
+        table2_paired[name] = {"n": pn, "correct": pk}
+        print(f"{name:<25} {pn:>4} {pk:>8} {pk/pn:>9.1%} {f'[{lo:.1%}, {hi:.1%}]':>18}")
 
     full_correct = sum(1 for r in full_resolved if bucket(r["full_truthlens_label"]) == bucket(r["ground_truth"]))
     full_n = len(full_resolved)
@@ -97,9 +99,9 @@ def main():
     print("=" * 70)
     single_k = sum(1 for r in decomp if r["single_claim_match"])
     multi_k = sum(1 for r in decomp if r["multi_claim_match"])
-    n = len(decomp)
-    print(f"{'Single-claim (primary only)':<30} {n:>4} {single_k:>8} {single_k/n:>9.1%}")
-    print(f"{'Multi-claim (full decomposition)':<30} {n:>4} {multi_k:>8} {multi_k/n:>9.1%}")
+    decomp_n = len(decomp)
+    print(f"{'Single-claim (primary only)':<30} {decomp_n:>4} {single_k:>8} {single_k/decomp_n:>9.1%}")
+    print(f"{'Multi-claim (full decomposition)':<30} {decomp_n:>4} {multi_k:>8} {multi_k/decomp_n:>9.1%}")
     print()
     print("Per-item detail:")
     for r in decomp:
@@ -111,11 +113,17 @@ def main():
             "baseline_1_llm_only": {"n": len(b1), "correct": accuracy_and_ci(b1)[0]},
             "baseline_2_search_llm": {"n": len(b2), "correct": accuracy_and_ci(b2)[0]},
             "baseline_3_search_rag_llm": {"n": len(b3), "correct": accuracy_and_ci(b3)[0]},
-            "full_truthlens_n6": {"n": n, "correct": k},
+            "full_truthlens_n6": {"n": full_tl_n, "correct": full_tl_k},
+        },
+        "table2_paired_6_items": {
+            "baseline_1_llm_only": table2_paired["Baseline 1 (LLM-only)"],
+            "baseline_2_search_llm": table2_paired["Baseline 2 (Search+LLM)"],
+            "baseline_3_search_rag_llm": table2_paired["Baseline 3 (Search+RAG+LLM)"],
+            "full_truthlens": {"n": full_n, "correct": full_correct},
         },
         "table3_claim_decomposition": {
-            "single_claim_accuracy": f"{single_k}/{len(decomp)}",
-            "multi_claim_accuracy": f"{multi_k}/{len(decomp)}",
+            "single_claim_accuracy": f"{single_k}/{decomp_n}",
+            "multi_claim_accuracy": f"{multi_k}/{decomp_n}",
         },
         "known_gaps": [
             "item-0003 never successfully ingested (persistent Instagram empty-media-response)",
