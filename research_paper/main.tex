@@ -1432,9 +1432,17 @@ reasoning stating no evidence was found should never pair with a confident
 label -- is general and references no ground truth at all, but the
 specific phrase list was calibrated on exactly the sample now used to
 report its recall improvement. This means the 40\% recall figure is
-likely optimistic about how well this check generalizes to new cases with
-different phrasing (e.g.\ ``the data does not corroborate this'') --
-untested, and stated here as a real threat to validity, not a technicality
+optimistic about how well this check generalizes to new cases with
+different phrasing -- \textbf{now tested, not left as a suspicion}
+(\texttt{VALIDATOR\_SYNTHETIC\_BENCHMARK.md}, Phase 4 of this program's
+own governing protocol): four real paraphrases never in the original
+phrase list (``the data does not corroborate this,'' ``insufficient
+corroboration exists,'' ``the available sources do not establish,''
+``cannot verify this claim'') were each paired with a confident label in
+a synthetic but realistic evidence matrix. \textbf{All four were
+missed.} Check 4 does not generalize beyond its literal phrase list on
+this evidence -- a concrete, negative confirmation of the exact threat to
+validity already disclosed here, not a new problem, and stated as such
 (Section~\ref{sec:threats}).
 
 \textbf{Reel-level accuracy did not change (2/6, unchanged from
