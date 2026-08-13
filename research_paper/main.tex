@@ -339,6 +339,56 @@ learned cost/accuracy predictor as in FrugalGPT -- detects that the local
 model's output is schema-valid but substantively deficient in a way
 specific to that stage (Section~\ref{sec:cascade}).
 
+\subsection{Positioning against related systems}
+\label{sec:positioning}
+Table~\ref{tab:relatedwork} summarizes where TruthLens sits relative to
+the systems discussed above, on dimensions each subsection has already
+individually justified. We include only systems whose relevant
+capabilities are established by the citations already discussed in this
+section, to avoid characterizing a system's design beyond what we have
+verified. TruthLens is the only row combining multimodal input, claim
+decomposition, source tiering, deterministic (not LLM-judged) output
+verification, and held-out professional fact-check ground truth --
+\emph{combining} these is TruthLens's contribution, as
+Section~\ref{sec:contributions} states explicitly; no individual
+capability in this table originates with TruthLens.
+
+\begin{table*}[!t]
+\caption{Positioning against related systems (\ding{51} = present, \ding{55} = absent, ? = not established by the citation discussed)}
+\label{tab:relatedwork}
+\centering
+\scriptsize
+\begin{tabular}{lccccccc}
+\toprule
+System & Multimodal & Short-video & Political & Claim decomp. & Retrieval/RAG & Source tiering & Verification mechanism \\
+\midrule
+FEVER \cite{thorne2018fever} & \ding{55} & \ding{55} & \ding{55} & \ding{55} & \ding{51} & \ding{55} & none (label-only benchmark) \\
+LIAR \cite{wang2017liar} & \ding{55} & \ding{55} & \ding{51} & \ding{55} & \ding{55} & \ding{55} & none (label-only benchmark) \\
+ClaimBuster \cite{hassan2017claimbuster} & \ding{55} & \ding{55} & \ding{51} & \ding{55} & \ding{55} & \ding{55} & n/a (checkworthiness only) \\
+TikTec \cite{shang2021tiktec} & \ding{51} & \ding{51} & \ding{55} & \ding{55} & \ding{55} & \ding{55} & none (classifier output) \\
+DeVerna et al.\ \cite{deverna2025curatedcontext} & \ding{55} & \ding{55} & \ding{51} & \ding{55} & \ding{51} & \ding{55} & none (studies LLM judges) \\
+CiteCheck \cite{khajavi2026citecheck} & \ding{55} & \ding{55} & \ding{55} & \ding{55} & ? & \ding{55} & LLM-judged citation check \\
+\textbf{TruthLens (this paper)} & \ding{51} & \ding{51} & \ding{51} & \ding{51} & \ding{51} & \ding{51} & deterministic, 4-check \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+Stated plainly, per this paper's own governing discipline against
+overclaiming: TruthLens does not claim novelty for any single column in
+Table~\ref{tab:relatedwork}. Multimodal short-form-video analysis
+predates it (TikTec); political-domain fact-checking with LLM-mediated
+retrieval predates it (DeVerna et al.); citation grounding against an
+external source predates it, including via a non-deterministic LLM
+-judged mechanism this paper argues against on cost and auditability
+grounds, not on the underlying goal (CiteCheck). What we have not found
+in the literature we reviewed is a system combining held-out
+professional-fact-check evaluation, multimodal claim extraction, source
+-tiered retrieval, and \emph{deterministic} (non-LLM) output verification
+together, evaluated on real, recirculated short-form political video --
+which is the specific gap Sections~\ref{sec:architecture}--\ref{sec:bce}
+target and evaluate honestly, including where the combination does not
+yet outperform a simpler alternative (Section~\ref{sec:results}).
+
 \section{Research Questions and Contributions}
 \label{sec:contributions}
 
