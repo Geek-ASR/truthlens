@@ -46,11 +46,27 @@ what remains.
 - [x] Related-work comparison is clear (Phase 20).
 - [x] Figures communicate real findings — Fig. 3 now shows the
       superseded-vs-corrected reversal directly.
-- [ ] **Paper fits IEEE page limit — NOT MET.** 24 pages against a
-      10-page target. This grew, not shrank, this session, because
-      every phase added real, verified content and none was cut.
-      Flagged with equal severity by all three simulated reviewers
-      (`IEEE_REVIEW.md`) independent of each other.
+- [ ] **Paper fits IEEE page limit — STILL NOT MET, but substantially
+      closer.** A follow-up trim pass (2026-08-14, after this gate was
+      first written) moved the full 21-entry failure-mode taxonomy, the
+      superseded $n=9$ baseline table, and several evidence-quality
+      deep-dive subsections (the second empty-explanation bug, the
+      primary-source search-side fix, the entity-consistency prototype)
+      into a new Appendix — excluded from IEEE TPS's page count by its
+      own rules — while tightening prose density throughout every
+      remaining section. Main body went 24pp $\to$ 16pp (total PDF,
+      body+appendix: 20pp). Every number, table, figure, and finding
+      from the 24pp draft is still present somewhere (verified against
+      `CLAIM_EVIDENCE_MATRIX.md`); nothing was silently dropped to hit
+      this number. 16pp is not 10pp: closing the remaining 6pp would
+      require either moving genuinely central content (the support
+      -validity construct, the cross-post attribution problem, the
+      four-way evidence metric — each independently flagged by
+      `IEEE_REVIEW.md`'s reviewers as a real strength) out of the
+      counted body, or accepting the reviewers' own alternative
+      recommendation: a venue with a larger page budget. Not pushed
+      further this pass, consistent with this program's standing
+      practice of not forcing a mechanical cut under time pressure.
 - [x] All references are real and verified (unchanged from prior
       verification; no new citations added this session).
 - [x] No unsupported "first"/"state-of-the-art"/"hallucination
