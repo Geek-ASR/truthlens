@@ -531,6 +531,19 @@ to be surfaced as a claim's ``primary source'' citation on the rendered
 carousel and, in aggregate, the reliability-weighted confidence of the
 evidence matrix handed to the verdict-proposal stage. RQ4
 (Section~\ref{sec:evidencevalidation}) evaluates this mechanism directly.
+The eight dimensions' weights (primary-source status and publication
+reputation each 0.20; directness and corroboration each 0.15;
+evidence transparency and recency each 0.10; author identity and conflict
+of interest each 0.05) are hand-set manual priors, not derived from any
+formal method, learned fit, or literature citation -- and, verified
+directly against this file's git history for this audit, unmodified
+since the first commit of this project, before any evaluation dataset
+existed. We state this plainly rather than imply an empirical grounding
+these weights do not have; a sensitivity analysis comparing this
+weighting against an unweighted rubric and at least one alternative
+reasonable weighting, to check whether final verdicts are sensitive to
+the specific values chosen, is unperformed and named in
+Section~\ref{sec:futurework}.
 
 \subsection{Multi-claim, reel-level verdicts}
 TruthLens builds one fact-check per \emph{reel}, covering every verifiable
@@ -1515,6 +1528,22 @@ completeness of the text behind them.
 \section{Multimodal and Visual Failure Analysis}
 \label{sec:multimodalanalysis}
 
+\subsection{Defining claim coverage}
+\label{sec:claimcoveragedef}
+Every use of ``claim coverage'' in this paper means one specific,
+operationalized judgment, stated here once rather than left implicit: a
+benchmark claim is \textbf{covered} when at least one extracted claim
+identifies the same factual proposition as the professional fact-check's
+own claim -- matching on subject/entity, event, predicate, and any
+temporally-relevant qualifier -- as judged by a human annotator blind to
+which pipeline configuration produced the extraction (\texttt{METRICS.md}
+\S2). Topical overlap alone does not count: an extracted claim about the
+same general subject that does not assert the same specific, checkable
+fact is not covered. This is necessarily a human judgment, not a string
+-similarity score, because paraphrase makes automated matching unreliable
+at this scale; every pairwise judgment is recorded in
+\texttt{research/claim\_coverage\_results.csv} for audit.
+
 \subsection{What was run}
 Real ingestion (fetch $\to$ transcribe $\to$ OCR $\to$ vision-context) of
 the 7-item dataset as it existed at the time of this experiment, followed
@@ -1590,25 +1619,42 @@ produced any usable signal for this claim, and the mechanism was OCR
 content the audio transcript had no access to at all -- a genuine,
 small-$n$ demonstration of exactly what RQ3 asks about.
 
-\subsection{A structural pattern limiting how much claim coverage can improve}
+\subsection{The cross-post attribution problem}
+\label{sec:crosspost}
 Drafting atomic claims against the real ingested content surfaced a
-pattern worth stating explicitly: in 4 of 6 scoreable items, the actual
-false or misleading claim does not exist anywhere in \emph{this specific
-post's} own transcript, caption, or OCR at all -- it was added by a
-different account when recirculating the same underlying video under a new
-caption. Only item-0004 (claim genuinely on-screen) and, partially,
-item-0007 have the checkworthy claim actually present in the specific URL
-this dataset points to. This is a direct, structural consequence of how
-Tier-1 items are sourced: a fact-checker traces a viral false claim back to
+structural pattern we name explicitly rather than leave as an informal
+observation: the \textbf{cross-post attribution problem}. The same
+underlying media $M$ can be published as Post $A$ with caption $A$
+asserting claim $C$, and separately (or subsequently) as Post $B$ with a
+different caption asserting a different claim $C'$ -- and a system that
+only ever ingests one specific post URL has no way to discover $C'$ (or
+$C$) from that post's own transcript, caption, or on-screen text, because
+the misleading assertion was never part of that specific post's content
+at all. In our real data: \textbf{4 of 6 scoreable items} have their
+actual false or misleading claim living entirely outside the specific
+post's own content -- added by a different account when recirculating the
+same underlying video under a new caption. Only item-0004 (claim
+genuinely on-screen) and, partially, item-0007 have the checkworthy claim
+actually present in the specific URL this dataset points to.
+
+This is a direct, structural consequence of how Tier-1 items are sourced,
+not a sampling accident: a fact-checker traces a viral false claim back to
 its original, differently-captioned source video, and that original
-video's URL is what enters the dataset. A majority of this dataset's items
-may therefore be structurally unwinnable for single-post claim extraction
-no matter how good modality coverage gets -- the missing capability is
-knowing how a video is being recaptioned \emph{elsewhere}
-(reverse-video-search / cross-post claim matching), which TruthLens does
-not have and has never claimed to have. We recommend this be read
-explicitly rather than let a low claim-coverage number read as simply
-``claim extraction needs to improve.''
+video's URL is what enters the dataset (Section~\ref{sec:dataset}). A
+majority of this dataset's items may therefore be structurally unwinnable
+for single-post claim extraction no matter how good modality coverage
+gets. TruthLens has no mechanism to detect that a given media file
+appears elsewhere under a different claim -- no reverse-video/image
+search, no cross-post claim matching -- and has never claimed to. We did
+not prototype a provenance-retrieval module against this program's own
+benchmark: doing so and then evaluating it on the same 6 items would
+violate our own held-out discipline (Section~\ref{sec:expmethodology}),
+since the module's design would be directly informed by having read
+these exact cases. A frozen, disjoint pilot set is the correct next step
+(Section~\ref{sec:futurework}), not attempted here. We recommend this
+problem be read as a likely ceiling on single-post claim-extraction
+coverage in this domain generally, not as evidence that claim extraction
+specifically needs to improve.
 
 \subsection{New failure modes found this pass}
 \textbf{Near-duplicate claims from noisy OCR-frame variants, not

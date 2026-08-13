@@ -95,7 +95,10 @@ blind to which pipeline configuration produced it, agrees they assert
 the same checkable fact — not merely overlapping topic. This is
 necessarily a human call (matching two pieces of free text is not
 reducible to string similarity without producing nonsense on
-paraphrase), recorded per-pair in `research/annotations/claim_coverage_labels.csv`.
+paraphrase), recorded per-pair in `research/claim_coverage_results.csv`
+(the plan's originally-named path, `research/annotations/claim_coverage_labels.csv`,
+was never created — this is the actual file, corrected here 2026-08-14
+after `main.tex` cited the nonexistent path during a terminology pass).
 
 ## 3. Validator metrics (RQ1, Day 5)
 
