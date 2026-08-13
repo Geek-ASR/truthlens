@@ -2213,6 +2213,47 @@ not a diffuse general disadvantage, which is a far more actionable
 conclusion than either the old ``the architecture underperforms'' or a
 simple ``TruthLens wins'' would have been.
 
+\textbf{When does TruthLens help, specifically?} Table~\ref{tab:whenhelps}
+replaces a single win/lose framing with a per-item condition matrix, the
+most direct answer this small sample can give to where this architecture's
+advantage does and does not materialize.
+
+\begin{table}[!t]
+\caption{Per-item conditions, corrected comparison ($n=6$)}
+\label{tab:whenhelps}
+\centering
+\scriptsize
+\begin{tabular}{lccc}
+\toprule
+Item & Multi-claim? & Claim extracted? & TruthLens vs.\ B2 \\
+\midrule
+item-0001 & Yes (4) & Yes & Both correct \\
+item-0002 & Yes (2) & Yes & Both correct \\
+item-0004 & No (1) & Yes & B2 only correct \\
+item-0005 & Yes (2) & Yes & Both wrong \\
+item-0006 & No (0) & \textbf{No} & Both wrong (TruthLens abstains) \\
+item-0007 & No (0) & \textbf{No} & Both wrong (TruthLens abstains) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Reading the matrix rather than the aggregate: TruthLens and Baseline 2
+agree on every item where claim extraction succeeded and produced more
+than one claim (items 0001, 0002) -- exactly where
+Section~\ref{sec:decompcounterfactual}'s counterfactual shows aggregation
+adding value. TruthLens's one exclusive loss (item-0004) is a
+single-claim item, where decomposition has nothing to contribute and the
+comparison reduces to per-claim reasoning quality alone, where the
+already-diagnosed validator false negative costs it. Both systems fail
+identically whenever claim extraction itself fails (items 0006/0007) --
+architecture downstream of claim extraction cannot compensate for having
+no claim, for either system. The pattern this small sample suggests,
+stated as a hypothesis for a larger dataset to test, not a conclusion
+this $n$ can support: TruthLens's advantage over a single-shot baseline
+may be concentrated specifically in multi-claim items with successful
+extraction, and structurally absent everywhere claim extraction fails or
+a post has only one claim to begin with.
+
 This also changes how DeVerna et al.'s finding \cite{deverna2025curatedcontext}
 that curated context matters more than reasoning ability for political
 fact-checking should be read against our results. The corrected
