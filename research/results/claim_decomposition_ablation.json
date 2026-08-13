@@ -1,0 +1,38 @@
+[
+  {
+    "item_id": "item-0001",
+    "n_claims": 4,
+    "ground_truth": "FALSE",
+    "single_claim_label": "UNVERIFIED",
+    "single_claim_match": false,
+    "multi_claim_label": "MOSTLY_FALSE",
+    "multi_claim_match": true
+  },
+  {
+    "item_id": "item-0002",
+    "n_claims": 2,
+    "ground_truth": "FALSE",
+    "single_claim_label": "MOSTLY_FALSE",
+    "single_claim_match": true,
+    "multi_claim_label": "MOSTLY_FALSE",
+    "multi_claim_match": true
+  },
+  {
+    "item_id": "item-0004",
+    "n_claims": 1,
+    "ground_truth": "TRUE",
+    "single_claim_label": "FALSE",
+    "single_claim_match": false,
+    "multi_claim_label": "FALSE",
+    "multi_claim_match": false
+  },
+  {
+    "item_id": "item-0005",
+    "n_claims": 2,
+    "ground_truth": "MISLEADING",
+    "single_claim_label": "FALSE",
+    "single_claim_match": false,
+    "multi_claim_label": "FALSE",
+    "multi_claim_match": false
+  }
+]

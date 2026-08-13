@@ -181,7 +181,21 @@ async def main():
                 continue
 
             for claim in verifiable:
-                print(f"  processing claim: {claim.text[:80]}...", file=sys.stderr)
+                # Captured now, while the session is fresh -- if the try
+                # block below rolls back, every ORM attribute on `claim`
+                # (and on every other object already loaded this
+                # session) expires, and a later *synchronous* access
+                # would need an unawaited reload. Found live (Day 8):
+                # one claim's Gemini escalation itself failed schema
+                # validation, the except block's db.rollback() ran as
+                # designed, and the very next line's `claim.text` access
+                # crashed the whole script with MissingGreenlet instead
+                # of just recording that one claim's failure -- the same
+                # bug class already fixed once in
+                # app/api/routers/reels.py's quick_fact_check().
+                claim_id_str = str(claim.id)
+                claim_text = claim.text
+                print(f"  processing claim: {claim_text[:80]}...", file=sys.stderr)
                 try:
                     claim_result = await process_claim(db, claim, {})
                 except Exception as exc:  # noqa: BLE001 — one claim's unexpected failure must not lose the rest
@@ -190,8 +204,8 @@ async def main():
                     get_settings().SKIP_VALIDATION = False  # in case process_claim raised before its own finally
                     claim_result = {"outcome_type": "unexpected_error", "error": str(exc)}
                 claim_result["item_id"] = item_id
-                claim_result["claim_id"] = claim_result.get("claim_id", str(claim.id))
-                claim_result["claim_text"] = claim_result.get("claim_text", claim.text)
+                claim_result["claim_id"] = claim_result.get("claim_id", claim_id_str)
+                claim_result["claim_text"] = claim_result.get("claim_text", claim_text)
                 all_results.append(claim_result)
                 # Write incrementally so a later crash doesn't lose earlier real results.
                 _write_results(all_results)
