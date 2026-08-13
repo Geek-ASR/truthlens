@@ -1575,6 +1575,35 @@ this reliability gap remains open, not folded into the 95\% headline
 figure, which measures tier classification of retrieved results, not
 completeness of the text behind them.
 
+\subsection{A prototype entity-consistency check, evaluated honestly and not integrated}
+\label{sec:entityconsistency}
+Motivated by the entity-confusion failure mode named in Section
+\ref{sec:failuremodes}, we prototyped a deterministic check: for each
+cited evidence row with a non-\texttt{irrelevant} stance, does at least
+one of the claim's own extracted named entities appear in that evidence's
+text? Evaluated against the same real 9-claim sample
+(\texttt{research/ENTITY\_CONSISTENCY\_EVALUATION.md}), 7 of 9 evaluable
+rows were flagged. Manual audit of all 7 found: \textbf{one genuine true
+positive} -- a Delhi-Police claim's cited ``contradicting'' evidence was
+actually about an unrelated incident in Burdwan, West Bengal, refining
+Section~\ref{sec:results}'s item-0004 error attribution with a concrete
+mechanism; \textbf{four false positives} traced to a fixable design gap
+(the claim's only extracted entity was an abstract concept, ``Democracy,''
+not a person/organization/location); and \textbf{one likely false
+positive} from Devanagari-to-Latin transliteration variance
+(``Dipke''/``Deepke''). The one real historical case that most directly
+motivated this check -- a claim naming no one, whose cited evidence
+smuggled in a specific, unestablished person's identity -- has no
+entities to check against at all, and this design cannot catch it.
+\textbf{We do not integrate this check into the production validator}:
+after excluding the diagnosed false positives, the corrected evidence is
+one true positive on an evaluable set of roughly five cases, far too
+small to justify a fifth deterministic check without more data, per our
+own discipline against adding complexity without sufficient evaluation
+(Rule 4 of this program's own governing protocol). We report the honest,
+mixed result -- a real catch and real, diagnosed failure modes -- rather
+than either suppress it or overclaim it as ready for production.
+
 \section{Multimodal and Visual Failure Analysis}
 \label{sec:multimodalanalysis}
 

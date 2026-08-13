@@ -26,6 +26,7 @@ to ignore.
 | 15 | RQ6 (calibration) is deferred — 9 confidence values cannot meet the pre-registered "no bin under 3 items" gate | Direct inspection of real confidence values | `validator_audit_20260813T073200Z.json` (values: 0.0, 0.0, 0.1, 0.1, 0.2, 0.2, 0.2, 0.7, 0.8) | 9 | n/a (gate not met, no ECE/Brier computed) | **Supported** (a non-result, correctly reported as such) |
 | 16 | Efficiency: Baselines 2/3 make 1 LLM call per claim; full TruthLens makes $\sim$9.6 | Real call-count measurement | `system_efficiency.csv` | 7 (baselines) / 9 (TruthLens, derived from avg.\ 7.56 sources/claim) | None (means only, small $n$) | **Directional** — latency not captured for full TruthLens (disclosed gap) |
 | 17 | Full test suite passes (161/161) | `pytest` run | `backend/tests/` | 161 tests | n/a | **Supported**, reverified 2026-08-13 |
+| 18 | Prototype entity-consistency check: 7/9 evaluable rows flagged, 1 genuine true positive, 4 diagnosed false positives, 1 likely false positive, 1 structurally unevaluable historical case | Independent evaluation against real 9-claim sample | `entity_consistency_eval_20260814.json`, `ENTITY_CONSISTENCY_EVALUATION.md` | 9 claims / 10 evidence rows | None (manual audit of every flagged case, not a formula) | **Directional**, explicitly not integrated into production pending more data |
 
 ## Claims with no dedicated row (by design, not omission)
 
