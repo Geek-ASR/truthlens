@@ -151,6 +151,22 @@ consistent with how the existing paper already treats development
 telemetry as "not independent draws" rather than claiming exact
 repeatability.
 
+**"Regeneratable" and "re-runnable" are different claims, and this
+distinction matters for how to read the table above.** Tables III/IV/V
+and Figs. 3/4 are fully *regeneratable* — running
+`day8_final_tables.py`/`day10_figures.py` against the committed
+`research/results/*.jsonl`/`*.json` files will deterministically produce
+the exact same numbers every time, because that step is pure arithmetic
+over already-saved data. They are **not** *re-runnable* to the same
+numbers: actually re-executing the baselines and the full pipeline
+against live Ollama/Gemini today, from a clean checkout, would very
+likely produce a different `.jsonl`/`.json` in the first place, because
+no LLM call in this system is seeded. A reader should take "the
+regeneration command reproduces this table" as a real, verified claim
+about the committed data, and "re-running the underlying experiment
+reproduces this table" as an open question this project cannot currently
+answer either way.
+
 ## Day 10 reproducibility package: delivered vs. still open
 
 Delivered:

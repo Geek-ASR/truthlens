@@ -1899,6 +1899,19 @@ are explicitly deferred per our own pre-registered fallback rules
 (Section~\ref{sec:bce}) rather than reported with an underpowered number
 dressed up as a finding.
 
+\textbf{Ground truth is itself sourced from a small set of professional
+fact-checking organizations, whose own editorial judgment we do not
+independently audit.} BOOM Live, Alt News, and Factly are established,
+widely-cited Indian fact-checking organizations, and using their
+published verdicts as Tier-1 ground truth (Section~\ref{sec:dataset}) is
+standard practice in this subfield -- but this is a distinct threat from
+RQ5's question of whether \emph{TruthLens} treats political actors
+comparably. A systematic asymmetry in which claims these organizations
+choose to cover, or how they resolve genuinely ambiguous cases, would
+propagate directly into every number in this paper without this
+evaluation being able to detect it, since we have no second, independent
+ground-truth source to check them against.
+
 \section{Discussion}
 \label{sec:discussion}
 
@@ -1970,7 +1983,14 @@ we could not defend the provenance of.
   observed $\sim$8\% Tier-1 sourcing hit rate, reaching 20--30 items
   requires checking on the order of 250--375 more professional
   fact-check articles -- a large, bounded, literal task, not a
-  methodological unknown.
+  methodological unknown. A rough target: distinguishing a real 15
+  -percentage-point accuracy gap between two paired configurations (the
+  order of magnitude separating TruthLens from Baseline 2 in Table IV)
+  with reasonable power under McNemar's test needs on the order of 40--60
+  paired, discordant-eligible items, well beyond a straightforward
+  extrapolation of this program's current $n=6$ -- a concrete number to
+  scope future sourcing effort against, not just ``more data would
+  help.''
 \item \textbf{Diagnose and close claim-extraction coverage failures on
   degraded audio.} Section~\ref{sec:results} traces 2 of the headline
   comparison's 4 wrong TruthLens cases directly to zero-verifiable-claim
