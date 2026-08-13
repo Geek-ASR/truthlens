@@ -136,6 +136,16 @@ class ValidationStatus(str, enum.Enum):
     downgraded_missing_citation = "downgraded_missing_citation"
     downgraded_unfetched_source = "downgraded_unfetched_source"
     downgraded_unsupported_stat = "downgraded_unsupported_stat"
+    # Added after the Day 5 validator audit (research/VALIDATOR_EVALUATION.md)
+    # found 2 of 5 real false negatives were the same pattern: reasoning_
+    # summary states no evidence/reliable information was found, yet the
+    # verdict is a confident label other than UNVERIFIED (e.g. "the
+    # evidence matrix does not provide any reliable sources... " paired
+    # with FALSE at confidence 0.8). A general, keyword-based check for
+    # this internal inconsistency -- not tuned to any specific test
+    # item's correct answer, only to whether the model's own stated
+    # reasoning logically supports its own chosen label.
+    downgraded_reasoning_label_mismatch = "downgraded_reasoning_label_mismatch"
 
 
 class FactCheckStatus(str, enum.Enum):

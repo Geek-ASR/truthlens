@@ -196,6 +196,64 @@ grounding) structurally cannot detect:
   bit-for-bit on a re-run (`REPRODUCIBILITY.md` already flags LLM
   sampling as unseeded).
 
+## Addendum (2026-08-13, same day): retroactive re-scoring after two general fixes, with an important circularity caveat
+
+After Day 8's frozen run, two general, deterministic fixes were added to
+`validate_verdict()`: the UUID-leak fix (already covered above) and a
+new Check 4 (`downgraded_reasoning_label_mismatch`) that downgrades any
+verdict whose own `reasoning_summary` states no reliable evidence was
+found ("does not provide any reliable...", "no reliable sources", etc.)
+but whose label is a confident non-`UNVERIFIED` value anyway. Both are
+**pure functions of the model's own output**, never of ground truth —
+re-applying them to the same 9 real cases from this document costs zero
+new LLM calls and is not itself a form of answer-tuning.
+
+**Re-scored confusion matrix (n=9, same real cases, current code):**
+
+| | Validator downgrades | Validator passes |
+|---|---|---|
+| **Human judges output unsupported/unreliable** | 2 (TP) | 3 (FN) |
+| **Human judges output fine to publish** | 0 (FP) | 4 (TN, all no-op) |
+
+**Precision 100% (2/2), Recall 40% (2/5)** — up from the original
+16.7%. The two new true positives are exactly the two most consequential
+false negatives from the original table: the Rajput case (label
+contradicted its own "no reliable information" reasoning) and, more
+importantly, **the Durrani-meeting case — a confident FALSE at
+confidence 0.8 that independent Tier-1 ground truth says is actually
+true — now correctly downgraded to UNVERIFIED.**
+
+**A real regression surfaced by this same re-scoring, reported with
+equal prominence**: the "paan shop owner" case, originally counted as
+this document's *one* true positive, is **no longer downgraded** —
+because the UUID-leak fix correctly removed the exact false trigger
+(digits from a cited UUID) that had been *accidentally* catching it.
+The underlying real problem (wrong-entity evidence treated as directly
+relevant) remains genuinely uncaught. This case moves from TP to FN.
+Net effect: 1 TP lost, 2 TP gained, landing at 2 TP / 5 FN overall.
+
+**The circularity that must be disclosed, not hidden**: Check 4's
+keyword list (`_NO_EVIDENCE_FOUND_PHRASES`) was written after reading
+the literal reasoning text of the two cases it now catches. The
+underlying *principle* — reasoning stating "no evidence found" should
+never pair with a confident label — is general and does not reference
+ground truth at all, but the specific phrase list was calibrated on
+exactly the sample now being used to report its recall improvement.
+**This means the 40% recall figure is likely optimistic about how well
+this check generalizes to new cases with different phrasing** ("the
+data does not corroborate this," "insufficient information exists,"
+etc. — untested). This is a real threat to validity, not a technicality,
+and the paper must state it as one rather than present 40% as a clean,
+independently-validated number. A genuine test of this check's
+generalization needs new cases this check was never looked at while
+being written — a concrete, named item for whatever evaluation happens
+next.
+
+**Reel-level accuracy did not change (2/6, unchanged from Day 8's
+original number) despite this real validator improvement** — see
+`DAY8_RESULTS.md`'s addendum for why, and for why that is itself a
+finding worth reporting rather than a disappointing null result.
+
 ## What's next
 
 1. Human review/adjudication of `validator_results.csv`'s

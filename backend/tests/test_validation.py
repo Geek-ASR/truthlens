@@ -319,3 +319,89 @@ def test_corrected_fact_and_context_note_are_none_when_verdict_is_downgraded():
     assert outcome.status == ValidationStatus.downgraded_missing_citation
     assert outcome.corrected_fact is None
     assert outcome.context_note is None
+
+
+# ---------------------------------------------------------------------------
+# Check 4: reasoning stating "no evidence found" paired with a confident
+# non-UNVERIFIED label (research/VALIDATOR_EVALUATION.md, Day 5 audit --
+# 2 of 5 real false negatives were exactly this pattern).
+# ---------------------------------------------------------------------------
+
+def test_downgrades_when_reasoning_says_no_evidence_but_label_is_confident():
+    # Real case (paraphrased structure, not the literal claim text) from
+    # the Day 5 audit: reasoning says no reliable info was found, yet the
+    # verdict is a confident non-UNVERIFIED label.
+    source = _make_source(relevant_passage="Some unrelated passage text.")
+    evidence_id = uuid.uuid4()
+    proposal = VerdictProposal(
+        verdict=VerdictLabel.MOSTLY_FALSE,
+        confidence=0.2,
+        reasoning_summary=(
+            "The evidence matrix does not provide any reliable information about this person's "
+            "role in the organization."
+        ),
+        cited_evidence_ids=[evidence_id],
+    )
+
+    outcome = validate_verdict(proposal, {evidence_id: object()}, {evidence_id: source})
+
+    assert outcome.status == ValidationStatus.downgraded_reasoning_label_mismatch
+    assert outcome.verdict == VerdictLabel.UNVERIFIED
+
+
+def test_downgrades_real_durrani_meeting_case_from_day5_audit():
+    # The exact real reasoning text from the Day 5 audit's most
+    # consequential false negative: FALSE at confidence 0.8, contradicted
+    # by independent Tier-1 ground truth, undetected until this check.
+    source = _make_source(relevant_passage="Some unrelated passage text.")
+    evidence_id = uuid.uuid4()
+    proposal = VerdictProposal(
+        verdict=VerdictLabel.FALSE,
+        confidence=0.8,
+        reasoning_summary=(
+            "The evidence matrix does not provide any reliable sources that support or confirm a "
+            "courtesy meeting between Babajani Durrani and Abhijit Dipke at his residence in "
+            "Chhatrapati Sambhajinagar."
+        ),
+        cited_evidence_ids=[evidence_id],
+    )
+
+    outcome = validate_verdict(proposal, {evidence_id: object()}, {evidence_id: source})
+
+    assert outcome.status == ValidationStatus.downgraded_reasoning_label_mismatch
+    assert outcome.verdict == VerdictLabel.UNVERIFIED
+
+
+def test_no_evidence_phrase_is_a_noop_when_verdict_is_already_unverified():
+    # The check must never re-flag an already-appropriate UNVERIFIED --
+    # only a *confident* label paired with "no evidence" reasoning.
+    source = _make_source()
+    evidence_id = uuid.uuid4()
+    proposal = VerdictProposal(
+        verdict=VerdictLabel.UNVERIFIED,
+        confidence=0.1,
+        reasoning_summary="The evidence matrix does not provide any reliable information here.",
+        cited_evidence_ids=[evidence_id],
+    )
+
+    outcome = validate_verdict(proposal, {evidence_id: object()}, {evidence_id: source})
+
+    assert outcome.status == ValidationStatus.passed
+
+
+def test_confident_label_with_real_contradicting_evidence_still_passes():
+    # Must not become an over-broad "any low-confidence FALSE gets
+    # downgraded" check -- a verdict backed by real, cited, contradicting
+    # evidence (no "no evidence found" language at all) must still pass.
+    source = _make_source(relevant_passage="Official records show the event occurred on a Tuesday, not a Wednesday.")
+    evidence_id = uuid.uuid4()
+    proposal = VerdictProposal(
+        verdict=VerdictLabel.FALSE,
+        confidence=0.85,
+        reasoning_summary="Official records directly contradict the claim, confirming the event was on a Tuesday.",
+        cited_evidence_ids=[evidence_id],
+    )
+
+    outcome = validate_verdict(proposal, {evidence_id: object()}, {evidence_id: source})
+
+    assert outcome.status == ValidationStatus.passed

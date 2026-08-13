@@ -1,0 +1,38 @@
+[
+  {
+    "item_id": "item-0001",
+    "ground_truth": "FALSE",
+    "full_truthlens_label": "MOSTLY_FALSE",
+    "n_claims": 4
+  },
+  {
+    "item_id": "item-0002",
+    "ground_truth": "FALSE",
+    "full_truthlens_label": "MOSTLY_FALSE",
+    "n_claims": 2
+  },
+  {
+    "item_id": "item-0004",
+    "ground_truth": "TRUE",
+    "full_truthlens_label": "FALSE",
+    "n_claims": 1
+  },
+  {
+    "item_id": "item-0005",
+    "ground_truth": "MISLEADING",
+    "full_truthlens_label": "UNVERIFIED",
+    "n_claims": 2
+  },
+  {
+    "item_id": "item-0006",
+    "ground_truth": "FALSE",
+    "full_truthlens_label": "UNVERIFIED",
+    "n_claims": 0
+  },
+  {
+    "item_id": "item-0007",
+    "ground_truth": "FALSE",
+    "full_truthlens_label": "UNVERIFIED",
+    "n_claims": 0
+  }
+]

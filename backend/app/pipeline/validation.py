@@ -32,6 +32,39 @@ _INTERNAL_MARKUP_PATTERN = re.compile(r"\[\[.*?\]\]", re.DOTALL)
 # of what markup does or doesn't wrap it.
 _UUID_PATTERN = re.compile(r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b", re.IGNORECASE)
 
+# Phrases indicating the model itself is asserting that no supporting
+# evidence exists -- as opposed to asserting that evidence exists and
+# CONTRADICTS the claim, which is a legitimate basis for a definitive
+# label. Found live (research/VALIDATOR_EVALUATION.md's Day 5 audit): 2
+# of 5 real validator false negatives were exactly this pattern --
+# reasoning_summary stating "the evidence matrix does not provide any
+# reliable [information/sources]..." while the verdict was a confident
+# FALSE (once at confidence 0.8) or MOSTLY_FALSE rather than UNVERIFIED.
+# A general, keyword-based check for internal self-consistency between
+# what the model says it found and what it concluded -- not a check
+# against any external ground truth, and not tuned to any specific
+# claim's correct answer, only to whether the model's own stated
+# reasoning logically supports its own chosen label. Necessarily a
+# heuristic (natural language has unlimited ways to say "no evidence
+# found"), same tradeoff already accepted for every other keyword/regex
+# -based check in this file.
+_NO_EVIDENCE_FOUND_PHRASES = (
+    "does not provide any reliable",
+    "does not provide any relevant",
+    "no reliable information",
+    "no reliable sources",
+    "no relevant information",
+    "no relevant sources",
+    "cannot be verified",
+    "could not be verified",
+    "not been able to verify",
+)
+
+
+def _reasoning_claims_no_evidence_found(reasoning_summary: str) -> bool:
+    lowered = reasoning_summary.lower()
+    return any(phrase in lowered for phrase in _NO_EVIDENCE_FOUND_PHRASES)
+
 _CAPPED_CONFIDENCE = 0.4
 
 
@@ -146,6 +179,24 @@ def validate_verdict(
                 min(proposal.confidence, _CAPPED_CONFIDENCE),
                 [f"Numbers {missing} in reasoning_summary do not appear in any cited source passage."],
             )
+
+    # Check 4: reasoning that itself says no evidence was found must not
+    # be paired with a confident non-UNVERIFIED label -- "I found nothing
+    # to confirm or deny this" is a description of UNVERIFIED, not a
+    # basis for FALSE/MOSTLY_FALSE/TRUE/etc regardless of how the model
+    # phrases its confidence.
+    if proposal.verdict != VerdictLabel.UNVERIFIED and _reasoning_claims_no_evidence_found(
+        proposal.reasoning_summary
+    ):
+        return ValidationOutcome(
+            ValidationStatus.downgraded_reasoning_label_mismatch,
+            VerdictLabel.UNVERIFIED,
+            min(proposal.confidence, _CAPPED_CONFIDENCE),
+            [
+                f"reasoning_summary states no supporting evidence was found, but verdict was "
+                f"{proposal.verdict.value} instead of UNVERIFIED."
+            ],
+        )
 
     all_passages = " ".join(
         s.relevant_passage for s in source_by_evidence_id.values() if s.relevant_passage

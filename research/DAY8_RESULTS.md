@@ -150,6 +150,50 @@ Gemini quota exhaustion below, a separate, genuine external constraint).
   observation; reported here as a scope decision rather than presented
   with misleadingly precise-looking zeros and ones.
 
+## Addendum (2026-08-13, same day): two general system fixes made, re-scored — accuracy unchanged, trustworthiness measurably improved
+
+Per direction after the headline finding above, two general (not
+test-set-specific) fixes were implemented and are documented in full in
+`VALIDATOR_EVALUATION.md`'s own addendum:
+
+1. A new deterministic validator check
+   (`downgraded_reasoning_label_mismatch`) catching verdicts whose own
+   reasoning states no evidence was found but whose label is confident
+   anyway — motivated by a general principle, calibrated on this
+   sample's real phrasing (a disclosed circularity, not hidden).
+2. A vision-context substantiveness check catching the recurring
+   "model echoes its own prompt back" garbling found across 4+ real
+   reels this project, calibrated against every real garbled/good
+   example collected (not one held-out item specifically).
+
+**Re-scoring the same 6 items with fix #1 applied (free — no new LLM
+calls, since it's a pure function of already-recorded model output):
+reel-level accuracy is unchanged at 2/6 (33.3%).** item-0005's verdict
+changed from confident-and-wrong (`FALSE`, contradicted by real Tier-1
+ground truth) to `UNVERIFIED` — a real improvement in trustworthiness
+(no longer confidently asserting something false) that the bucket
+-accuracy metric, as defined, does not reward, since `UNVERIFIED` never
+counts as a match to any ground truth label. **This is itself a
+finding, not a disappointment to explain away**: label accuracy and
+output trustworthiness are different axes that can move independently,
+and this is a concrete, real demonstration of exactly that — arguably
+closer to the paper's actual central thesis (verification-gated
+architecture is about grounded, trustworthy output, not about winning a
+label-accuracy contest against a baseline) than the raw Table 2 number
+alone communicates.
+
+Fix #2 (vision-context) was not re-verifiable against Day 8's specific
+accuracy numbers in this pass: it only changes behavior when
+`GEMINI_API_KEY` is set and the local model's output looks like a
+prompt echo, and Gemini's quota was already exhausted (see the known
+gaps above) before this fix could be exercised against items 0006/0007
+end-to-end. Those two items' real underlying problem (item-0006: no
+checkworthy claim in this post's own content at all, per Day 4's
+finding; item-0007: degraded audio transcription) is not primarily a
+vision-context issue, so this fix is not expected to change their
+outcome even once re-tested — stated as an expectation, not verified,
+pending quota reset.
+
 ## What would change these numbers
 
 Everything in this document should be treated as a snapshot of a
