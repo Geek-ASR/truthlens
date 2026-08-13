@@ -54,44 +54,50 @@ benchmark of 9 real Instagram posts independently fact-checked by
 professional Indian fact-checking organizations (BOOM Live, Alt News,
 Factly), disjoint from all development data, against three baselines that
 hold the underlying model and search infrastructure constant (LLM-only;
-single-shot search+LLM; search+RAG+LLM). On the paired six-item subset where
-every configuration produced a verdict, full TruthLens (33.3\%, 2/6) does not
-outperform a single-shot search baseline (66.7\%, 4/6) -- a result we report
-first and most prominently because it is the least flattering, and because
-it traces to two specific, independently diagnosed component failures
-(claim extraction returning zero verifiable claims on degraded audio for two
-items; two validator false negatives on the other two) rather than a
-mysterious general weakness. A separate, controlled claim-decomposition
-ablation ($n=4$) shows decomposition and deterministic aggregation
-\emph{does} help once claim extraction has more than one claim to work with
-(50.0\% vs.\ 25.0\% accuracy), isolating where this architecture's advantage
-does, and does not, currently materialize. We further show that two general,
-ground-truth-independent fixes made in direct response to the headline
-finding measurably improve validator recall (16.7\%$\to$40\%, on the same 9
-cases, 100\% precision throughout) without moving reel-level accuracy at
-all -- a concrete demonstration that verdict-label accuracy and output
-trustworthiness are different, independently-moving properties, which we
-argue is closer to this architecture's actual value proposition than a
-label-accuracy contest against simpler baselines. We report the evidence
--quality picture behind these results (a primary-source domain-restriction
-fix moving source-tier classification into government/legal tiers from
-$\sim$11\% to 95\% of retrieved sources; a distinct, still-open gap between
-finding topically-relevant primary sources (68.75\%) and extracting usable
-evidence from them (18.75\%); a bug found and fixed mid-evaluation in which
-47.1\% of real evidence rows carried an empty explanation field), a
-multimodal claim-coverage experiment in which OCR-derived evidence recovered
-a claim audio transcription missed entirely, and honestly scoped
-non-results for political-bias and confidence-calibration questions that
-this dataset's size cannot yet support. Every number in this paper is
-reported with its exact sample size and, where a proportion, a Wilson
-confidence interval; where an experiment could not be run at a
-scientifically meaningful scale, we say so rather than force it.
+single-shot search+LLM; search+RAG+LLM). \textbf{A skeptical post-hoc audit
+of our own experimental design found that these baselines had, in every
+run across this project, been given a clean, human-written claim summary
+rather than the claim TruthLens's own extraction stage actually
+produced -- an undisclosed confound that inflated baseline performance
+relative to our own system, contradicting our own stated methodology. We
+report this bug and its fix with the same prominence as any other
+finding.} Corrected -- baselines re-run per real extracted claim,
+aggregated with the identical deterministic rule TruthLens itself uses --
+full TruthLens (33.3\%, 2/6) beats two of the three baselines outright
+(0.0\% each) and trails the third by 16.7 points (down from a 33.4-point
+gap before the fix), on the paired six-item subset where every
+configuration produced a verdict. We further show that two general,
+ground-truth-independent validator fixes measurably improve validator
+recall (16.7\%$\to$40\%, on the same 9 cases, 100\% precision throughout)
+without moving reel-level accuracy at all -- concrete evidence that
+verdict-label accuracy and what we formally define as \emph{support
+validity} (whether a verdict's citations, sources, numbers, and
+label/reasoning consistency hold up against its own evidence matrix) are
+separable, independently-moving properties, which we argue is closer to
+this architecture's actual value proposition than a label-accuracy contest
+against simpler baselines. A separate counterfactual claim-decomposition
+reanalysis ($n=4$) isolates deterministic aggregation as a real contributor
+(50.0\% vs.\ 25.0\% accuracy) once claim extraction has more than one claim
+to work with. We report the evidence-quality picture behind these results
+(a primary-source domain-restriction fix moving source-tier classification
+into government/legal tiers from $\sim$11\% to 95\% of retrieved sources; a
+distinct, still-open gap between finding topically-relevant primary sources
+(68.75\%) and extracting usable evidence from them (18.75\%); a bug found
+and fixed mid-evaluation in which 47.1\% of real evidence rows carried an
+empty explanation field), a multimodal claim-coverage experiment in which
+OCR-derived evidence recovered a claim audio transcription missed entirely,
+and honestly scoped non-results for political-bias and
+confidence-calibration questions that this dataset's size cannot yet
+support. Every number in this paper is reported with its exact sample size
+and, where a proportion, a Wilson confidence interval; where an experiment
+could not be run at a scientifically meaningful scale, or where our own
+methodology was found to be flawed, we say so rather than force or hide it.
 \end{abstract}
 
 \begin{IEEEkeywords}
-automated fact-checking, large language models, hallucination mitigation,
+automated fact-checking, large language models, evidence grounding,
 retrieval-augmented generation, misinformation detection, short-form video,
-claim verification, source credibility, ablation study
+claim verification, source credibility, experimental methodology
 \end{IEEEkeywords}
 
 \section{Introduction}
@@ -136,15 +142,24 @@ Alt News, Factly), disjoint from every post used during development
 that hold the underlying model and search infrastructure constant --
 isolating what TruthLens's specific multi-stage architecture adds beyond raw
 search access (Section~\ref{sec:expmethodology}). We report every result
-this comparison produced, including one that is not flattering: on the
-paired subset where every configuration completed, full TruthLens does not
-outperform a single-shot search-and-LLM baseline. We report this first and
-explain, with reference to specific, independently diagnosed component
-failures, why (Section~\ref{sec:results}) -- and we report a companion
-result, a controlled ablation of claim decomposition, where the same
-architecture's specific mechanism \emph{does} demonstrably help
-(Section~\ref{sec:ablation}). We treat both as more scientifically useful
-than a single flattering headline number would have been.
+this comparison produced, including one that is not flattering, but not
+about TruthLens: a subsequent, skeptical audit of our own experimental
+design found that the baselines had been given a cleaner claim input than
+TruthLens itself ever worked with, contradicting our own stated
+methodology, undetected across the entire program until this audit
+(Section~\ref{sec:baselinefix}). We report the bug and its fix with the
+same prominence as any other finding, because a flaw that inflates a
+comparison against our own system is exactly the kind of result our own
+protocol requires us to surface rather than quietly correct. Once
+corrected, full TruthLens beats two of the three baselines outright and
+trails the third by a substantially smaller margin than the uncorrected
+comparison showed (Section~\ref{sec:results}) -- and a companion
+counterfactual analysis of claim decomposition shows the same
+architecture's aggregation mechanism demonstrably helps once claim
+extraction has more than one claim to work with
+(Section~\ref{sec:ablation}). We treat the correction, the corrected
+result, and the ablation as more scientifically useful, together, than
+any single headline number would have been on its own.
 
 This work is organized around six research questions, matching TruthLens's
 own architectural claims one-to-one so that each is either supported by a
@@ -232,8 +247,8 @@ deterministic set-membership and substring tests against data the pipeline
 itself already fetched (does the cited \texttt{evidence\_id} exist; was the
 cited source actually retrieved; does the asserted number appear in the
 cited passage's stored text; does the reasoning's own stated conclusion
-match its label). This trades generality (we cannot catch a hallucination
-that happens to reuse a real, cited evidence ID incorrectly, or reasoning
+match its label). This trades generality (we cannot catch fabricated
+content that happens to reuse a real, cited evidence ID incorrectly, or reasoning
 phrased differently from the phrasings we have observed and checked for --
 Section~\ref{sec:evidencevalidation} discloses this latter limitation as a
 concrete, measured threat to validity, not a hypothetical one) for
@@ -343,7 +358,7 @@ dropped or forced.
 RQ & Question & Status \\
 \midrule
 1 & Does deterministic post-hoc validation reduce unsupported verdict output? & Yes, directional (\S\ref{sec:evidencevalidation}, $n=9$) \\
-2 & Does multi-stage decomposition + retrieval beat single-shot search+LLM? & Not on this sample, end-to-end (\S\ref{sec:results}); yes for decomposition specifically (\S\ref{sec:ablation}, $n=4$) \\
+2 & Does multi-stage decomposition + retrieval beat single-shot search+LLM? & Partially, once claim input is corrected: beats 2 of 3 baselines, trails the 3rd (\S\ref{sec:results}); yes for aggregation specifically (\S\ref{sec:ablation}, $n=4$) \\
 3 & Does multimodal extraction improve coverage of non-textual misinformation? & Directional yes (\S\ref{sec:multimodalanalysis}, $n=6$) \\
 4 & Does source-tiering improve evidence quality? & Yes for tier classification; gap remains to usable evidence (\S\ref{sec:evidencevalidation}) \\
 5 & Comparable standards across political actors? & Deferred -- no matched pairs exist (\S\ref{sec:bce}) \\
@@ -366,26 +381,37 @@ experiments in Sections~\ref{sec:results}--\ref{sec:bce} actually support:
 
 \begin{enumerate}
 \item \textbf{A held-out, Tier-1 evaluation benchmark and controlled
-  baseline/ablation comparison} (Sections~\ref{sec:expmethodology}--
+  baseline/counterfactual comparison} (Sections~\ref{sec:expmethodology}--
   \ref{sec:dataset}), the first evaluation of TruthLens against independent
   professional ground truth rather than development-time telemetry, holding
-  model and search infrastructure constant across every configuration so
-  that measured differences are attributable to architecture.
+  model, search infrastructure, and (Section~\ref{sec:baselinefix}) claim
+  -extraction input constant across every configuration so that measured
+  differences in Section~\ref{sec:results} are attributable to downstream
+  architecture specifically, not to which configuration had an easier claim
+  to reason about.
+\item \textbf{A documented, fixed methodological confound in our own
+  baseline design, reported with the same prominence as any other
+  finding.} A skeptical post-hoc audit of this program's own experimental
+  design (Section~\ref{sec:baselinefix}) found that Baselines 1--3 had, in
+  every run across this project, been given a clean, human-written claim
+  summary rather than TruthLens's own extracted claim, contradicting our
+  own stated methodology and inflating baseline performance relative to
+  our own system. We fixed it and re-ran the comparison rather than
+  silently correcting the number or leaving it undisclosed, reversing this
+  program's headline result in the process.
 \item \textbf{An empirical demonstration that verdict-label accuracy and
-  output trustworthiness are separable, independently-moving properties.}
-  Two general, ground-truth-independent validator fixes made in direct
-  response to this program's headline finding measurably improved validator
-  recall (16.7\%$\to$40\%, $n=9$, 100\% precision throughout,
-  Section~\ref{sec:evidencevalidation}) while leaving reel-level accuracy
-  completely unchanged (2/6 before and after) -- a concrete case where a
-  system got measurably more trustworthy without becoming more
-  ``accurate'' by the bucket-matching metric standard benchmarks use.
-\item \textbf{A controlled claim-decomposition ablation} isolating the one
-  component-level result in this program where TruthLens's specific
-  architectural mechanism demonstrably outperformed a simpler alternative
-  (50.0\% vs.\ 25.0\% accuracy, $n=4$, Section~\ref{sec:ablation}), reported
-  with the same prominence as the headline negative result rather than
-  buried beneath it.
+  what we formally define as \emph{support validity} are separable,
+  independently-moving properties} (Section~\ref{sec:evidencevalidation}).
+  Two general, ground-truth-independent validator fixes measurably improved
+  validator recall (16.7\%$\to$40\%, $n=9$, 100\% precision throughout)
+  while leaving reel-level accuracy completely unchanged (2/6 before and
+  after) -- a concrete case where a system's outputs became measurably more
+  supported by their own cited evidence without becoming more ``accurate''
+  by the bucket-matching metric standard benchmarks use.
+\item \textbf{A claim-decomposition counterfactual analysis} isolating the
+  clearest component-level result in this program where TruthLens's
+  aggregation mechanism demonstrably outperformed a simpler alternative
+  (50.0\% vs.\ 25.0\% accuracy, $n=4$, Section~\ref{sec:ablation}).
 \item \textbf{A four-way evidence-quality analysis} that separates source
   -tier classification, topical relevance, fetch success, and usable
   -evidence extraction into four distinct, independently reported metrics
@@ -535,15 +561,31 @@ satisfy. Section~\ref{sec:multimodalanalysis} evaluates claim coverage
 across this system's three real input-modality conditions (text-only,
 +OCR, +OCR+vision) on real ingested held-out data.
 
-\subsection{Making the model more trustworthy, not just more capable}
+\subsection{Making the model's output more supportable, not just more capable}
 \label{sec:methodology}
-Across this project we have found that making TruthLens's output more
-trustworthy is substantially a question about the pipeline around the model
-rather than the model itself. This subsection describes the mechanisms we
-built for this purpose; Sections~\ref{sec:results}--\ref{sec:bce} evaluate
-whether, and how well, each actually works.
+Across this project we have found that improving TruthLens's output is
+substantially a question about the pipeline around the model rather than
+the model itself. We make this precise with a single formal construct
+used throughout the rest of this paper in place of the vaguer word
+``trustworthy'': a verdict has \textbf{support validity} to the extent
+that every specific, checkable factual assertion embedded in it -- its
+cited evidence IDs, the sources those citations point to, the numbers
+stated in its reasoning, and the logical relationship between its stated
+reasoning and its chosen label -- can be verified against data already
+present in the pipeline's own evidence matrix, without invoking a second,
+equally fallible model judgment. Support validity is deliberately
+narrower than, and does not imply, either label accuracy (Section
+\ref{sec:results}) or general absence of hallucination: a verdict can
+have perfect support validity by this definition and still be wrong, if
+the model correctly cited and correctly quoted evidence it nonetheless
+misinterpreted, or if retrieval never found the right evidence in the
+first place (Section~\ref{sec:evidencevalidation}'s four-way evidence
+metric addresses that separate question). This subsection describes the
+mechanisms we built to make support validity checkable; Sections
+\ref{sec:results}--\ref{sec:bce} evaluate whether, and how well, each
+actually works.
 
-\subsubsection{Deterministic anti-hallucination validation}
+\subsubsection{Deterministic evidence-grounding validation}
 \label{sec:validation}
 After the verdict-proposal LLM call returns a structured
 \texttt{VerdictProposal} (label, confidence, reasoning, cited evidence
@@ -576,7 +618,14 @@ of which invoke an LLM:
   Section~\ref{sec:evidencevalidation}.
 \end{itemize}
 
-A verdict that fails any check is not discarded -- it is \emph{downgraded}:
+These four checks are the entire current operationalization of support
+validity -- deliberately not a proxy for evidence-to-claim topical
+relevance (Section~\ref{sec:evidencevalidation}'s job), evidence-to
+-reasoning stance correctness (currently human-audited only, not
+deterministically checked at all -- a named gap, not an oversight), or
+entity consistency (not yet implemented; a concrete, scoped item in
+Section~\ref{sec:futurework}). A verdict that fails any check is not
+discarded -- it is \emph{downgraded}:
 persisted with a \texttt{validation\_status} other than \texttt{passed},
 an appended, clearly delimited \texttt{[VALIDATION NOTE: ...]} explaining
 what failed, and excluded from citation lists shown to a reader. This
@@ -899,41 +948,140 @@ attempted at $n=1$-per-comparison.
 \section{Results}
 \label{sec:results}
 
-\subsection{Headline finding, reported first because it is the least flattering one}
-\textbf{On the paired six-item comparison -- the only fair one, since it is
-the only item set on which every configuration produced a verdict -- full
-TruthLens (33.3\%, 2/6) does not beat either single-shot search baseline:
-Baseline 2 (Search+LLM) scores 66.7\% (4/6) and Baseline 3
-(Search+RAG+LLM) scores 50.0\% (3/6) on the same items.} This is reported
-first and prominently because our own protocol requires it, not because it
-is the most flattering framing available.
+\subsection{A methodological correction, reported before the headline
+number itself}
+\label{sec:baselinefix}
+A skeptical post-submission audit of this program's own experimental
+design (full audit trail: \texttt{research/AUDIT\_REPORT.md}) found that
+Baselines 1--3, in every run across this entire project, had been given
+\texttt{items.jsonl}'s hand-written claim summary -- prose written during
+dataset construction by a human who had already read the professional
+fact-check -- rather than the claim as actually extracted by TruthLens's
+own claim-extraction stage, contradicting this paper's own stated
+methodology (Section~\ref{sec:expmethodology}), which has always
+specified the latter. The bug traced to a single, never-modified helper
+function written on the first day baselines were built. Because
+TruthLens's own extraction is often noisy or, on two of six items, empty,
+this gave baselines a systematically cleaner input than TruthLens itself
+ever worked with, for the entire program, undetected until this audit.
 
-This is not a mysterious overall weakness -- it traces directly to specific,
-already-diagnosed component failures, which is itself the more useful
-finding than the raw accuracy gap alone:
-\begin{itemize}
-\item \textbf{item-0006 and item-0007:} full TruthLens outputs
-  \texttt{UNVERIFIED} on both, not because it researched them and found
-  insufficient evidence, but because claim extraction found \emph{zero
-  verifiable claims} for either (Section~\ref{sec:multimodalanalysis}:
-  item-0006's transcript is badly garbled nonsense; item-0007's is
-  degraded and repetitive). Baseline 2, given only a raw claim string with
-  no claim-extraction stage to fail, happened to guess
-  \texttt{MOSTLY\_FALSE} for both, matching the ground-truth bucket by a
-  simpler, less decomposable process. TruthLens's deeper architecture had
-  no claim to work with at all; the single-shot baseline never needed one.
-\item \textbf{item-0004 and item-0005:} both systems get these wrong, but
-  for different, already-diagnosed reasons -- TruthLens's wrong verdicts
-  here are the exact two cases Section~\ref{sec:evidencevalidation}
-  identifies as validator false negatives (confident labels contradicted
-  by real Tier-1 ground truth, undetected by the citation/number-grounding
-  checks alone).
-\item \textbf{item-0001 and item-0002:} both systems get these right.
-\end{itemize}
+We fixed it rather than merely disclosing it: Baselines 1--3 were re-run
+against TruthLens's own real extracted claims (available for the same 6
+items the paired comparison already uses -- item-0003 has no extraction
+at all; items 0008/0009 have no complete real extraction, so both remain
+excluded exactly as before), one baseline call per real extracted claim,
+aggregated into one item-level verdict with the identical deterministic
+rule (\texttt{derive\_overall\_verdict()}) TruthLens itself uses to
+combine per-claim verdicts. This holds claim extraction constant across
+every configuration for the first time in this program. Full
+reconstruction, item-by-item, both before and after:
+\texttt{research/RECONSTRUCTED\_RESULTS.md}. \textbf{We report this
+correction with the same prominence as the result it changes, because a
+methodology bug that inflated a baseline's apparent performance relative
+to our own system is exactly the kind of finding Rule 1 of our own
+governing protocol exists to surface, not bury.}
+
+\subsection{Headline finding, corrected}
+\textbf{On the paired six-item comparison, once claim input is held
+constant, full TruthLens (33.3\%, 2/6) beats Baseline 1 (0.0\%, 0/6) and
+Baseline 3 (0.0\%, 0/6) outright, and trails only Baseline 2
+(50.0\%, 3/6) -- by 16.7 points, not the 33.4-point gap the uncorrected
+comparison showed.} This reverses this program's previous headline
+finding (Baseline 2 66.7\%, Baseline 3 50.0\%, both ahead of TruthLens).
 
 \begin{table}[!t]
-\caption{Main comparison, each configuration's own full run}
-\label{tab:table1}
+\caption{Paired comparison, identical 6 items, before and after the claim-input fix}
+\label{tab:table2}
+\centering
+\scriptsize
+\begin{tabular}{lrrl}
+\toprule
+Config & Superseded Acc.\ & Corrected Acc.\ & 95\% CI (corrected) \\
+\midrule
+B1: LLM-only & 0.0\% & 0.0\% & [0.0,39.0] \\
+B2: Search+LLM & 66.7\% & 50.0\% & [18.8,81.2] \\
+B3: Search+RAG+LLM & 50.0\% & 0.0\% & [0.0,39.0] \\
+Full TruthLens & 33.3\% & 33.3\% & [9.7,70.0] \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\linewidth]{figures/fig2_main_results.pdf}
+\caption{Table~\ref{tab:table2} plotted, superseded vs.\ corrected.
+The reversal is concentrated in items where baselines had been implicitly
+handed a claim to reason about that TruthLens itself never produced.}
+\label{fig:mainresults}
+\end{figure}
+
+Item-by-item, the corrected picture:
+\begin{itemize}
+\item \textbf{item-0006 and item-0007:} full TruthLens outputs
+  \texttt{UNVERIFIED} on both because claim extraction found \emph{zero
+  verifiable claims} for either (Section~\ref{sec:multimodalanalysis}:
+  item-0006's transcript is badly garbled nonsense; item-0007's is
+  degraded and repetitive). Under the superseded method, Baseline 2 had
+  been handed a clean claim summary anyway and happened to guess
+  \texttt{MOSTLY\_FALSE}, matching the ground-truth bucket. Under the
+  corrected method, every baseline receives the same nothing TruthLens
+  received and every baseline now also outputs \texttt{UNVERIFIED} --
+  a shared, correct reflection of a real claim-extraction coverage gap,
+  no longer a baseline-only advantage.
+\item \textbf{item-0004:} Baseline 2 uniquely gets this right
+  (\texttt{MOSTLY\_TRUE}); TruthLens's wrong verdict here is the exact
+  validator false negative Section~\ref{sec:evidencevalidation} already
+  identifies (a confident \texttt{FALSE} contradicted by real Tier-1
+  ground truth). Baselines 1 and 3 also get this wrong.
+\item \textbf{item-0005:} every configuration gets this wrong -- ground
+  truth is \texttt{MISLEADING}, a bucket nothing landed in.
+\item \textbf{item-0001 and item-0002:} TruthLens and Baseline 2 agree
+  (both correct). Baselines 1 and 3 get \emph{both} wrong under the
+  corrected method, having gotten both right under the superseded one --
+  their earlier apparent success here was partly an artifact of cleaner
+  claim input, not evidence their search/reasoning handles TruthLens's
+  own real, messier extracted claims equally well. Baseline 3
+  (full-page-text RAG) in particular moves from correct to incorrect on
+  both items once given real extracted claims, a directional signal
+  (unverified at this $n$) that concatenating full page text may compound
+  confusion for a small local model reasoning over an already-imperfect
+  claim, rather than compensating for it.
+\end{itemize}
+
+\textbf{McNemar analysis} (paired, $n=6$, Baseline 2 vs.\ Full TruthLens,
+corrected): both-correct $=2$ (item-0001, item-0002), both-wrong $=3$
+(item-0005, item-0006, item-0007), Baseline-2-only-correct $=1$
+(item-0004), TruthLens-only-correct $=0$. One discordant pair; exact
+McNemar $p=1.0$ -- still completely uninformative at this $n$, reported
+for the same reason as before: completeness, not evidence. Against
+Baselines 1 and 3, TruthLens now has zero discordant pairs favoring
+either baseline (both are strictly dominated on this sample).
+
+This is not a claim that TruthLens's architecture is unconditionally
+better than a single-shot baseline; it is a claim that once the one
+confound this audit found is removed, TruthLens is competitive with, and
+mostly ahead of, the baselines it is compared against on this specific,
+tiny, real sample -- and that the previous, opposite-looking result was
+substantially an artifact of an experimental design bug, not a property
+of the architecture. Section~\ref{sec:ablation} separately shows
+decomposition helped once claim extraction actually produced multiple
+claims to aggregate; the remaining deficit against Baseline 2 traces to
+claim-extraction \emph{coverage} on hard audio (items 0006/0007) and one
+validator false negative (item-0004), not to the corrected comparison
+being unfavorable in general.
+
+\textbf{Table~\ref{tab:table1old} (retired as a headline comparison).}
+This program's earlier "each configuration's own full $n=9$ run" table is
+retained here only for the historical record; it is not cited as
+evidence for any claim in this paper going forward. It was already
+caveated as not directly comparable to TruthLens's own number before this
+fix, and 3 of its 9 rows (items 0003/0008/0009) still use the
+uncorrected claim-input method, since none of those three items has both
+a complete real extraction and a complete real full-TruthLens verdict to
+correct against (Section~\ref{sec:baselinefix}).
+\begin{table}[!t]
+\caption{Superseded: each configuration's own full run, $n=9$ (not used for any claim in this paper)}
+\label{tab:table1old}
 \centering
 \scriptsize
 \begin{tabular}{lrrrl}
@@ -947,59 +1095,6 @@ Full TruthLens & 6 & 2 & 33.3\% & [9.7,70.0] \\
 \bottomrule
 \end{tabular}
 \end{table}
-
-Table~\ref{tab:table1} reports each configuration's own full run. Baselines 1--3 ran on all 9 items (no Gemini dependency, so unaffected by a
-real quota constraint described below). Full TruthLens's number covers only
-6 -- this row is not directly comparable to the others without restricting
-to the same 6 items, which Table~\ref{tab:table2} does; both tables are
-reported, with this caveat attached, rather than the less complete one
-omitted.
-
-\begin{table}[!t]
-\caption{Paired comparison, identical 6 items for every configuration}
-\label{tab:table2}
-\centering
-\scriptsize
-\begin{tabular}{lrrrl}
-\toprule
-Config & $n$ & Correct & Acc.\ & 95\% CI \\
-\midrule
-B1: LLM-only & 6 & 0 & 0.0\% & [0.0,39.0] \\
-B2: Search+LLM & 6 & 4 & 66.7\% & [30.0,90.3] \\
-B3: Search+RAG+LLM & 6 & 3 & 50.0\% & [18.8,81.2] \\
-Full TruthLens & 6 & 2 & 33.3\% & [9.7,70.0] \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\begin{figure}[!t]
-\centering
-\includegraphics[width=\linewidth]{figures/fig2_main_results.pdf}
-\caption{Tables~\ref{tab:table1} and \ref{tab:table2} plotted.
-Full TruthLens (highlighted) does not lead either comparison on this
-sample; Section~\ref{sec:discussion} argues why this is not the whole
-story.}
-\label{fig:mainresults}
-\end{figure}
-
-Note Baseline 1's 0.0\% on this 6-item subset, below its 22.2\% on the
-full 9 -- a reminder that even baseline numbers move around at this sample
-size, and small-$n$ comparisons across different item subsets are not
-directly meaningful without exactly this kind of restriction.
-
-\textbf{McNemar analysis} (paired, $n=6$, Baseline 2 vs.\ Full TruthLens):
-both-correct $=2$, both-wrong $=2$, Baseline-2-only-correct $=2$,
-TruthLens-only-correct $=0$. Exact McNemar $p=0.5$ (2 discordant pairs,
-maximally underpowered -- reported for completeness, not as evidence of
-anything on its own). This is not a claim that TruthLens's architecture is
-worse than a single-shot baseline in general; it is a claim that on this
-specific, tiny, real sample, the components most responsible for its
-supposed architectural advantage (claim decomposition, deterministic
-validation) each had a real, already-diagnosed failure that happened to
-cost more than it gained. Section~\ref{sec:ablation} shows decomposition
-\emph{did} help once claim extraction actually produced multiple claims to
-aggregate -- the deficit here is claim-extraction \emph{coverage} on hard
-audio, not the decomposition/aggregation mechanism itself.
 
 \subsection{A real gap found and fixed during this exact run}
 Extending the pipeline run to items 0008/0009 hit a genuine
@@ -1028,15 +1123,28 @@ misleadingly precise zeros and ones.
 \section{Ablation Study}
 \label{sec:ablation}
 
-Three ablations are in scope for this program (Section
+Three analyses are in scope for this program (Section
 \ref{sec:expmethodology}); this section reports the claim-decomposition
-ablation in full and summarizes the other two, cross-referencing their
-detailed writeups.
+counterfactual in full and summarizes the other two, cross-referencing
+their detailed writeups.
 
-\subsection{Claim decomposition (single-claim vs.\ multi-claim), $n=4$}
-Computed from already-collected verdict data (no new LLM calls), restricted
-to the 4 items with more than one verifiable claim to decompose, since
-decomposition is a no-op on a single-claim item by construction.
+\subsection{Claim-decomposition counterfactual (single-claim vs.\ multi-claim), $n=4$}
+\label{sec:decompcounterfactual}
+This is a \emph{counterfactual reanalysis of already-collected verdict
+data}, not a freshly-run paired experiment, and we name it that way
+rather than call it a clean ablation: each real claim's verdict is an
+independently computed research-then-reasoning result regardless of how
+many total claims were extracted in that run (research and reasoning for
+one claim do not depend on how many other claims exist), so reusing the
+real per-claim verdict to ask "what would aggregating only the primary
+claim, vs.\ all claims, produce" is a valid way to isolate the
+\emph{aggregation} mechanism's effect. It is \emph{not} a test of
+whether the decision to decompose in the first place changes upstream
+search or evidence-gathering behavior for the primary claim itself --
+that would require an independently-run single-claim-only pipeline
+configuration, which does not exist. No new LLM calls were made;
+restricted to the 4 items with more than one verifiable claim, since
+aggregation is a no-op on a single-claim item by construction.
 
 \begin{table}[!t]
 \caption{Claim-decomposition ablation}
@@ -1073,22 +1181,25 @@ item-0005 & \ding{55}\ FALSE & \ding{55}\ FALSE & MISLEADING \\
 \begin{figure}[!t]
 \centering
 \includegraphics[width=0.85\linewidth]{figures/fig3_decomposition_ablation.pdf}
-\caption{Table~\ref{tab:decomposition} plotted. The one
-component-level ablation in this program where TruthLens's specific
-mechanism demonstrably outperformed a simpler alternative.}
+\caption{Table~\ref{tab:decomposition} plotted. A counterfactual
+reanalysis, not an independently-run ablation (Section
+\ref{sec:decompcounterfactual}), isolating deterministic aggregation as a
+real contributor once claim extraction has more than one claim to work
+with.}
 \label{fig:decomposition}
 \end{figure}
 
-This is a real, positive result for RQ2's decomposition-specific question.
-On item-0001, the single highest-importance claim landed on
-\texttt{UNVERIFIED} (a missing-citation validator downgrade), but
-aggregating all 4 extracted claims via the deterministic rule table
-(Section~\ref{sec:aggregation}) correctly recovered \texttt{MOSTLY\_FALSE}.
-$n=4$ is far too small to generalize, but this is the one component-level
-ablation in this program where TruthLens's specific architectural mechanism
-demonstrably helped rather than hurt, and we report it with the same
-prominence as Section~\ref{sec:results}'s headline negative finding, not
-buried beneath it.
+This is a real, positive result for RQ2's decomposition-specific question,
+about the \emph{aggregation} mechanism specifically. On item-0001, the
+single highest-importance claim landed on \texttt{UNVERIFIED} (a
+missing-citation validator downgrade), but aggregating all 4 extracted
+claims via the deterministic rule table (Section~\ref{sec:aggregation})
+correctly recovered \texttt{MOSTLY\_FALSE}. $n=4$ is far too small to
+generalize, but this is the clearest component-level evidence in this
+program that TruthLens's aggregation mechanism helps rather than hurts
+once claim extraction has more than one claim to work with, and we report
+it with the same prominence as Section~\ref{sec:results}'s findings, not
+buried beneath them.
 
 \subsection{Validation ablation (RQ1) -- summary}
 Baseline 4 (TruthLens minus validation) is the primary ablation for RQ1;
@@ -1685,7 +1796,7 @@ architectural component.
   currently checked anywhere in the pipeline.
 \item \textbf{Downgraded reasoning reused as trusted input downstream.}
   A verdict-proposal model's free-text reasoning, containing an
-  entity-confusion-driven hallucination, was correctly downgraded to
+  entity-confusion-driven fabrication, was correctly downgraded to
   \texttt{UNVERIFIED} at the label level -- but downgrading a verdict
   forces only its label, not its free-text \texttt{reasoning\_summary},
   because there is no reliable way to isolate the offending sentence from
@@ -1808,7 +1919,7 @@ architectural component.
   -subset count (\texttt{n=6, k=3}) with Table 3's item count
   (\texttt{n=4}) into a fabricated-looking \texttt{full\_truthlens\_n6:
   \{n: 4, correct: 3\}} (75.0\%) that appeared nowhere in the script's own
-  printed tables and did not match Table~\ref{tab:table1}'s real,
+  printed tables and did not match Table~\ref{tab:table2}'s real,
   already-published 33.3\% (2/6). This is the same failure class as the
   silent verdict/presentation-inconsistency entry above -- two correct
   -looking outputs from the same run, one right and one silently wrong --
@@ -1915,64 +2026,86 @@ ground-truth source to check them against.
 \section{Discussion}
 \label{sec:discussion}
 
-The result we consider most important in this program is not the headline
-accuracy gap in Section~\ref{sec:results}, but what Section
-\ref{sec:evidencevalidation}'s addendum demonstrates alongside it: two
-general, ground-truth-independent fixes moved validator recall from 16.7\%
-to 40\% -- a real, measured improvement in whether the system's published
-reasoning can be trusted -- while reel-level bucket accuracy stayed exactly
-at 2/6 throughout. \textbf{Label accuracy and output trustworthiness are
-different axes that can move independently}, and this is a concrete,
-observed demonstration of exactly that, not an inference from theory. A
-benchmark that only reports label accuracy would have shown this system
-making no progress at all during a pass of work that materially reduced
-how often it publishes a confidently wrong verdict its own reasoning does
-not support. We think this reframing is closer to this architecture's
-actual value proposition -- an evidence-before-verdict pipeline gated by
-deterministic verification -- than a label-accuracy contest against
-simpler baselines, and we would rather a reader take this away than the
-raw Table~\ref{tab:table2} number alone.
+\textbf{On the value of auditing your own baselines as skeptically as
+your own system.} This program's most consequential finding was not
+produced by improving TruthLens -- it was produced by a post-hoc audit
+that treated our own experimental design with the same skepticism this
+paper applies to the system under test, and found that our baselines had
+been quietly advantaged for the entire program (Section
+\ref{sec:baselinefix}). Had that audit not happened, this paper would
+have published a confident, specific-sounding, and wrong explanation for
+why TruthLens loses to a single-shot search baseline -- an explanation
+that was not fabricated (the claim-extraction-coverage and
+validator-false-negative causes we diagnosed under the old numbers were
+real and remain real contributing factors) but was diagnosing a smaller
+effect than the uncorrected headline number implied, because part of
+that number was an artifact of unequal claim input, not architecture. We
+surface this prominently because we think the general lesson generalizes
+well beyond this paper: a baseline is part of the experimental apparatus,
+not a neutral reference point, and deserves the same implementation
+-level scrutiny as the system it is compared against, not just the same
+model and search access.
 
-That said, the headline comparison is real and is not explained away by
-the reframing above. On a paired 6-item sample, a single-shot search
-baseline beat full TruthLens by a wide margin, and the causes are
-specific and diagnosed rather than mysterious: claim-extraction coverage
-failure on 2 of 6 items (Section~\ref{sec:multimodalanalysis} documents
-why -- badly degraded audio, and a post with no checkworthy claim in its
-own content), and validator false negatives on the other 2 wrong items
-(the same false negatives Section~\ref{sec:evidencevalidation} directly
-targets). This localizes the problem: it is not evidence that
-decomposition, tiering, or per-source evidence analysis are bad ideas in
-general -- Section~\ref{sec:ablation}'s claim-decomposition ablation shows
-the opposite, a real accuracy gain from decomposition once claim
-extraction has more than one claim to aggregate. It is evidence that this
-specific implementation's upstream claim-extraction coverage and
-downstream validator recall are the two places where more work would
-actually move the headline number, a far more actionable conclusion than
-``the architecture underperforms.''
+\textbf{On label accuracy vs.\ support validity.} A separate, still-valid
+finding sits alongside the corrected comparison: two general,
+ground-truth-independent fixes moved the validator's recall against
+human-judged unsupported output from 16.7\% to 40\%
+(Section~\ref{sec:evidencevalidation}) while reel-level bucket accuracy
+stayed exactly at 2/6 throughout, both before and after the baseline
+correction. \textbf{Label accuracy and support validity (Section
+\ref{sec:methodology}'s formal construct: whether a verdict's citations,
+sources, numbers, and label/reasoning consistency hold up against its own
+evidence matrix) are different axes that can move independently}, and
+this is a concrete, observed demonstration of that, not an inference from
+theory. A benchmark that only reports label accuracy would have shown
+this system making no progress at all during a pass of work that
+materially reduced how often it publishes a confidently wrong verdict its
+own reasoning does not support.
 
-This also gives a more precise reading of DeVerna et al.'s finding
-\cite{deverna2025curatedcontext} that curated context matters more than
-reasoning ability for political fact-checking. Our result does not
-contradict theirs -- when TruthLens's curation pipeline had claims to
-curate evidence for, its component-level mechanisms (decomposition,
-aggregation) helped; when it did not (zero claims extracted), no amount of
-downstream curation quality could compensate. The lesson we draw is that
-curation-heavy architectures should be evaluated, and diagnosed, at the
-component level, not only at the end-to-end label-accuracy level a
-FEVER/LIAR-style benchmark would report -- an end-to-end number alone
-would have shown only the negative result, not the specific, fixable
-reasons behind it.
+\textbf{On the corrected headline comparison itself.} Once claim input is
+held constant, full TruthLens beats two of three baselines outright and
+trails the third by a real but much smaller margin than the uncorrected
+comparison showed (Section~\ref{sec:results}). The two remaining wrong
+items still trace to specific, diagnosed causes -- claim-extraction
+coverage failure on degraded audio (items 0006/0007, Section
+\ref{sec:multimodalanalysis}) and one validator false negative
+(item-0004, Section~\ref{sec:evidencevalidation}) -- and
+Section~\ref{sec:decompcounterfactual}'s counterfactual shows the
+aggregation mechanism specifically delivering a real accuracy gain once
+claim extraction has more than one claim to work with. Taken together, the
+corrected picture is not ``TruthLens wins'' -- it is that this
+architecture's remaining gap against the strongest baseline is now
+concentrated in exactly two already-understood upstream failure points,
+not a diffuse general disadvantage, which is a far more actionable
+conclusion than either the old ``the architecture underperforms'' or a
+simple ``TruthLens wins'' would have been.
+
+This also changes how DeVerna et al.'s finding \cite{deverna2025curatedcontext}
+that curated context matters more than reasoning ability for political
+fact-checking should be read against our results. The corrected
+comparison is broadly consistent with theirs: TruthLens's
+curation-heavy architecture is competitive with, and mostly ahead of,
+simpler alternatives once claim input is fairly controlled, and its one
+remaining loss traces to a specific, upstream coverage gap rather than
+curation itself underperforming. The lesson we draw is methodological
+as much as architectural: curation-heavy systems should be evaluated at
+the component level, with baseline implementation audited as carefully
+as the system under test, because an end-to-end label-accuracy number
+alone -- as this program's own uncorrected first pass demonstrated --
+can misattribute a claim-input confound to an architectural one.
 
 Finally, we note what this program deliberately did not do: it did not
 tune any prompt, threshold, or model choice on the frozen held-out
 dataset's contents (Section~\ref{sec:expmethodology}), and the two general
-fixes made in response to the headline finding were built to be
-ground-truth-independent, with the one place that assumption is imperfect
-(the new validator check's phrase-list calibration) disclosed as a named
-threat to validity rather than presented as a clean win. We would rather
-report a real 33.3\% with an honest account of why than a higher number
-we could not defend the provenance of.
+validator fixes were built to be ground-truth-independent, with the one
+place that assumption is imperfect (the new validator check's
+phrase-list calibration) disclosed as a named threat to validity rather
+than presented as a clean win. The baseline correction in
+Section~\ref{sec:baselinefix} is similarly ground-truth-independent: it
+changes what claim text baselines receive, not any threshold or judgment
+tuned against knowing the right answer. We would rather report a real
+33.3\%, a real correction, and an honest account of both than a smoother
+-looking number we could not defend the provenance of.
 
 \section{Future Work}
 \label{sec:futurework}
@@ -2039,50 +2172,63 @@ we could not defend the provenance of.
 
 This paper reports the first evaluation of TruthLens against independent,
 held-out ground truth, and we lead with the least flattering result it
-produced: on a paired 6-item sample, full TruthLens does not outperform a
-single-shot search-and-LLM baseline. We report this first because our own
-protocol requires it, and because tracing it -- to claim-extraction
-coverage failures on 2 items and validator false negatives on 2 others,
-both independently diagnosed rather than inferred -- is more scientifically
-useful than a flattering aggregate number would have been. Set against
-this, a controlled claim-decomposition ablation shows the same
-architecture's specific mechanism delivering a real accuracy gain (50.0\%
-vs.\ 25.0\%, $n=4$) once claim extraction has more than one claim to
-aggregate, localizing where this design's advantage does and does not
-currently materialize rather than leaving it as an unresolved contradiction.
-Most importantly, we show that two general, ground-truth-independent
-fixes made in direct response to the headline finding measurably improved
-validator recall (16.7\%$\to$40\%, 100\% precision throughout) while
-leaving reel-level accuracy completely unchanged -- a concrete
-demonstration that verdict-label accuracy and output trustworthiness are
-separable properties of a fact-checking system, and, we argue, the more
-important axis for an architecture whose entire premise is
-evidence-before-verdict rather than label-matching. We report the
-evidence-quality analysis behind these results in full, including a
-gap between finding topically-relevant primary sources (68.75\%) and
-extracting usable evidence from them (18.75\%) that we consider a more
-actionable diagnosis than either number alone, a multimodal claim
--coverage result in which OCR-derived evidence recovered a claim audio
-transcription missed entirely, and a structural finding -- most of this
-dataset's actual false claims live outside the specific post being
-fact-checked -- that we believe sets a real ceiling on single-post claim
-extraction regardless of how much its component quality improves. We
-report RQ5 (bias) and RQ6 (calibration) as deferred, not forced, because
-this dataset's size cannot yet support either, consistent with the
-discipline we tried to hold throughout this program: report what the data
-shows, including when that is a negative result, a deferred question, or a
-threat to validity in our own fix. The taxonomy of concrete failure modes
-in Section~\ref{sec:failuremodes} -- 21 entries, over a third of them
-found and fixed during this evaluation program itself, each with a
+produced -- not a weakness in TruthLens, but in our own experimental
+design: a skeptical post-hoc audit found that our baselines had been given
+a cleaner claim input than TruthLens's own extraction ever produced,
+across this entire program, contradicting our own stated methodology and
+inflating baseline performance. We report this first because our own
+protocol requires it, and because a research program that only audits the
+system under test, never its own baselines, is not applying the standard
+this paper argues for uniformly. Corrected -- baselines re-run per real
+extracted claim, aggregated with TruthLens's own deterministic rule -- full
+TruthLens beats two of three baselines outright and trails the third by a
+real but substantially smaller margin than the uncorrected comparison
+showed, on the same paired 6-item sample. The remaining gap traces to
+claim-extraction coverage failures on 2 items and one validator false
+negative, both independently diagnosed rather than inferred -- more
+scientifically useful than either the original, partly-artifactual
+negative number or an uncritical positive one would have been. Set
+against this, a claim-decomposition counterfactual analysis shows the
+same architecture's aggregation mechanism delivering a real accuracy
+gain (50.0\% vs.\ 25.0\%, $n=4$) once claim extraction has more than one
+claim to work with, localizing where this design's advantage does and
+does not currently materialize. We also show that two general,
+ground-truth-independent validator fixes measurably improved validator
+recall (16.7\%$\to$40\%, 100\% precision throughout) while leaving
+reel-level accuracy completely unchanged, both before and after the
+baseline correction -- a concrete demonstration that verdict-label
+accuracy and the formally-defined \emph{support validity} construct
+(Section~\ref{sec:methodology}) are separable properties of a
+fact-checking system, and, we argue, the more important axis for an
+architecture whose entire premise is evidence-before-verdict rather than
+label-matching. We report the evidence-quality analysis behind these
+results in full, including a gap between finding topically-relevant
+primary sources (68.75\%) and extracting usable evidence from them
+(18.75\%) that we consider a more actionable diagnosis than either number
+alone, a multimodal claim-coverage result in which OCR-derived evidence
+recovered a claim audio transcription missed entirely, and a structural
+finding -- most of this dataset's actual false claims live outside the
+specific post being fact-checked -- that we believe sets a real ceiling
+on single-post claim extraction regardless of how much its component
+quality improves. We report RQ5 (bias) and RQ6 (calibration) as
+deferred, not forced, because this dataset's size cannot yet support
+either, consistent with the discipline we tried to hold throughout this
+program: report what the data shows, including when that is a negative
+result, a deferred question, a bug in our own baselines, or a threat to
+validity in our own fix. The taxonomy of concrete failure modes in
+Section~\ref{sec:failuremodes} -- 21 entries, over a third of them found
+and fixed during this evaluation program itself, each with a
 deterministic check and a regression test built from the real case that
-surfaced it -- is, we believe, as practically useful a contribution as any
-single number in the tables above, because most of these failures are
-only discoverable by running a complete system against real content, not
-by unit-testing components in isolation. Scaling the held-out benchmark
-past $n=9$, closing the claim-extraction coverage gap this evaluation
-diagnosed, and running the matched-pair and calibration analyses this
-paper explicitly withholds are the concrete next steps, not vague future
-work, and are where we intend to take this program next.
+surfaced it -- is, we believe, as practically useful a contribution as
+any single number in the tables above, because most of these failures,
+including the baseline confound this conclusion opens with, are only
+discoverable by running a complete system, and a complete audit of one's
+own comparisons, against real content, not by unit-testing components in
+isolation. Scaling the held-out benchmark past $n=9$, closing the
+claim-extraction coverage gap this evaluation diagnosed, and running the
+matched-pair and calibration analyses this paper explicitly withholds are
+the concrete next steps, not vague future work, and are where we intend
+to take this program next.
 
 \bibliographystyle{IEEEtran}
 \bibliography{references}

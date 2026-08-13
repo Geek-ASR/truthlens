@@ -108,6 +108,28 @@ def main():
         print(f"  {r['item_id']}: n_claims={r['n_claims']} | single={r['single_claim_label']} ({r['single_claim_match']}) | "
               f"multi={r['multi_claim_label']} ({r['multi_claim_match']}) | gt={r['ground_truth']}")
 
+    print()
+    print("=" * 70)
+    print("TABLE 2 CORRECTED: paired n=6, baselines re-run per real extracted")
+    print("claim (fixes AUDIT_REPORT.md Finding 1 -- see baseline_corrected_per_claim.py)")
+    print("=" * 70)
+    corrected_path = RESULTS_DIR / "baselines_corrected_per_claim_20260814.json"
+    table2_corrected = {}
+    if corrected_path.exists():
+        corrected = json.loads(corrected_path.read_text())
+        name_map = {"llm_only": "Baseline 1 (LLM-only)", "search_llm": "Baseline 2 (Search+LLM)", "search_rag_llm": "Baseline 3 (Search+RAG+LLM)"}
+        key_map = {"llm_only": "baseline_1_llm_only", "search_llm": "baseline_2_search_llm", "search_rag_llm": "baseline_3_search_rag_llm"}
+        for config, rows in corrected.items():
+            ck = sum(1 for r in rows if bucket(r["predicted_label"]) == bucket(r["ground_truth_label"]))
+            cn = len(rows)
+            lo, hi = wilson_ci(ck, cn)
+            table2_corrected[key_map[config]] = {"n": cn, "correct": ck}
+            print(f"{name_map[config]:<25} {cn:>4} {ck:>8} {ck/cn:>9.1%} {f'[{lo:.1%}, {hi:.1%}]':>18}")
+        print(f"{'Full TruthLens':<25} {full_n:>4} {full_correct:>8} {full_correct / full_n:>9.1%} "
+              f"{f'[{full_lo:.1%}, {full_hi:.1%}]':>18}  (unchanged -- real system, not re-run)")
+    else:
+        print("(baselines_corrected_per_claim_20260814.json not found -- run baseline_corrected_per_claim.py first)")
+
     summary = {
         "table1_all_9_items": {
             "baseline_1_llm_only": {"n": len(b1), "correct": accuracy_and_ci(b1)[0]},
@@ -120,6 +142,11 @@ def main():
             "baseline_2_search_llm": table2_paired["Baseline 2 (Search+LLM)"],
             "baseline_3_search_rag_llm": table2_paired["Baseline 3 (Search+RAG+LLM)"],
             "full_truthlens": {"n": full_n, "correct": full_correct},
+        },
+        "table2_paired_6_items_CORRECTED": {
+            **table2_corrected,
+            "full_truthlens": {"n": full_n, "correct": full_correct},
+            "note": "Baselines re-run per real TruthLens-extracted claim, fixing AUDIT_REPORT.md Finding 1. This table, not table2_paired_6_items above, is the one main.tex cites as the primary headline comparison.",
         },
         "table3_claim_decomposition": {
             "single_claim_accuracy": f"{single_k}/{decomp_n}",

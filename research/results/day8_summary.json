@@ -35,6 +35,25 @@
       "correct": 2
     }
   },
+  "table2_paired_6_items_CORRECTED": {
+    "baseline_1_llm_only": {
+      "n": 6,
+      "correct": 0
+    },
+    "baseline_2_search_llm": {
+      "n": 6,
+      "correct": 3
+    },
+    "baseline_3_search_rag_llm": {
+      "n": 6,
+      "correct": 0
+    },
+    "full_truthlens": {
+      "n": 6,
+      "correct": 2
+    },
+    "note": "Baselines re-run per real TruthLens-extracted claim, fixing AUDIT_REPORT.md Finding 1. This table, not table2_paired_6_items above, is the one main.tex cites as the primary headline comparison."
+  },
   "table3_claim_decomposition": {
     "single_claim_accuracy": "1/4",
     "multi_claim_accuracy": "2/4"
