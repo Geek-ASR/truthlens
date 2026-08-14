@@ -26,6 +26,15 @@ def test_tiny_negative_importance_is_clamped_to_zero():
     assert claim.importance == 0.0
 
 
+def test_second_real_observed_noise_value_is_also_clamped():
+    """A second real value observed live in a later run of the same
+    experiment (EXP-009), an order of magnitude larger than the original
+    -2e-18 case -- the epsilon was widened (1e-6 -> 1e-4) specifically
+    because this real value fell just outside the original window."""
+    claim = _claim(importance=-1.1111111111e-06)
+    assert claim.importance == 0.0
+
+
 def test_tiny_over_one_importance_is_clamped_to_one():
     claim = _claim(importance=1.0 + 5e-17)
     assert claim.importance == 1.0

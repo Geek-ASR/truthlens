@@ -5,15 +5,21 @@ from pydantic import BaseModel, Field, field_validator
 from app.schemas.common import ClaimStatus, ClaimType
 
 # Local models occasionally serialize a value intended to be exactly 0.0
-# or 1.0 with tiny floating-point noise (confirmed live: llama3.2
-# produced importance=-2e-18 on real reel content during
-# research/RESEARCH_ROADMAP_V2.md Phase 2 experimentation) -- close
-# enough to a boundary that the model's actual intent is unambiguous,
-# but a raw ge=0.0/le=1.0 constraint rejects it outright. Rejecting the
-# WHOLE extraction over this is the worst possible recall outcome (zero
-# claims), not a meaningful quality signal, so this is clamped before
-# the ge/le check rather than left to fail schema validation.
-_FLOAT_BOUNDARY_EPSILON = 1e-6
+# or 1.0 with tiny floating-point/generation noise -- confirmed live,
+# twice, at two different orders of magnitude: llama3.2 produced
+# importance=-2e-18 (pure float-serialization noise) in one real run,
+# and -1.1111111111e-06 (an order of magnitude a serialization artifact
+# alone wouldn't explain -- more likely the model's own near-zero
+# rounding) in another, both during research/RESEARCH_ROADMAP_V2.md
+# Phase 2 (EXP-009) experimentation against real reel content. 1e-4
+# comfortably covers both observed cases while staying far below
+# genuinely wrong values also observed in the same experiment
+# (-0.5, -1, 1.2, 4) -- this is evidence-based, not an arbitrarily round
+# number. Rejecting the WHOLE extraction over near-zero noise is the
+# worst possible recall outcome (zero claims), not a meaningful quality
+# signal, so this is clamped before the ge/le check rather than left to
+# fail schema validation.
+_FLOAT_BOUNDARY_EPSILON = 1e-4
 
 
 def _clamp_float_boundary_noise(value):

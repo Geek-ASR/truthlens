@@ -1,0 +1,103 @@
+[
+  {
+    "source_url": "https://www.instagram.com/reel/DYCLkKoBpof/",
+    "v3": {
+      "prompt_version": "claim_extraction.v3",
+      "error": "ProviderError: Ollama output for ClaimExtractionResult (llama3.2) failed schema validation after retries: 1 validation error for ClaimExtractionResult\n  Invalid JSON: EOF while parsing a string at line 1 column 12461 [type=json_invalid, input_value='{ \"claims\": [ { \"text\": ...\": \"opinion\",\"verifiabl', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/json_invalid"
+    },
+    "v4": {
+      "prompt_version": "claim_extraction.v4-recall-candidate",
+      "claim_count": 1,
+      "verifiable_count": 1,
+      "nonempty_text_count": 1,
+      "claims": [
+        {
+          "text": "\u0628\u06cc\u0679\u06be\u0627 \u0622\u067e \u06a9\u0627 \u0646\u06cc\u0679\u06be \u0915\u06d2 \u0627\u06cc\u06a9 \u0632\u0627\u0645 \u0645\u06cc\u06ba 681 \u0627\u0633\u30b3\u30fc\u30c9 \u0644\u06d2 \u06af\u06d2 \u0622 \u0631\u06c1\u0627 \u06c1\u06d2",
+          "verifiable": true,
+          "claim_type": "factual",
+          "extraction_confidence": 1.0
+        }
+      ]
+    }
+  },
+  {
+    "source_url": "https://www.instagram.com/reel/DbNU9W7xA9P/",
+    "v3": {
+      "prompt_version": "claim_extraction.v3",
+      "claim_count": 2,
+      "verifiable_count": 1,
+      "nonempty_text_count": 0,
+      "claims": [
+        {
+          "text": "",
+          "verifiable": false,
+          "claim_type": "opinion",
+          "extraction_confidence": 0.0
+        },
+        {
+          "text": "",
+          "verifiable": true,
+          "claim_type": "factual",
+          "extraction_confidence": 0.0
+        }
+      ]
+    },
+    "v4": {
+      "prompt_version": "claim_extraction.v4-recall-candidate",
+      "error": "ProviderError: Ollama output for ClaimExtractionResult (llama3.2) failed schema validation after retries: 4 validation errors for ClaimExtractionResult\nclaims.2.importance\n  Input should be greater than or equal to 0 [type=greater_than_equal, input_value=-0.5, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than_equal\nclaims.4.importance\n  Input should be greater than or equal to 0 [type=greater_than_equal, input_value=-0.5, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than_equal\nclaims.6.importance\n  Input should be greater than or equal to 0 [type=greater_than_equal, input_value=-0.5, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than_equal\nclaims.7.importance\n  Input should be less than or equal to 1 [type=less_than_equal, input_value=1.2, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.13/v/less_than_equal"
+    }
+  },
+  {
+    "source_url": "https://www.instagram.com/reel/DbCJDp8SYkn/",
+    "v3": {
+      "prompt_version": "claim_extraction.v3",
+      "claim_count": 1,
+      "verifiable_count": 1,
+      "nonempty_text_count": 0,
+      "claims": [
+        {
+          "text": "",
+          "verifiable": true,
+          "claim_type": "factual",
+          "extraction_confidence": 1.0
+        }
+      ]
+    },
+    "v4": {
+      "prompt_version": "claim_extraction.v4-recall-candidate",
+      "claim_count": 1,
+      "verifiable_count": 1,
+      "nonempty_text_count": 0,
+      "claims": [
+        {
+          "text": "",
+          "verifiable": true,
+          "claim_type": "factual",
+          "extraction_confidence": 1.0
+        }
+      ]
+    }
+  },
+  {
+    "source_url": "https://www.instagram.com/reel/DaVcoN2u698/",
+    "v3": {
+      "prompt_version": "claim_extraction.v3",
+      "error": "ProviderError: Ollama output for ClaimExtractionResult (llama3.2) failed schema validation after retries: 1 validation error for ClaimExtractionResult\nclaims.0.importance\n  Input should be greater than or equal to 0 [type=greater_than_equal, input_value=-1, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than_equal"
+    },
+    "v4": {
+      "prompt_version": "claim_extraction.v4-recall-candidate",
+      "error": "ProviderError: Ollama output for ClaimExtractionResult (llama3.2) failed schema validation after retries: 2 validation errors for ClaimExtractionResult\nclaims.0.extraction_confidence\n  Input should be greater than or equal to 0 [type=greater_than_equal, input_value=-1, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than_equal\nclaims.1.extraction_confidence\n  Input should be less than or equal to 1 [type=less_than_equal, input_value=4, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/less_than_equal"
+    }
+  },
+  {
+    "source_url": "https://www.instagram.com/reel/DbGy_XFz3mS/",
+    "v3": {
+      "prompt_version": "claim_extraction.v3",
+      "error": "ProviderError: Ollama output for ClaimExtractionResult (llama3.2) failed schema validation after retries: 1 validation error for ClaimExtractionResult\nclaims.1.importance\n  Input should be greater than or equal to 0 [type=greater_than_equal, input_value=-2.3, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than_equal"
+    },
+    "v4": {
+      "prompt_version": "claim_extraction.v4-recall-candidate",
+      "error": "ProviderError: Ollama output for ClaimExtractionResult (llama3.2) failed schema validation after retries: 1 validation error for ClaimExtractionResult\nclaims.1.importance\n  Input should be greater than or equal to 0 [type=greater_than_equal, input_value=-1.1111111111e-06, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than_equal"
+    }
+  }
+]
