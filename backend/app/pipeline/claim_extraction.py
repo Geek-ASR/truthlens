@@ -219,6 +219,20 @@ async def extract_claims(db: AsyncSession, reel: Reel) -> list[Claim]:
         user_content=user_content,
         output_schema=ClaimExtractionResult,
         prompt_version=CLAIM_EXTRACTION_PROMPT_VERSION,
+        # Raised from the 4096 default (research/RESEARCH_ROADMAP_V2.md
+        # Phase 2, EXP-009 follow-up): one real run truncated mid-JSON
+        # (EOF while parsing at 12461 chars) after presumably hitting
+        # that ceiling, though a direct re-test at the same input could
+        # not reproduce it -- num_predict=4096 requests naturally
+        # completed early every time on retest (done_reason='stop',
+        # 49-302 tokens used), meaning the original failure was likely a
+        # longer sampling roll on the same input, not a deterministic
+        # limit. Raising the ceiling costs nothing on the common case
+        # (the model stops on its own well under budget regardless) and
+        # only helps the rare case that does need more room -- a
+        # low-risk, asymmetric-payoff change, scoped to this stage only
+        # since it's the one stage observed to need it.
+        max_tokens=8192,
     )
 
     if settings.LLM_PROVIDER == "ollama" and settings.GEMINI_API_KEY and (
