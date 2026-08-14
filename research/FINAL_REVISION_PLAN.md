@@ -46,28 +46,35 @@ what remains.
 - [x] Related-work comparison is clear (Phase 20).
 - [x] Figures communicate real findings — Fig. 3 now shows the
       superseded-vs-corrected reversal directly.
-- [ ] **Paper fits IEEE page limit — STILL NOT MET, but substantially
-      closer.** A follow-up trim pass (2026-08-14, after this gate was
-      first written) moved the full 21-entry failure-mode taxonomy, the
-      superseded $n=9$ baseline table, and several evidence-quality
-      deep-dive subsections (the second empty-explanation bug, the
-      primary-source search-side fix, the entity-consistency prototype)
-      into a new Appendix — excluded from IEEE TPS's page count by its
-      own rules — while tightening prose density throughout every
-      remaining section. Total PDF went 24pp $\to$ 20pp; the Appendix
-      now begins on page 17, so the counted main body is $\sim$17pp, not
-      24pp. Every number, table, figure, and finding from the 24pp draft
-      is still present somewhere (verified against
-      `CLAIM_EVIDENCE_MATRIX.md`); nothing was silently dropped to hit
-      this number. $\sim$17pp is not 10pp: closing the remaining gap would
-      require either moving genuinely central content (the support
-      -validity construct, the cross-post attribution problem, the
-      four-way evidence metric — each independently flagged by
-      `IEEE_REVIEW.md`'s reviewers as a real strength) out of the
-      counted body, or accepting the reviewers' own alternative
-      recommendation: a venue with a larger page budget. Not pushed
-      further this pass, consistent with this program's standing
-      practice of not forcing a mechanical cut under time pressure.
+- [ ] **Paper fits IEEE page limit — STILL NOT MET, real progress across
+      two trim passes.** Pass 1 (2026-08-14) moved the full 21-entry
+      failure-mode taxonomy, the superseded $n=9$ baseline table, and
+      several evidence-quality deep-dive subsections into a new
+      Appendix, taking the counted body from 24pp to $\sim$17pp. Pass 2
+      (2026-08-14, same day, explicitly requested to push into content
+      previously protected as a reviewer-flagged strength) additionally
+      appendicized: the cascade/aggregation implementation detail from
+      Architecture, the full cross-post-attribution-problem discussion,
+      the four-way evidence-metric per-item breakdown, all ten Threats
+      -to-Validity entries (condensed to a checkable one-line-each list
+      in body, full reasoning in the Appendix), the RQ5/RQ6/efficiency
+      elaboration, and the Check-4 paraphrase test-case detail — plus a
+      further prose-density pass on Related Work. Total PDF: 20pp
+      $\to$ 21pp (grew, since content moved rather than deleted); the
+      Appendix begins on page 16, so the counted body is now
+      $\sim$16pp. Every number, table, figure, and finding is still
+      present somewhere (verified against `CLAIM_EVIDENCE_MATRIX.md`
+      plus spot-checked numeric fingerprints); 161/161 tests still pass.
+      **A real floor was reached in Pass 2**: cutting roughly 220 more
+      lines of main-body prose across this pass moved the Appendix
+      boundary by less than one page, confirming IEEEtran's dense
+      two-column format holds close to 100 lines/page and the remaining
+      $\sim$16pp is now dominated by numbers, tables, and figures rather
+      than trimmable prose. Closing the remaining $\sim$6pp to reach
+      10pp would require deleting (not relocating) tables/figures/findings
+      — which Rule 1 of this program's own protocol forbids — or
+      accepting the reviewers' own alternative recommendation: a venue
+      with a larger page budget.
 - [x] All references are real and verified (unchanged from prior
       verification; no new citations added this session).
 - [x] No unsupported "first"/"state-of-the-art"/"hallucination
