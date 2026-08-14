@@ -1,5 +1,7 @@
 """Stage 3: decompose reel content into atomic claims
 (docs/FACT_CHECK_METHODOLOGY.md §1, product spec §10-11)."""
+from difflib import SequenceMatcher
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
@@ -67,6 +69,52 @@ def _extraction_looks_substantive(claims: list[ExtractedClaim]) -> bool:
     if not claims:
         return True  # a genuine "found nothing" result, not a failure
     return any(c.text.strip() for c in claims)
+
+
+# Empirically chosen (research/RESEARCH_ROADMAP_V2.md Phase 2, Step 6),
+# not guessed: SequenceMatcher.ratio() on real example pairs put genuine
+# near-duplicates (punctuation noise "batons"/"batons!": 0.973; minor
+# rewording "on protesters"/"on the protesters": 0.941) at or above
+# 0.92, while a materially DIFFERENT claim the governing brief explicitly
+# warns against merging ("Police used batons" vs "Police used nail
+# batons": 0.878) falls clearly below it. Deliberately conservative --
+# under-merging leaves a harmless duplicate; over-merging silently
+# destroys a real, distinct claim, which is the worse failure per Step 6.
+_DEDUP_SIMILARITY_THRESHOLD = 0.92
+
+
+def _deduplicate_claims(claims: list[ExtractedClaim]) -> list[ExtractedClaim]:
+    """Collapses near-identical claims within a single extraction batch —
+    e.g. the same on-screen text re-read (with minor OCR noise) across
+    several adjacent video frames, each independently turned into its own
+    claim. This is a real, previously-undiagnosed-as-fixable gap: item
+    -0004's 7 near-duplicate claims (one per noisy OCR-frame variant,
+    research_paper/main.tex Section X) were explicitly named as "a new,
+    unfixed failure mode -- no existing check evaluates cross-claim
+    redundancy" before this function existed.
+
+    Requires matching claim_type in addition to high text similarity —
+    two claims can be textually similar by coincidence but represent a
+    different kind of assertion, and claim_type match costs nothing to
+    check. Keeps the FIRST occurrence of each duplicate group (preserves
+    extraction order) and the one with the longer text when similarity is
+    a near-tie, on the theory that a longer variant more often preserves
+    detail a shorter, truncated OCR read dropped."""
+    kept: list[ExtractedClaim] = []
+    for candidate in claims:
+        duplicate_of_index: int | None = None
+        for i, existing in enumerate(kept):
+            if candidate.claim_type != existing.claim_type:
+                continue
+            ratio = SequenceMatcher(None, _normalize(candidate.text), _normalize(existing.text)).ratio()
+            if ratio >= _DEDUP_SIMILARITY_THRESHOLD:
+                duplicate_of_index = i
+                break
+        if duplicate_of_index is None:
+            kept.append(candidate)
+        elif len(candidate.text) > len(kept[duplicate_of_index].text):
+            kept[duplicate_of_index] = candidate
+    return kept
 
 
 def _infer_source_modalities(extracted: ExtractedClaim, reel: Reel) -> tuple[list[str], dict | None]:
@@ -221,8 +269,17 @@ async def extract_claims(db: AsyncSession, reel: Reel) -> list[Claim]:
             )
             result = retry_result
 
+    deduplicated_claims = _deduplicate_claims(result.parsed.claims)
+    if len(deduplicated_claims) < len(result.parsed.claims):
+        logger.info(
+            "claim_extraction_deduplicated",
+            reel_id=str(reel.id),
+            before=len(result.parsed.claims),
+            after=len(deduplicated_claims),
+        )
+
     claims: list[Claim] = []
-    for extracted in result.parsed.claims:
+    for extracted in deduplicated_claims:
         if not extracted.text.strip():
             # Never persist a claim record with no actual content, even
             # after the retry above -- same "don't store what we can't
