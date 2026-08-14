@@ -1,8 +1,28 @@
 import uuid
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.schemas.common import ClaimStatus, ClaimType
+
+# Local models occasionally serialize a value intended to be exactly 0.0
+# or 1.0 with tiny floating-point noise (confirmed live: llama3.2
+# produced importance=-2e-18 on real reel content during
+# research/RESEARCH_ROADMAP_V2.md Phase 2 experimentation) -- close
+# enough to a boundary that the model's actual intent is unambiguous,
+# but a raw ge=0.0/le=1.0 constraint rejects it outright. Rejecting the
+# WHOLE extraction over this is the worst possible recall outcome (zero
+# claims), not a meaningful quality signal, so this is clamped before
+# the ge/le check rather than left to fail schema validation.
+_FLOAT_BOUNDARY_EPSILON = 1e-6
+
+
+def _clamp_float_boundary_noise(value):
+    if isinstance(value, (int, float)):
+        if -_FLOAT_BOUNDARY_EPSILON <= value < 0:
+            return 0.0
+        if 1.0 < value <= 1.0 + _FLOAT_BOUNDARY_EPSILON:
+            return 1.0
+    return value
 
 
 class ExtractedEntity(BaseModel):
@@ -75,6 +95,11 @@ class ExtractedClaim(BaseModel):
             "ambiguous extraction, high for an unambiguous, clearly-stated assertion."
         ),
     )
+
+    @field_validator("importance", "extraction_confidence", mode="before")
+    @classmethod
+    def _clamp_boundary_noise(cls, value):
+        return _clamp_float_boundary_noise(value)
 
 
 ClaimExtractionResult.model_rebuild()
