@@ -1,33 +1,59 @@
 import uuid
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
+from app.core.logging import get_logger
 from app.schemas.common import ClaimStatus, ClaimType
 
-# Local models occasionally serialize a value intended to be exactly 0.0
-# or 1.0 with tiny floating-point/generation noise -- confirmed live,
-# twice, at two different orders of magnitude: llama3.2 produced
-# importance=-2e-18 (pure float-serialization noise) in one real run,
-# and -1.1111111111e-06 (an order of magnitude a serialization artifact
-# alone wouldn't explain -- more likely the model's own near-zero
-# rounding) in another, both during research/RESEARCH_ROADMAP_V2.md
-# Phase 2 (EXP-009) experimentation against real reel content. 1e-4
-# comfortably covers both observed cases while staying far below
-# genuinely wrong values also observed in the same experiment
-# (-0.5, -1, 1.2, 4) -- this is evidence-based, not an arbitrarily round
-# number. Rejecting the WHOLE extraction over near-zero noise is the
-# worst possible recall outcome (zero claims), not a meaningful quality
-# signal, so this is clamped before the ge/le check rather than left to
-# fail schema validation.
+logger = get_logger(__name__)
+
+# Two real, distinct failure shapes observed live against llama3.2 on
+# real reel content (research/RESEARCH_ROADMAP_V2.md Phase 2, EXP-009/
+# EXP-010), handled differently rather than lumped into one tolerance:
+#
+# (1) Tiny floating-point/generation noise around a boundary the model
+#     clearly meant to hit exactly (-2e-18, -1.1111111111e-06) -- close
+#     enough that reporting it is silent; there's no real signal being
+#     discarded, only representation noise.
+#
+# (2) The model genuinely writing the wrong number while still
+#     expressing SOME confidence/importance judgment on roughly the
+#     right kind of scale (-0.5, -1, -2, -2.3, 1.2, 4 -- all observed
+#     live across EXP-009/EXP-010's real runs) -- clearly wrong as a
+#     [0,1] value, but not so wild it reads as a structurally different
+#     kind of error (e.g. a stray token count or index leaking into the
+#     field). These are clamped to the nearer boundary too, but LOUDLY:
+#     logged as a warning naming the field and the raw value, so this
+#     never becomes an invisible, unmonitored data-quality problem. The
+#     alternative -- rejecting the whole extraction over one confused
+#     metadata field on an otherwise-real, well-formed claim -- is the
+#     worst possible recall outcome (the claim text, quote, and type are
+#     still perfectly usable) for a field that, per its own docstring
+#     below, was never a calibrated system-level number to begin with.
+#
+# A value further outside PLAUSIBLE_CONFUSED_RANGE is left to fail
+# validation as before -- something that far off the scale suggests a
+# different, structural kind of error a blind clamp shouldn't paper over,
+# and production's existing Gemini-escalation fallback (verified
+# end-to-end for real in EXP-010) is the right place for that case to
+# land, not a wider and wider clamp here.
 _FLOAT_BOUNDARY_EPSILON = 1e-4
+_PLAUSIBLE_CONFUSED_RANGE = (-10.0, 10.0)
 
 
-def _clamp_float_boundary_noise(value):
+def _clamp_float_boundary_noise(value, *, field_name: str = "value"):
     if isinstance(value, (int, float)):
         if -_FLOAT_BOUNDARY_EPSILON <= value < 0:
             return 0.0
         if 1.0 < value <= 1.0 + _FLOAT_BOUNDARY_EPSILON:
             return 1.0
+        if _PLAUSIBLE_CONFUSED_RANGE[0] <= value < 0 or 1.0 < value <= _PLAUSIBLE_CONFUSED_RANGE[1]:
+            clamped = 0.0 if value < 0 else 1.0
+            logger.warning(
+                "claim_extraction_float_field_clamped",
+                field=field_name, raw_value=value, clamped_to=clamped,
+            )
+            return clamped
     return value
 
 
@@ -104,8 +130,8 @@ class ExtractedClaim(BaseModel):
 
     @field_validator("importance", "extraction_confidence", mode="before")
     @classmethod
-    def _clamp_boundary_noise(cls, value):
-        return _clamp_float_boundary_noise(value)
+    def _clamp_boundary_noise(cls, value, info: ValidationInfo):
+        return _clamp_float_boundary_noise(value, field_name=info.field_name)
 
 
 ClaimExtractionResult.model_rebuild()
