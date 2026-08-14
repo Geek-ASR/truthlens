@@ -83,26 +83,35 @@ async def analyze_evidence(db: AsyncSession, claim: Claim, sources: list[Source]
                 source_id=str(source.id),
                 model=result.model,
             )
-            from app.services.ai.gemini_provider import GeminiProvider
+            from app.services.ai.gemini_quota import GeminiUnavailableError, get_gemini_provider
 
-            retry_result = await GeminiProvider().structured_call(
-                model=settings.LLM_MODEL_GEMINI_FALLBACK,
-                system_prompt=EVIDENCE_ANALYSIS_SYSTEM_PROMPT,
-                user_content=user_content,
-                output_schema=EvidenceAnalysisItem,
-                prompt_version=EVIDENCE_ANALYSIS_PROMPT_VERSION,
-            )
-            await record_audit(
-                db,
-                entity_type="source",
-                entity_id=source.id,
-                actor_type=ActorType.system,
-                actor="evidence_analysis",
-                action="evidence_analysis_quality_retry",
-                input_summary={"original_model": result.model},
-                output_summary={"retry_model": retry_result.model},
-            )
-            result = retry_result
+            try:
+                retry_result = await get_gemini_provider().structured_call(
+                    model=settings.LLM_MODEL_GEMINI_FALLBACK,
+                    system_prompt=EVIDENCE_ANALYSIS_SYSTEM_PROMPT,
+                    user_content=user_content,
+                    output_schema=EvidenceAnalysisItem,
+                    prompt_version=EVIDENCE_ANALYSIS_PROMPT_VERSION,
+                    db=db,
+                    item_id=str(claim.id),
+                    stage="evidence_analysis",
+                )
+            except GeminiUnavailableError as exc:
+                logger.warning(
+                    "evidence_analysis_gemini_retry_unavailable", claim_id=str(claim.id), error=str(exc)
+                )
+            else:
+                await record_audit(
+                    db,
+                    entity_type="source",
+                    entity_id=source.id,
+                    actor_type=ActorType.system,
+                    actor="evidence_analysis",
+                    action="evidence_analysis_quality_retry",
+                    input_summary={"original_model": result.model},
+                    output_summary={"retry_model": retry_result.model},
+                )
+                result = retry_result
 
         for key, value in result.token_usage_dict().items():
             total_tokens[key] += value

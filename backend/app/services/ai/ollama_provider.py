@@ -40,6 +40,9 @@ class OllamaProvider(LLMProvider):
         prompt_version: str,
         images_b64: list[str] | None = None,
         max_tokens: int = 4096,
+        db=None,  # unused — Gemini-quota-management-only, see app/services/ai/base.py
+        item_id: str | None = None,
+        stage: str = "unknown",
     ) -> LLMCallResult:
         try:
             return await self._call_with_retry(

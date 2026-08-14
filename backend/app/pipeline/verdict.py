@@ -105,26 +105,33 @@ async def propose_verdict(
             claim_id=str(claim.id),
             model=result.model,
         )
-        from app.services.ai.gemini_provider import GeminiProvider
+        from app.services.ai.gemini_quota import GeminiUnavailableError, get_gemini_provider
 
-        retry_result: LLMCallResult = await GeminiProvider().structured_call(
-            model=settings.LLM_MODEL_GEMINI_FALLBACK,
-            system_prompt=VERDICT_SYSTEM_PROMPT,
-            user_content=user_content,
-            output_schema=VerdictProposal,
-            prompt_version=VERDICT_PROMPT_VERSION,
-        )
-        await record_audit(
-            db,
-            entity_type="claim",
-            entity_id=claim.id,
-            actor_type=ActorType.system,
-            actor="verdict_stage",
-            action="verdict_reasoning_quality_retry",
-            input_summary={"original_model": result.model},
-            output_summary={"retry_model": retry_result.model},
-        )
-        result = retry_result
+        try:
+            retry_result: LLMCallResult = await get_gemini_provider().structured_call(
+                model=settings.LLM_MODEL_GEMINI_FALLBACK,
+                system_prompt=VERDICT_SYSTEM_PROMPT,
+                user_content=user_content,
+                output_schema=VerdictProposal,
+                prompt_version=VERDICT_PROMPT_VERSION,
+                db=db,
+                item_id=str(claim.id),
+                stage="verdict",
+            )
+        except GeminiUnavailableError as exc:
+            logger.warning("verdict_gemini_retry_unavailable", claim_id=str(claim.id), error=str(exc))
+        else:
+            await record_audit(
+                db,
+                entity_type="claim",
+                entity_id=claim.id,
+                actor_type=ActorType.system,
+                actor="verdict_stage",
+                action="verdict_reasoning_quality_retry",
+                input_summary={"original_model": result.model},
+                output_summary={"retry_model": retry_result.model},
+            )
+            result = retry_result
 
     evidence_by_id = {e.id: e for e in evidence_rows}
     source_by_evidence_id = {e.id: sources_by_id[e.source_id] for e in evidence_rows}

@@ -125,26 +125,43 @@ async def extract_claims(db: AsyncSession, reel: Reel) -> list[Claim]:
             model=result.model,
             claim_count=len(result.parsed.claims),
         )
-        from app.services.ai.gemini_provider import GeminiProvider
+        from app.services.ai.gemini_quota import GeminiUnavailableError, get_gemini_provider
 
-        retry_result: LLMCallResult = await GeminiProvider().structured_call(
-            model=settings.LLM_MODEL_GEMINI_FALLBACK,
-            system_prompt=CLAIM_EXTRACTION_SYSTEM_PROMPT,
-            user_content=user_content,
-            output_schema=ClaimExtractionResult,
-            prompt_version=CLAIM_EXTRACTION_PROMPT_VERSION,
-        )
-        await record_audit(
-            db,
-            entity_type="reel",
-            entity_id=reel.id,
-            actor_type=ActorType.system,
-            actor="claim_extraction",
-            action="claim_extraction_quality_retry",
-            input_summary={"original_model": result.model, "original_claim_count": len(result.parsed.claims)},
-            output_summary={"retry_model": retry_result.model, "retry_claim_count": len(retry_result.parsed.claims)},
-        )
-        result = retry_result
+        try:
+            retry_result: LLMCallResult = await get_gemini_provider().structured_call(
+                model=settings.LLM_MODEL_GEMINI_FALLBACK,
+                system_prompt=CLAIM_EXTRACTION_SYSTEM_PROMPT,
+                user_content=user_content,
+                output_schema=ClaimExtractionResult,
+                prompt_version=CLAIM_EXTRACTION_PROMPT_VERSION,
+                db=db,
+                item_id=str(reel.id),
+                stage="claim_extraction",
+            )
+        except GeminiUnavailableError as exc:
+            # Gemini declined (disabled/cooldown/call cap) or genuinely
+            # failed with a quota/rate-limit error — keep the original
+            # local result rather than crash the whole extraction; the
+            # attempt is already durably recorded as a GeminiTask row by
+            # get_gemini_provider(), so nothing is silently lost.
+            logger.warning(
+                "claim_extraction_gemini_retry_unavailable", reel_id=str(reel.id), error=str(exc)
+            )
+        else:
+            await record_audit(
+                db,
+                entity_type="reel",
+                entity_id=reel.id,
+                actor_type=ActorType.system,
+                actor="claim_extraction",
+                action="claim_extraction_quality_retry",
+                input_summary={"original_model": result.model, "original_claim_count": len(result.parsed.claims)},
+                output_summary={
+                    "retry_model": retry_result.model,
+                    "retry_claim_count": len(retry_result.parsed.claims),
+                },
+            )
+            result = retry_result
 
     claims: list[Claim] = []
     for extracted in result.parsed.claims:

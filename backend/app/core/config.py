@@ -101,6 +101,21 @@ class Settings(BaseSettings):
     # real system as TruthLens itself changes.
     SKIP_VALIDATION: bool = False
 
+    # Gemini quota/cooldown management (research/RESEARCH_ROADMAP_V2.md
+    # Phase 0 finding: a daily-quota-exhausted 429 was previously retried
+    # identically to a transient 5xx via tenacity's 3-attempt backoff,
+    # with no cooldown and no shared state between the two independent
+    # call sites — see app/services/ai/gemini_quota.py, the single path
+    # every Gemini call now goes through. GEMINI_ENABLED is a hard
+    # kill-switch independent of whether GEMINI_API_KEY is set, for
+    # deliberately running local-only even with a key configured.
+    GEMINI_ENABLED: bool = True
+    GEMINI_MAX_RETRIES: int = 2
+    GEMINI_COOLDOWN_SECONDS: int = 3600
+    GEMINI_MAX_CALLS_PER_RUN: int = 500
+    GEMINI_MAX_CALLS_PER_ITEM: int = 5
+    GEMINI_RETRY_BASE_SECONDS: float = 2.0
+
     # Product configuration
     MAX_POSTS_PER_DAY: int = 12
     HUMAN_APPROVAL_MODE: bool = True  # default per product spec §20 — must be explicitly disabled

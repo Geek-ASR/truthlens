@@ -131,26 +131,33 @@ async def generate_content(
             claim_id=str(claim.id),
             model=result.model,
         )
-        from app.services.ai.gemini_provider import GeminiProvider
+        from app.services.ai.gemini_quota import GeminiUnavailableError, get_gemini_provider
 
-        retry_result: LLMCallResult = await GeminiProvider().structured_call(
-            model=settings.LLM_MODEL_GEMINI_FALLBACK,
-            system_prompt=CONTENT_GENERATION_SYSTEM_PROMPT,
-            user_content=user_content,
-            output_schema=ContentGenerationResult,
-            prompt_version=CONTENT_GENERATION_PROMPT_VERSION,
-        )
-        await record_audit(
-            db,
-            entity_type="claim",
-            entity_id=claim.id,
-            actor_type=ActorType.system,
-            actor="content_generation",
-            action="content_generation_quality_retry",
-            input_summary={"original_model": result.model},
-            output_summary={"retry_model": retry_result.model},
-        )
-        result = retry_result
+        try:
+            retry_result: LLMCallResult = await get_gemini_provider().structured_call(
+                model=settings.LLM_MODEL_GEMINI_FALLBACK,
+                system_prompt=CONTENT_GENERATION_SYSTEM_PROMPT,
+                user_content=user_content,
+                output_schema=ContentGenerationResult,
+                prompt_version=CONTENT_GENERATION_PROMPT_VERSION,
+                db=db,
+                item_id=str(claim.id),
+                stage="content_generation",
+            )
+        except GeminiUnavailableError as exc:
+            logger.warning("content_generation_gemini_retry_unavailable", claim_id=str(claim.id), error=str(exc))
+        else:
+            await record_audit(
+                db,
+                entity_type="claim",
+                entity_id=claim.id,
+                actor_type=ActorType.system,
+                actor="content_generation",
+                action="content_generation_quality_retry",
+                input_summary={"original_model": result.model},
+                output_summary={"retry_model": retry_result.model},
+            )
+            result = retry_result
 
     caption_sources = _top_sources_for_caption(cited_evidence, sources_by_id)
     caption = build_caption(

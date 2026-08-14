@@ -193,6 +193,68 @@ class TargetTier(str, enum.Enum):
     unrestricted = "unrestricted"
 
 
+# research/RESEARCH_ROADMAP_V2.md Phase-1 finding: the live dev DB had no
+# way to distinguish a reel used for ad-hoc development/manual testing
+# from one that is part of a frozen, versioned benchmark — so a query
+# meant to scope "the benchmark" could silently pull in arbitrary dev
+# records. Every reel now carries an explicit dataset_type.
+class DatasetType(str, enum.Enum):
+    development = "development"
+    benchmark = "benchmark"
+    regression = "regression"
+    synthetic = "synthetic"
+
+
+# Real-content benchmark splits only (research/dataset/items.jsonl and its
+# successors). Synthetic/regression cases use their own "dev"/"test"
+# convention inside their own files (e.g.
+# research/results/validator_synthetic_benchmark_20260814.json) and are
+# never mixed with these.
+class BenchmarkSplit(str, enum.Enum):
+    dev = "dev"
+    validation = "validation"
+    test = "test"
+
+
+# research/RESEARCH_ROADMAP_V2.md Phase 2/8: what modality(ies) a claim's
+# text/source_quote actually came from. A claim may legitimately have more
+# than one (e.g. asserted in both the transcript and on-screen text), so
+# this lives on Claim as a list, never a single value forced to pick one.
+class ClaimSourceModality(str, enum.Enum):
+    audio = "AUDIO"
+    ocr = "OCR"
+    caption = "CAPTION"
+    vision = "VISION"
+    multimodal = "MULTIMODAL"
+    cross_post = "CROSS_POST"
+
+
+# Deliberately richer than the pre-existing boolean `verifiable` column
+# (kept, unchanged, for backward compatibility — every existing caller
+# still reads it). UNCERTAIN exists because "not verifiable" and "the
+# extractor could not tell" are different claims about the world and
+# collapsing them loses information the brief explicitly asked to keep.
+class ClaimVerifiability(str, enum.Enum):
+    verifiable = "VERIFIABLE"
+    not_verifiable = "NOT_VERIFIABLE"
+    uncertain = "UNCERTAIN"
+
+
+# research/RESEARCH_ROADMAP_V2.md Phase 0 finding: Gemini's two
+# previously-independent call sites had no shared state. Every Gemini
+# call — cascade fallback or per-stage quality retry alike — now creates
+# or updates exactly one GeminiTask row, giving a single, queryable
+# source of truth for "is Gemini currently in cooldown" and "what's
+# pending." See app/services/ai/gemini_quota.py.
+class GeminiTaskStatus(str, enum.Enum):
+    pending = "PENDING"
+    running = "RUNNING"
+    completed = "COMPLETED"
+    failed = "FAILED"
+    quota_wait = "QUOTA_WAIT"
+    permanent_failure = "PERMANENT_FAILURE"
+
+
 # ---------------------------------------------------------------------------
 # Tables
 # ---------------------------------------------------------------------------
@@ -262,6 +324,20 @@ class Reel(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         Enum(DiscoverySource, name="discovery_source"), default=DiscoverySource.manual
     )
     virality_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # Dataset scoping (research/RESEARCH_ROADMAP_V2.md Phase 1). Defaults
+    # to `development` so every pre-existing row and every ordinary manual
+    # upload is unambiguously NOT silently treated as benchmark data —
+    # only a reel explicitly tagged `benchmark` (by the retroactive
+    # backfill script or by benchmark ingestion tooling going forward)
+    # counts as one. benchmark_version/benchmark_split are only meaningful
+    # when dataset_type == benchmark; both null otherwise.
+    dataset_type: Mapped[DatasetType] = mapped_column(
+        Enum(DatasetType, name="dataset_type"), default=DatasetType.development
+    )
+    benchmark_version: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    benchmark_split: Mapped[BenchmarkSplit | None] = mapped_column(
+        Enum(BenchmarkSplit, name="benchmark_split"), nullable=True
+    )
     ingestion_status: Mapped[IngestionStatus] = mapped_column(
         Enum(IngestionStatus, name="ingestion_status"), default=IngestionStatus.uploaded
     )
@@ -289,6 +365,32 @@ class Claim(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     status: Mapped[ClaimStatus] = mapped_column(
         Enum(ClaimStatus, name="claim_status"), default=ClaimStatus.extracted
     )
+    # Provenance/confidence (research/RESEARCH_ROADMAP_V2.md Phase 2/8).
+    # Nullable/empty-default so every pre-existing row stays valid
+    # unbackfilled — these are populated going forward by
+    # claim_extraction.py, never backfilled by guessing at historical rows.
+    source_modalities: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    # This is the extraction LLM's own self-reported confidence, asked
+    # for directly in the prompt — it is NOT a calibrated probability and
+    # must never be presented as one (Section IV-D/Bias-Calibration
+    # discussion in research_paper/main.tex already makes this same
+    # distinction for verdict confidence; extraction_confidence inherits
+    # it). confidence_type exists specifically so no future caller can
+    # silently start treating this as SYSTEM_CONFIDENCE (an empirically
+    # calibrated, e.g. temperature-scaled, estimate) without that being a
+    # deliberate, visible schema decision, not a naming accident.
+    extraction_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    confidence_type: Mapped[str | None] = mapped_column(String(32), nullable=True)  # "MODEL_CONFIDENCE" today, always
+    verifiability: Mapped[ClaimVerifiability | None] = mapped_column(
+        Enum(ClaimVerifiability, name="claim_verifiability"), nullable=True
+    )
+    # Structured backward traceability (Step 4): which specific
+    # transcript segment / OCR frame / vision-context field the claim's
+    # source_quote was matched against, so "why did TruthLens believe
+    # this claim existed" has a structured answer, not just a free-form
+    # log line. Shape: {"modality": "OCR", "segment_index": 3,
+    # "matched_text": "..."} or None when source_quote itself is null.
+    provenance_detail: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     reel: Mapped["Reel"] = relationship(back_populates="claims")
     evidence: Mapped[list["Evidence"]] = relationship(back_populates="claim", cascade="all, delete-orphan")
@@ -508,3 +610,31 @@ class AnalyticsSnapshot(UUIDPrimaryKeyMixin, Base):
     website_clicks: Mapped[int | None] = mapped_column(Integer, nullable=True)
     pipeline_metrics: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     captured_at: Mapped[str] = mapped_column(DateTime(timezone=True))
+
+
+class GeminiTask(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """The single persistent record every Gemini call creates or updates
+    — see app/services/ai/gemini_quota.py. Serves three purposes at once:
+    (1) a durable PENDING_GEMINI_TASK queue that survives a process
+    restart, (2) the source of truth for "are we currently in cooldown"
+    (derived from the most recent row with status=quota_wait), and (3) a
+    same-input cache (result_json) so an identical input+prompt+model
+    call is never repeated. item_id/stage are free-text rather than a
+    foreign key, deliberately: a Gemini call can be scoped to a reel, a
+    claim, or nothing at all (a research script), and this table must not
+    force every caller to have a claims/reels row to point at."""
+    __tablename__ = "gemini_tasks"
+
+    item_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    stage: Mapped[str] = mapped_column(String(64), index=True)
+    input_hash: Mapped[str] = mapped_column(String(64), index=True)
+    prompt_version: Mapped[str] = mapped_column(String(64))
+    model: Mapped[str] = mapped_column(String(128))
+    status: Mapped[GeminiTaskStatus] = mapped_column(
+        Enum(GeminiTaskStatus, name="gemini_task_status"), default=GeminiTaskStatus.pending, index=True
+    )
+    attempt_count: Mapped[int] = mapped_column(Integer, default=0)
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    next_retry_at: Mapped[str | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[str | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    result_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)

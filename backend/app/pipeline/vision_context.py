@@ -75,27 +75,34 @@ async def analyze_vision_context(db: AsyncSession, reel: Reel, frame_paths: list
             reel_id=str(reel.id),
             model=result.model,
         )
-        from app.services.ai.gemini_provider import GeminiProvider
+        from app.services.ai.gemini_quota import GeminiUnavailableError, get_gemini_provider
 
-        retry_result = await GeminiProvider().structured_call(
-            model=settings.LLM_MODEL_GEMINI_FALLBACK,
-            system_prompt=VISION_CONTEXT_SYSTEM_PROMPT,
-            user_content="Describe the visual context of these sampled frames from a social media reel.",
-            output_schema=VisionContextResult,
-            prompt_version=VISION_CONTEXT_PROMPT_VERSION,
-            images_b64=images_b64,
-        )
-        await record_audit(
-            db,
-            entity_type="reel",
-            entity_id=reel.id,
-            actor_type=ActorType.system,
-            actor="vision_context",
-            action="vision_context_quality_retry",
-            input_summary={"original_model": result.model},
-            output_summary={"retry_model": retry_result.model},
-        )
-        result = retry_result
+        try:
+            retry_result = await get_gemini_provider().structured_call(
+                model=settings.LLM_MODEL_GEMINI_FALLBACK,
+                system_prompt=VISION_CONTEXT_SYSTEM_PROMPT,
+                user_content="Describe the visual context of these sampled frames from a social media reel.",
+                output_schema=VisionContextResult,
+                prompt_version=VISION_CONTEXT_PROMPT_VERSION,
+                images_b64=images_b64,
+                db=db,
+                item_id=str(reel.id),
+                stage="vision_context",
+            )
+        except GeminiUnavailableError as exc:
+            logger.warning("vision_context_gemini_retry_unavailable", reel_id=str(reel.id), error=str(exc))
+        else:
+            await record_audit(
+                db,
+                entity_type="reel",
+                entity_id=reel.id,
+                actor_type=ActorType.system,
+                actor="vision_context",
+                action="vision_context_quality_retry",
+                input_summary={"original_model": result.model},
+                output_summary={"retry_model": retry_result.model},
+            )
+            result = retry_result
 
     reel.vision_context = result.parsed.model_dump()
     await db.flush()

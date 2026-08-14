@@ -36,6 +36,9 @@ class FallbackLLMProvider(LLMProvider):
         prompt_version: str,
         images_b64: list[str] | None = None,
         max_tokens: int = 4096,
+        db=None,
+        item_id: str | None = None,
+        stage: str = "unknown",
     ) -> LLMCallResult:
         try:
             return await self._primary.structured_call(
@@ -64,6 +67,9 @@ class FallbackLLMProvider(LLMProvider):
                     prompt_version=prompt_version,
                     images_b64=images_b64,
                     max_tokens=max_tokens,
+                    db=db,
+                    item_id=item_id,
+                    stage=f"{stage}.cascade_fallback",
                 )
             except ProviderError as fallback_exc:
                 raise ProviderError(
@@ -84,19 +90,23 @@ def get_llm_provider() -> LLMProvider:
 
             primary: LLMProvider = OllamaProvider()
             if settings.GEMINI_API_KEY:
-                from app.services.ai.gemini_provider import GeminiProvider
+                from app.services.ai.gemini_quota import get_gemini_provider
 
                 _provider = FallbackLLMProvider(
                     primary=primary,
-                    fallback=GeminiProvider(),
+                    # Centralized, quota-aware — shares cooldown/call-cap
+                    # state with every per-stage quality-retry call site
+                    # (app/services/ai/gemini_quota.py), rather than a raw
+                    # GeminiProvider() with no memory of prior exhaustion.
+                    fallback=get_gemini_provider(),
                     fallback_model=settings.LLM_MODEL_GEMINI_FALLBACK,
                 )
             else:
                 _provider = primary
         elif settings.LLM_PROVIDER == "gemini":
-            from app.services.ai.gemini_provider import GeminiProvider
+            from app.services.ai.gemini_quota import get_gemini_provider
 
-            _provider = GeminiProvider()
+            _provider = get_gemini_provider()
         else:
             from app.services.ai.anthropic_provider import AnthropicProvider
 

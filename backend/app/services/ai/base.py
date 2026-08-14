@@ -2,9 +2,12 @@
 through this so the provider (and, per stage, the model) is swappable via
 config rather than hardcoded (docs/ARCHITECTURE.md §4)."""
 from abc import ABC, abstractmethod
-from typing import TypeVar
+from typing import TYPE_CHECKING, TypeVar
 
 from pydantic import BaseModel
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 SchemaT = TypeVar("SchemaT", bound=BaseModel)
 
@@ -57,6 +60,15 @@ class LLMProvider(ABC):
         prompt_version: str,
         images_b64: list[str] | None = None,
         max_tokens: int = 4096,
+        # Gemini-quota-management-only (app/services/ai/gemini_quota.py).
+        # Every provider accepts these for interface uniformity — a
+        # caller doesn't need to know which concrete provider it holds —
+        # but only the quota-aware Gemini provider actually uses them
+        # (to persist a GeminiTask row and enforce cooldown/call caps).
+        # Ollama/Anthropic implementations accept and ignore them.
+        db: "AsyncSession | None" = None,
+        item_id: str | None = None,
+        stage: str = "unknown",
     ) -> LLMCallResult:
         """Call the model and force its output to conform to
         `output_schema`. Implementations MUST NOT fall back to lenient

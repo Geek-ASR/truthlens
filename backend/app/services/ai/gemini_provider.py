@@ -103,6 +103,9 @@ class GeminiProvider(LLMProvider):
         prompt_version: str,
         images_b64: list[str] | None = None,
         max_tokens: int = 4096,
+        db=None,  # unused here — this is the raw provider; app/services/ai/gemini_quota.py's
+        item_id: str | None = None,  # QuotaAwareGeminiProvider wraps this class and is what
+        stage: str = "unknown",  # actually persists/enforces quota using these three.
     ) -> LLMCallResult:
         try:
             return await self._call_with_retry(

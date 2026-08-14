@@ -29,3 +29,17 @@ async def _dispose_engine_between_tests():
 
     await engine.dispose()
     yield
+
+
+@pytest.fixture(autouse=True)
+def _reset_gemini_quota_state():
+    """app.services.ai.gemini_quota.get_gemini_provider() is a
+    process-lifetime singleton (deliberately, so cooldown/call-cap state
+    is shared across real call sites within one run) — reset it before
+    every test so one test's simulated quota exhaustion or call count
+    can never leak into another's assertions."""
+    from app.services.ai.gemini_quota import reset_gemini_provider_for_tests
+
+    reset_gemini_provider_for_tests()
+    yield
+    reset_gemini_provider_for_tests()
