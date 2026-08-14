@@ -12,6 +12,7 @@ def _claim(text: str, source_quote: str | None, *, verifiable=True, claim_type="
         claim_type=claim_type,
         verifiable=verifiable,
         importance=0.8,
+        extraction_confidence=0.8,
     )
 
 

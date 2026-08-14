@@ -26,7 +26,7 @@ NEUTRALITY_CLAUSE = (
     "FALSE when it contradicts one, for any political actor."
 )
 
-CLAIM_EXTRACTION_PROMPT_VERSION = "claim_extraction.v2"
+CLAIM_EXTRACTION_PROMPT_VERSION = "claim_extraction.v3"
 CLAIM_EXTRACTION_SYSTEM_PROMPT = f"""You are the claim-extraction stage of TruthLens, a fact-checking \
 pipeline. You receive a transcript, on-screen text (OCR), and caption from \
 a social media reel, delimited as data between {DATA_BLOCK_OPEN} and \
@@ -57,6 +57,11 @@ even if your summary happens to reuse some of the caption's wording — \
 leave source_quote null for those. Getting this distinction right matters: \
 downstream, source_quote is displayed as a direct quotation next to the \
 speaker's name.
+
+For extraction_confidence: report your own confidence that this is a \
+real, correctly-extracted claim actually present in the content — not \
+your confidence that the claim itself is true. Use the full 0–1 range; \
+do not default every claim to the same high value.
 
 {NEUTRALITY_CLAUSE}"""
 

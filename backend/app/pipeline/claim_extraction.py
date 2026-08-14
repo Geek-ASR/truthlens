@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
-from app.db.models import ActorType, Claim, ClaimStatus, Reel
+from app.db.models import ActorType, Claim, ClaimStatus, ClaimVerifiability, Reel
 from app.pipeline.audit import record_audit
 from app.schemas.claim import ClaimExtractionResult, ExtractedClaim
 from app.services.ai.base import LLMCallResult
@@ -67,6 +67,64 @@ def _extraction_looks_substantive(claims: list[ExtractedClaim]) -> bool:
     if not claims:
         return True  # a genuine "found nothing" result, not a failure
     return any(c.text.strip() for c in claims)
+
+
+def _infer_source_modalities(extracted: ExtractedClaim, reel: Reel) -> tuple[list[str], dict | None]:
+    """Deterministic, not LLM-asked (research/RESEARCH_ROADMAP_V2.md
+    Phase 2/8): a claim's source_quote, when present, is a verbatim
+    substring by construction (the prompt requires it), so which raw
+    input(s) actually contain it is a plain substring check, not a
+    judgment call. Only returns a non-empty result when source_quote
+    exists AND matches at least one raw input — an unquoted (summarized/
+    inferred) claim genuinely has no single determinable-by-substring
+    modality, and we do not guess one. A quote matching more than one
+    input (e.g. present in both OCR and caption) legitimately returns
+    more than one modality — never forced to pick just one."""
+    if not extracted.source_quote or not extracted.source_quote.strip():
+        return [], None
+    quote_norm = _normalize(extracted.source_quote)
+    modalities: list[str] = []
+    detail: dict | None = None
+
+    if reel.transcript and quote_norm in _normalize(reel.transcript):
+        modalities.append("AUDIO")
+        if detail is None:
+            detail = {"modality": "AUDIO", "matched_text": extracted.source_quote}
+    if reel.ocr_text:
+        for idx, frame in enumerate(reel.ocr_text):
+            if frame.get("text") and quote_norm in _normalize(frame["text"]):
+                modalities.append("OCR")
+                if detail is None:
+                    detail = {"modality": "OCR", "segment_index": idx, "matched_text": extracted.source_quote}
+                break
+    if reel.caption_text and quote_norm in _normalize(reel.caption_text):
+        modalities.append("CAPTION")
+        if detail is None:
+            detail = {"modality": "CAPTION", "matched_text": extracted.source_quote}
+    if reel.vision_context:
+        visible_text = reel.vision_context.get("visible_text_or_graphics") or ""
+        if visible_text and quote_norm in _normalize(visible_text):
+            modalities.append("VISION")
+            if detail is None:
+                detail = {"modality": "VISION", "matched_text": extracted.source_quote}
+
+    if len(modalities) > 1:
+        return modalities, {"modality": "MULTIMODAL", "matched_in": modalities, "matched_text": extracted.source_quote}
+    return modalities, detail
+
+
+def _infer_verifiability(extracted: ExtractedClaim) -> ClaimVerifiability:
+    """Richer than the pre-existing boolean `verifiable` column (kept
+    unchanged for backward compatibility). Surfaces a case the boolean
+    silently collapsed: the model said verifiable=True but tagged the
+    claim non-factual (e.g. mistakenly called an opinion checkable) —
+    today that persists as verifiable=False with no trace it was ever
+    ambiguous; here it's UNCERTAIN, not silently coerced to NOT_VERIFIABLE."""
+    if not extracted.verifiable:
+        return ClaimVerifiability.not_verifiable
+    if extracted.claim_type.value == "factual":
+        return ClaimVerifiability.verifiable
+    return ClaimVerifiability.uncertain
 
 
 def _build_user_content(reel: Reel) -> str:
@@ -171,6 +229,7 @@ async def extract_claims(db: AsyncSession, reel: Reel) -> list[Claim]:
             # actually use" discipline as never storing a Source row for
             # a page we couldn't fetch (search_fetch.py).
             continue
+        source_modalities, provenance_detail = _infer_source_modalities(extracted, reel)
         claim = Claim(
             reel_id=reel.id,
             text=extracted.text,
@@ -183,6 +242,14 @@ async def extract_claims(db: AsyncSession, reel: Reel) -> list[Claim]:
             importance=extracted.importance,
             extraction_model=f"{result.model}:{result.prompt_version}",
             status=ClaimStatus.extracted,
+            source_modalities=source_modalities or None,
+            # The extraction LLM's own self-reported number — MODEL_CONFIDENCE,
+            # never SYSTEM_CONFIDENCE (an empirically calibrated estimate);
+            # see ExtractedClaim.extraction_confidence's own docstring.
+            extraction_confidence=extracted.extraction_confidence,
+            confidence_type="MODEL_CONFIDENCE",
+            verifiability=_infer_verifiability(extracted),
+            provenance_detail=provenance_detail,
         )
         db.add(claim)
         claims.append(claim)

@@ -22,6 +22,14 @@ class ClaimOut(BaseModel):
     entities: list[dict] | None
     importance: float
     status: ClaimStatus
+    # research/RESEARCH_ROADMAP_V2.md Phase 2 provenance fields. All
+    # optional/nullable — unpopulated on any claim extracted before this
+    # schema existed (never backfilled by guessing).
+    source_modalities: list[str] | None = None
+    extraction_confidence: float | None = None
+    confidence_type: str | None = None
+    verifiability: str | None = None
+    provenance_detail: dict | None = None
 
     model_config = {"from_attributes": True}
 
@@ -53,6 +61,20 @@ class ExtractedClaim(BaseModel):
     location: str | None = None
     entities: list[ExtractedEntity] = Field(default_factory=list)
     importance: float = Field(ge=0.0, le=1.0)
+    # research/RESEARCH_ROADMAP_V2.md Phase 2. The model's own self
+    # -reported confidence that this claim is a real, correctly-extracted
+    # assertion (not a probability of it being TRUE — that's the verdict
+    # stage's job entirely). Persisted as MODEL_CONFIDENCE
+    # (Claim.confidence_type), never treated as a calibrated system
+    # -level probability; see claim_extraction.py's persistence comment.
+    extraction_confidence: float = Field(
+        ge=0.0, le=1.0,
+        description=(
+            "Your own confidence that this is a real, correctly-extracted claim from the actual "
+            "content (not a probability that the claim itself is true). Low for a marginal or "
+            "ambiguous extraction, high for an unambiguous, clearly-stated assertion."
+        ),
+    )
 
 
 ClaimExtractionResult.model_rebuild()

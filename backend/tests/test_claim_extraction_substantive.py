@@ -16,7 +16,10 @@ from app.services.ai.base import LLMCallResult
 
 
 def _claim(text: str, *, verifiable=False, claim_type="satire") -> ExtractedClaim:
-    return ExtractedClaim(text=text, source_quote=None, claim_type=claim_type, verifiable=verifiable, importance=0.5)
+    return ExtractedClaim(
+        text=text, source_quote=None, claim_type=claim_type, verifiable=verifiable, importance=0.5,
+        extraction_confidence=0.5,
+    )
 
 
 def test_all_claims_blank_text_is_not_substantive():
