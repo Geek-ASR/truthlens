@@ -70,6 +70,14 @@ class Case:
     proposal: VerdictProposal
     evidence_by_id: dict = field(default_factory=dict)
     source_by_evidence_id: dict = field(default_factory=dict)
+    # Phase 8 (research/RESEARCH_ROADMAP_V2.md): optional, additive
+    # fields for Checks 6/7 (temporal/entity, both new this session).
+    # Default None preserves this file's own original 30 cases exactly
+    # as originally written and reported -- Checks 6/7 stay dormant for
+    # every one of them, matching validate_verdict()'s own documented
+    # backward-compatibility design.
+    claim_time_reference: str | None = None
+    claim_entities: list[dict] | None = None
 
 
 def build_cases() -> list[Case]:
