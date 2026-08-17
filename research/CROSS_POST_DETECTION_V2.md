@@ -23,6 +23,29 @@ is itself named in the roadmap as "the main deliverable, independent of
 the final numbers"; this pass delivers stage 1 for real, rather than a
 thin stub of all 3.
 
+## Stage 2 attempted in a later pass, blocked on a real infrastructure gap
+
+A follow-up attempt to build stage 2 (`Claim.embedding`, pgvector
+-backed, already provisioned but unused) found a concrete blocker before
+writing any pipeline code: this project's local Ollama server was not
+started with embedding support. `ollama.Client().embeddings(model=
+"llama3.2", ...)` fails with `This server does not support embeddings.
+Start it with --embeddings (status code: 500)` — confirmed live, not
+assumed. No embedding model (e.g. `nomic-embed-text`) is pulled locally
+either; every model currently available (`llava-phi3`, `moondream`,
+`llama3`, `mistral`, `llama3.2`) is a chat/vision model, not a dedicated
+embedding one.
+
+Restarting a locally-running service the user depends on, or pulling a
+new model, is outside what this pass takes on unilaterally without
+clearer signal that it's wanted — disclosed as a real, concrete
+prerequisite instead of worked around. `duplicate_detection.py`'s own
+existing design (`difflib.SequenceMatcher`, explicitly avoiding "an
+extra embedding API call") is the same conservative default applied
+here: stage 2 stays unbuilt until this precondition is actually met,
+rather than substituting a weaker text-similarity heuristic under the
+`Claim.embedding` column's name.
+
 ## A real bug found via this module's own tests
 
 `frame_set_similarity()`'s `is_match` field initially returned a numpy
