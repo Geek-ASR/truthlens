@@ -1557,6 +1557,64 @@ and mixed-script content showed a possible bias toward extracting only
 Latin-script segments, silently dropping non-Latin-script content from
 the same continuous statement.
 
+\subsection{Immediate follow-up: two named gaps investigated, one closed negatively, one corrected}
+\label{sec:followup}
+Both gaps named above were investigated in the same autonomous pass,
+each with a real, disclosed outcome rather than left standing as
+untested hypotheses (full detail: Appendix~\ref{sec:appendixfoundation}).
+
+The \textbf{input-signal consistency check} was found infeasible in its
+obvious cheap form: keyword-overlap (Jaccard) similarity between a
+post's caption and transcript, calibrated against real data \emph{before}
+being written into production, is 0.000 for every real, legitimate
+benchmark item checked ($n=4$) -- captions and transcripts are different
+text registers, and often different languages, even when fully
+consistent. A check calibrated this way on this project's own data would
+flag essentially all legitimate content as inconsistent. Real semantic
+understanding would be needed instead of a cheap heuristic.
+
+The \textbf{multilingual-extraction bias} suspected above does
+\emph{not} generalize: re-examined against the larger 90-claim dataset
+already collected for the 8-combination multimodal analysis
+(Section~\ref{sec:foundationmultimodal}), non-Latin-script claims are
+the \emph{majority} (48/90, 53.3\%), and script distribution tracks each
+real item's own dominant language exactly -- including one genuinely
+code-switched real item, which produced claims in both scripts, not
+just Latin. The original single-case finding was real but did not
+generalize; the likely correct, narrower reading is that unnaturally
+dense intra-sentence code-switching (three scripts within one
+synthetic clause) is harder than the inter-sentence or paragraph-level
+code-switching that occurs in real speech, not a general script bias.
+\textbf{We report this correction with the same prominence as the
+original finding, per this paper's standing discipline.}
+
+Separately, the \texttt{source\_quote} population gap
+(Section~\ref{sec:reliabilityfinding}) was directly attacked with a
+strengthened extraction prompt -- an explicit self-check procedure plus
+a worked example built from a real observed miss (a claim whose text
+was itself a verbatim OCR line, "5,154 likes", yet left unquoted). The
+fix did not work: 0\% source-quote population both before and after,
+$n=8$ items, and on the exact item the worked example was built from,
+the strengthened prompt produced \emph{zero} claims where the baseline
+had produced seven unquoted ones. This is a clean negative result for
+prompt engineering as the fix, strengthening rather than resolving the
+underlying finding.
+
+Finally, the 6 real VALIDATION-split items
+(Section~\ref{sec:foundationphase}) were, for the first time, run
+through the complete real pipeline (claim extraction through verdict)
+and the results genuinely committed -- unlocking the aggregation
+counterfactual this paper's Future Work has named since
+Section~\ref{sec:decompcounterfactual}. 4 of 6 items produced zero
+claims (consistent with this pass's own already-documented low
+real-world extraction yield); the other two produced 3 real claims with
+real verdicts. One of them is independently notable: Check 7 (entity
+consistency) correctly downgraded a claim about a Jharkhand-police
+protest that had been cited against a wholly unrelated real article (a
+2026 IIT Palakkad security incident) -- the first live confirmation that
+Check 7 generalizes to genuinely new production data, not just the
+historical and synthetic cases it was built and tested against.
+
 \section{A Taxonomy of Failure Modes Found in Live Testing}
 \label{sec:failuremodes}
 
@@ -1795,15 +1853,35 @@ tuned against knowing the right answer. We would rather report a real
   deterministic, similarity-calibrated deduplication pass now runs
   before persistence.
 \item \textbf{Diagnose why claim extraction almost never populates a
-  verbatim \texttt{source\_quote}} (Section~\ref{sec:reliabilityfinding}),
-  the clearest concrete next step from this pass's own findings -- not
-  yet attempted; two live hypotheses (prompt under-elicitation vs.\
-  genuinely unquotable paraphrases) remain undistinguished.
+  verbatim \texttt{source\_quote}} (Section~\ref{sec:reliabilityfinding})
+  -- \emph{attempted}: a strengthened instruction (an explicit self
+  -check procedure plus a worked example built from a real observed
+  miss) did not move the population rate at all (0\% both ways, $n=8$
+  items) -- a clean negative result, not an unattempted item anymore.
+  The two live hypotheses (prompt under-elicitation vs.\ genuinely
+  unquotable paraphrases) remain undistinguished; a bigger architectural
+  change (e.g.\ eliciting the quote before the claim text) is the next
+  candidate, not attempted.
 \item \textbf{An input-signal consistency check} for claim extraction
-  (does a post's caption agree with its transcript/OCR content) and a
-  \textbf{multilingual-extraction audit} (does non-Latin-script content
-  get dropped disproportionately) -- both newly named, neither
-  investigated further, in Section~\ref{sec:foundationadversarial}.
+  (does a post's caption agree with its transcript/OCR content) --
+  \emph{investigated}: the obvious cheap approach (keyword-overlap
+  similarity) is not viable, calibrated against real data before being
+  written into production -- Jaccard similarity between caption and
+  transcript keywords is 0.000 for every real, legitimate benchmark
+  item checked, because captions and transcripts are different text
+  registers (and often different languages) even when fully consistent.
+  Real semantic understanding would be needed instead, not attempted.
+\item \textbf{A multilingual-extraction audit} (does non-Latin-script
+  content get dropped disproportionately) -- \emph{investigated and
+  corrected}: the single adversarial case motivating this item
+  (Section~\ref{sec:foundationadversarial}) does NOT generalize when
+  checked against the larger 90-claim dataset already collected this
+  session -- non-Latin-script claims are the majority (48/90), tracking
+  each item's own real dominant language correctly, including in a
+  genuinely code-switched real item. The suspected bias was a real
+  finding about ONE synthetic, intra-sentence code-switching
+  construction, not a general property of this system -- corrected here
+  rather than left standing as originally (over-)stated.
 \item \textbf{Complete the full end-to-end adversarial suite} (Step 18's
   20 categories, 100+ cases): this pass delivered a bounded 6-case slice
   of claim-extraction-only robustness; categories needing real
@@ -2461,6 +2539,52 @@ sentence), \texttt{repetitive\_spam} (40 repetitions of one sentence
 collapsed to 1 claim), \texttt{near\_max\_tokens} (0 claims, confounded
 by a real Gemini quota-exhaustion event during the one quality-retry
 this case triggered). Zero crashes across all six.
+
+\subsection{EXP-021: source\_quote prompt strengthening, full numbers}
+A candidate prompt (\texttt{claim\_extraction.v4-quote-candidate})
+added an explicit 4-step self-check procedure and a worked example
+matching the real "5,154 likes" OCR case, identical otherwise to
+production's \texttt{v3}. Re-run against the same 8 real DEV items as
+EXP-012/EXP-016: baseline (v3, re-run fresh) produced 9 claims, 0 with
+\texttt{source\_quote} (0.0\%); the candidate (v4) produced 6 claims, 0
+with \texttt{source\_quote} (0.0\%). On the one item containing the
+literal "5,154 likes" text the worked example was built from, v3
+produced 7 unquoted claims and v4 produced zero claims at all --
+the stronger instruction did not recover the quote and may have
+suppressed extraction on that item entirely.
+
+\subsection{EXP-022: input-signal consistency feasibility, full numbers}
+Jaccard similarity of stopword-filtered keywords between
+\texttt{caption\_text} and \texttt{transcript}, computed for every real
+benchmark reel with both fields populated ($n=4$): 0.000 in all four
+cases (zero shared keywords). Not a sign of inconsistency -- the normal
+case for this project's real, legitimate, multilingual content.
+
+\subsection{EXP-023: multilingual bias re-examination, full numbers}
+Script classification (Latin vs.\ Devanagari/Urdu Unicode ranges) of
+all 90 real claims from EXP-016's own results file (no new extraction,
+pure re-analysis). Overall: 42 Latin, 48 non-Latin. Per-item: a
+fully-Marathi item produced 37 non-Latin vs.\ 8 Latin claims (the
+Latin ones being caption metadata -- like/comment counts -- not
+content); a fully-Hindi item (Karni Sena) produced 5/5 non-Latin; two
+English-language items produced Latin-only claims; and the one
+genuinely code-switched real item (Hindi-English mixed) produced claims
+in both scripts (7 Latin, 6 non-Latin) -- direct evidence against a
+general Latin-script bias.
+
+\subsection{EXP-024: VALIDATION-split real population, full numbers}
+The real, unmodified second half of \texttt{orchestrator.analyze\_reel()}
+(claim extraction through verdict) was run and committed for real
+against all 6 VALIDATION-split items. item-0011/0012/0013/0015
+produced zero claims. item-0010 produced 2 claims (one downgraded
+\texttt{entity\_mismatch}, one \texttt{FALSE}/\texttt{passed}); item-0014
+produced 1 claim (\texttt{FALSE}/\texttt{passed}, matching real ground
+truth). The entity-mismatch case was manually audited against its
+cited source: the claim ("a female student was severely beaten," in
+the context of a Jharkhand-police protest item) was cited against a
+real news article about an unrelated 2026 IIT Palakkad security
+incident -- a genuine, correct catch, confirming Check 7 generalizes to
+real production data it was never calibrated against.
 
 \bibliographystyle{IEEEtran}
 \bibliography{references}
