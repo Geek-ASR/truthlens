@@ -1714,6 +1714,21 @@ whether the candidate taxonomy adds real value -- not from an
 uncontrolled confound anymore, but from a hard, external infrastructure
 ceiling, now named and quantified rather than merely suspected.
 
+\textbf{An immediate follow-up} built and evaluated the deterministic
+check named above as the likely fix for the reliability-weighting
+failure, before deciding whether to integrate it -- the same discipline
+Checks 6 and 7 were held to. 10 hand-designed synthetic cases (10/10
+correct); a replay of the 19 real verdict labels actually observed in
+the failure above (14/14 wrong trials caught, including one that paired
+an incorrect \texttt{OUTDATED} label with maximum stated confidence; 0/5
+false positives on the genuinely closer-call sanity case); and the
+existing 34-case adversarial benchmark (0 interactions, confirming no
+regression risk before any production change). Integrated as Check 8;
+re-running the full benchmark afterward showed precision/recall
+completely unchanged (87.5\%/60.9\%), confirming the zero-regression
+prediction empirically rather than by assumption. Full detail:
+\texttt{research/CONTRADICTORY\_SOURCES\_V2.md}.
+
 \section{A Taxonomy of Failure Modes Found in Live Testing}
 \label{sec:failuremodes}
 
@@ -2002,15 +2017,17 @@ tuned against knowing the right answer. We would rather report a real
   are now covered (Section~\ref{sec:secondpass}); categories needing real
   AI-generated-image/edited-video/audio-corruption content remain
   unbuilt.
-\item \textbf{A deterministic reliability-weighted verdict check.} A
-  measured, reproducible failure (Section~\ref{sec:secondpass}): verdict
-  -label selection does not reliably favor a high-reliability source
-  over a low-reliability, uncited one under direct contradiction, and a
-  targeted prompt fix did not resolve it (0/14 real trials correct,
-  before and after). The likely real fix -- comparing cited-evidence
-  reliability against verdict direction as an 8th deterministic
-  validator check, mirroring Checks 6/7's successful pattern -- is named
-  but not built, pending its own integration evaluation.
+\item \textbf{A deterministic reliability-weighted verdict check} --
+  \emph{addressed}: built as a candidate and evaluated against the same
+  bar Checks 6/7 were held to (10/10 synthetic ground-truth cases; 14/14
+  of the real observed wrong trials from the measured failure above
+  caught; 0/5 false positives on a genuinely closer-call sanity case; 0
+  interactions with the existing 34-case benchmark, confirming no
+  regression), then integrated as Check 8
+  (Section~\ref{sec:secondpass}). Not yet independently validated
+  against real, non-synthetic production disagreement cases, since the
+  current benchmark rarely produces cited evidence with both a
+  supporting and a contradicting stance for the same claim.
 \item \textbf{A properly isolated test database for Gemini-quota
   scenario tests}, or a way to scope the provider's global cooldown
   check to a test context -- the collision between real concurrent usage
@@ -2060,7 +2077,7 @@ shows, including a negative result, a deferred question, a bug in our own
 baselines, or a threat to validity in our own fix. The taxonomy of
 concrete failure modes (Appendix~\ref{sec:appendixtaxonomy}) -- 24
 entries, over a third found and fixed during this evaluation program
-itself, all but four with a deterministic check and a regression test
+itself, all but three with a deterministic check and a regression test
 built from the case that surfaced it -- is as practically useful a contribution as
 any single number above, since most of these failures, including the
 baseline confound this conclusion opens with, are only discoverable by
@@ -2641,10 +2658,12 @@ against omitting a disclosed finding for space.
   maximum (1.0) stated confidence. A prompt hardened with an explicit
   reliability-weighting rule and worked example did not resolve this on
   re-test (still 0/7) -- reported as a measured negative result, not
-  silently dropped, with a deterministic validator check (comparing
-  cited-evidence reliability against verdict direction) named as the
-  likely real fix and left for a dedicated future pass rather than
-  added without its own evaluation.
+  silently dropped. A deterministic validator check (comparing
+  cited-evidence reliability against verdict direction) was then built,
+  evaluated against the same bar Checks 6/7 were held to (10/10
+  synthetic cases, 14/14 real observed wrong trials caught, 0/34
+  interactions with the existing benchmark), and integrated as Check 8
+  with zero measured regression to existing benchmark precision/recall.
 \end{itemize}
 
 \section{Extended Foundation-Phase Detail}
@@ -2862,6 +2881,26 @@ on the \texttt{majority\_with\_credible\_outlier} case (3 established
 similar post-fix instability (2/4 \texttt{MOSTLY\_TRUE}, 2/4
 \texttt{UNVERIFIED}), though with only 1 pre-fix sample a clean
 before/after comparison isn't possible for that case.
+
+\subsection{EXP-030: reliability-direction check (Check 8) evaluation, full numbers}
+A deterministic candidate check (max cited-evidence reliability per
+stance; flags when the gap exceeds 0.4 and the verdict sides with the
+lower-reliability stance) was evaluated in three parts before
+integration. Part 1, 10 synthetic ground-truth cases: 10/10 correct,
+including the intended-catch shape, its mirror image, a close gap that
+should not fire (0.10, the \texttt{majority\_with\_credible\_outlier}
+shape), missing-reliability data, and multiple evidence items per side.
+Part 2, a replay of EXP-029's own 19 real observed verdict labels: 14/14
+\texttt{reliability\_weighted\_conflict} trials flagged (0/14 before
+adding \texttt{OUTDATED} to the checked label set, since that was the
+one real trial using it), 0/5 \texttt{majority\_with\_credible\_outlier}
+trials false-flagged. Part 3, the existing 34-case adversarial benchmark:
+0 cases have cited evidence with both a real \texttt{stance} and
+\texttt{reliability\_score} together, so 0 interactions -- confirming no
+regression risk empirically before any production change. Integrated as
+Check 8; re-running the full benchmark through the real,
+now-updated \texttt{validate\_verdict()} afterward reproduced the
+identical pre-integration precision/recall (87.5\%/60.9\%).
 
 \bibliographystyle{IEEEtran}
 \bibliography{references}
