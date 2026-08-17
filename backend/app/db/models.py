@@ -146,6 +146,11 @@ class ValidationStatus(str, enum.Enum):
     # item's correct answer, only to whether the model's own stated
     # reasoning logically supports its own chosen label.
     downgraded_reasoning_label_mismatch = "downgraded_reasoning_label_mismatch"
+    # research/RESEARCH_ROADMAP_V2.md Phase 5 (temporal consistency,
+    # app/pipeline/validation.py's Check 6): claim asserts an explicit
+    # date, but every cited source with a known publication_date predates
+    # it -- the "old footage presented as current" misinformation pattern.
+    downgraded_temporal_mismatch = "downgraded_temporal_mismatch"
 
 
 class FactCheckStatus(str, enum.Enum):

@@ -389,6 +389,148 @@ def test_no_evidence_phrase_is_a_noop_when_verdict_is_already_unverified():
     assert outcome.status == ValidationStatus.passed
 
 
+# ---------------------------------------------------------------------------
+# Check 6 (research/RESEARCH_ROADMAP_V2.md Phase 5): temporal consistency
+# -- a claim asserting an explicit date, cited against evidence that
+# predates it, is the "old footage presented as current" pattern.
+# ---------------------------------------------------------------------------
+
+def test_downgrades_when_claim_asserts_explicit_date_but_evidence_predates_it():
+    # Real observed real time_reference value from this project's own dev
+    # data ("August 4, 2026"), paired with a source published well before
+    # that date -- exactly the pattern of citing old material as if it
+    # substantiates a claim about a later, specific date.
+    stale_source = _make_source(
+        publication_date=datetime(2026, 1, 15, tzinfo=timezone.utc),
+        relevant_passage="Protesters gathered at the venue.",
+    )
+    evidence_id = uuid.uuid4()
+    proposal = VerdictProposal(
+        verdict=VerdictLabel.TRUE,
+        confidence=0.8,
+        reasoning_summary="Protesters gathered at the venue.",
+        cited_evidence_ids=[evidence_id],
+    )
+
+    outcome = validate_verdict(
+        proposal, {evidence_id: object()}, {evidence_id: stale_source}, "August 4, 2026"
+    )
+
+    assert outcome.status == ValidationStatus.downgraded_temporal_mismatch
+    assert outcome.verdict == VerdictLabel.UNVERIFIED
+    assert outcome.confidence <= 0.4
+
+
+def test_passes_when_evidence_is_published_after_the_claimed_date():
+    # Normal case: a fact-check article is usually published AFTER the
+    # event it reports on -- must never be flagged as a mismatch.
+    source = _make_source(
+        publication_date=datetime(2026, 8, 10, tzinfo=timezone.utc),
+        relevant_passage="Protesters gathered at the venue.",
+    )
+    evidence_id = uuid.uuid4()
+    proposal = VerdictProposal(
+        verdict=VerdictLabel.TRUE,
+        confidence=0.8,
+        reasoning_summary="Protesters gathered at the venue.",
+        cited_evidence_ids=[evidence_id],
+    )
+
+    outcome = validate_verdict(
+        proposal, {evidence_id: object()}, {evidence_id: source}, "August 4, 2026"
+    )
+
+    assert outcome.status == ValidationStatus.passed
+
+
+def test_passes_when_evidence_predates_claim_within_tolerance():
+    # 1 day before the claimed date is within the 2-day tolerance --
+    # normal reporting lag, not a mismatch.
+    source = _make_source(
+        publication_date=datetime(2026, 8, 3, tzinfo=timezone.utc),
+        relevant_passage="Protesters gathered at the venue.",
+    )
+    evidence_id = uuid.uuid4()
+    proposal = VerdictProposal(
+        verdict=VerdictLabel.TRUE,
+        confidence=0.8,
+        reasoning_summary="Protesters gathered at the venue.",
+        cited_evidence_ids=[evidence_id],
+    )
+
+    outcome = validate_verdict(
+        proposal, {evidence_id: object()}, {evidence_id: source}, "August 4, 2026"
+    )
+
+    assert outcome.status == ValidationStatus.passed
+
+
+def test_check_does_not_fire_for_vague_time_references():
+    # Every real vague value observed live in this project's dev data
+    # ("present", "recent", "unspecified") must never resolve to a date --
+    # this is exactly the false-positive risk Phase 5 names as
+    # disqualifying, so the check must stay silent here even with a
+    # very stale source.
+    stale_source = _make_source(publication_date=datetime(2020, 1, 1, tzinfo=timezone.utc))
+    evidence_id = uuid.uuid4()
+
+    for vague_value in ("present", "recent", "Recent", "unspecified", "past 8 years", "Aaj", None):
+        proposal = VerdictProposal(
+            verdict=VerdictLabel.TRUE,
+            confidence=0.8,
+            reasoning_summary="Unemployment rose to 12% in March 2026 according to the labor ministry.",
+            cited_evidence_ids=[evidence_id],
+        )
+        outcome = validate_verdict(
+            proposal, {evidence_id: object()}, {evidence_id: stale_source}, vague_value
+        )
+        assert outcome.status == ValidationStatus.passed, f"false positive for time_reference={vague_value!r}"
+
+
+def test_check_does_not_fire_when_cited_source_has_no_publication_date():
+    # An explicit claim date with no known source date at all -- nothing
+    # to compare against, so the check must not guess.
+    source = _make_source(publication_date=None)
+    evidence_id = uuid.uuid4()
+    proposal = VerdictProposal(
+        verdict=VerdictLabel.TRUE,
+        confidence=0.8,
+        reasoning_summary="Unemployment rose to 12% in March 2026 according to the labor ministry.",
+        cited_evidence_ids=[evidence_id],
+    )
+
+    outcome = validate_verdict(
+        proposal, {evidence_id: object()}, {evidence_id: source}, "August 4, 2026"
+    )
+
+    assert outcome.status == ValidationStatus.passed
+
+
+def test_check_does_not_fire_when_at_least_one_cited_source_is_current():
+    # A mix of one stale and one current cited source must NOT be flagged
+    # -- only fires when EVERY dated source is stale, to avoid punishing
+    # a verdict that legitimately cites older context alongside real,
+    # current evidence.
+    stale_source = _make_source(publication_date=datetime(2020, 1, 1, tzinfo=timezone.utc))
+    current_source = _make_source(publication_date=datetime(2026, 8, 4, tzinfo=timezone.utc))
+    stale_id, current_id = uuid.uuid4(), uuid.uuid4()
+    proposal = VerdictProposal(
+        verdict=VerdictLabel.TRUE,
+        confidence=0.8,
+        reasoning_summary="Unemployment rose to 12% in March 2026 according to the labor ministry.",
+        cited_evidence_ids=[stale_id, current_id],
+    )
+
+    outcome = validate_verdict(
+        proposal,
+        {stale_id: object(), current_id: object()},
+        {stale_id: stale_source, current_id: current_source},
+        "August 4, 2026",
+    )
+
+    assert outcome.status == ValidationStatus.passed
+
+
 def test_confident_label_with_real_contradicting_evidence_still_passes():
     # Must not become an over-broad "any low-confidence FALSE gets
     # downgraded" check -- a verdict backed by real, cited, contradicting

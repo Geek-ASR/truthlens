@@ -4,6 +4,9 @@ LLM — a verdict cannot argue its way past this (docs/FACT_CHECK_METHODOLOGY.md
 and routes the fact_check to human review rather than publishing a
 guess."""
 import re
+from datetime import timedelta, timezone
+
+from dateutil import parser as date_parser
 
 from app.db.models import Source, ValidationStatus, VerdictLabel
 from app.schemas.verdict import VerdictProposal
@@ -66,6 +69,32 @@ def _reasoning_claims_no_evidence_found(reasoning_summary: str) -> bool:
     return any(phrase in lowered for phrase in _NO_EVIDENCE_FOUND_PHRASES)
 
 _CAPPED_CONFIDENCE = 0.4
+
+# research/RESEARCH_ROADMAP_V2.md Phase 5 (temporal consistency). Real
+# time_reference values observed live across this project's dev data
+# (~30 values): almost all are vague ("present", "recent", "unspecified")
+# and exactly one is an explicit, unambiguous date ("August 4, 2026").
+# dateutil.parser.parse(fuzzy=False) was confirmed live to correctly
+# reject every vague/relative value (including "today"/"yesterday",
+# which it does NOT resolve on its own) and only accept the explicit
+# one — exactly the conservative behavior this check needs. No relative
+# -term resolution (e.g. "yesterday" anchored to the reel's posted_at)
+# is attempted in this version: it would require threading Reel through
+# validate_verdict()'s otherwise-pure signature for a case that never
+# once appeared as an explicit, resolvable value in real data, and Phase
+# 5's own stopping condition treats a false positive from mis-resolving
+# a vague term as disqualifying regardless of any recall gained — a real,
+# disclosed recall ceiling, not an oversight.
+_TEMPORAL_MISMATCH_TOLERANCE_DAYS = 2
+
+
+def _resolve_explicit_claim_date(time_reference: str | None):
+    if not time_reference or not time_reference.strip():
+        return None
+    try:
+        return date_parser.parse(time_reference, fuzzy=False)
+    except (ValueError, OverflowError):
+        return None
 
 
 class ValidationOutcome:
@@ -139,10 +168,13 @@ def validate_verdict(
     proposal: VerdictProposal,
     evidence_by_id: dict,
     source_by_evidence_id: dict[object, Source],
+    claim_time_reference: str | None = None,
 ) -> ValidationOutcome:
     """`evidence_by_id` / `source_by_evidence_id` are passed explicitly
     (rather than traversed via Evidence.source) so this stays a pure,
-    synchronous function with no ORM lazy-loading involved."""
+    synchronous function with no ORM lazy-loading involved.
+    `claim_time_reference` is likewise passed as a plain string (Claim.
+    time_reference), not the Claim object itself, for the same reason."""
     valid_evidence_ids = set(evidence_by_id.keys())
 
     # Check 1: every cited evidence id must belong to this claim's evidence.
@@ -197,6 +229,43 @@ def validate_verdict(
                 f"{proposal.verdict.value} instead of UNVERIFIED."
             ],
         )
+
+    # Check 6 (research/RESEARCH_ROADMAP_V2.md Phase 5 — the 5th being the
+    # supplementary-field grounding below, _grounded_or_none, never
+    # explicitly numbered in-code before now): the claim asserts
+    # a specific, explicit date, but every cited source that reports a
+    # publication_date was published well BEFORE that date — the "old
+    # footage/story presented as current" pattern Phase 5 names. A source
+    # published AFTER the claimed date is normal (fact-checks are usually
+    # written after the fact) and never flagged — only sources that
+    # predate the claimed event are suspicious. Deliberately narrow: only
+    # fires when time_reference resolves to an unambiguous explicit date
+    # AND at least one cited source has a real publication_date, both
+    # real, disclosed preconditions this check does not force past
+    # (Phase 5's own failure condition, RESEARCH_ROADMAP_V2.md).
+    resolved_claim_date = _resolve_explicit_claim_date(claim_time_reference)
+    if resolved_claim_date is not None:
+        dated_sources = [s for s in cited_sources if s.publication_date is not None]
+        if dated_sources:
+            cutoff = resolved_claim_date - timedelta(days=_TEMPORAL_MISMATCH_TOLERANCE_DAYS)
+            # dateutil parses a bare date string (e.g. "August 4, 2026")
+            # as naive; Source.publication_date is stored timezone-aware
+            # — normalize before comparing rather than letting the two
+            # silently compare as an error.
+            if cutoff.tzinfo is None:
+                cutoff = cutoff.replace(tzinfo=timezone.utc)
+            if all(s.publication_date < cutoff for s in dated_sources):
+                return ValidationOutcome(
+                    ValidationStatus.downgraded_temporal_mismatch,
+                    VerdictLabel.UNVERIFIED,
+                    min(proposal.confidence, _CAPPED_CONFIDENCE),
+                    [
+                        f"Claim asserts a specific date ({resolved_claim_date.date()}) but every cited "
+                        f"source with a known publication date predates it by more than "
+                        f"{_TEMPORAL_MISMATCH_TOLERANCE_DAYS} day(s) — possible old footage/story "
+                        f"presented as current."
+                    ],
+                )
 
     all_passages = " ".join(
         s.relevant_passage for s in source_by_evidence_id.values() if s.relevant_passage
