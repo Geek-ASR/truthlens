@@ -1,0 +1,32 @@
+[
+  {
+    "case": "direct_conflict_equal_reliability",
+    "claim": "The building collapse killed 47 people.",
+    "outcome": "resolved",
+    "verdict": "UNVERIFIED",
+    "confidence": 0.0,
+    "confidence_band": "requires_review",
+    "validation_status": "downgraded_missing_citation",
+    "reasoning": "[2b40c18e-a9d2-40ee-9513-3af045ea9e5d] The State Disaster Management Authority's official report states the building collapse resulted in 47 confirmed fatalities. [6fef26c5-184a-481e-9b03-7915349fab3b] National Herald Times reports a death toll of 52, citing hospital admission records.\n\n[VALIDATION NOTE: Verdict cited evidence not present in this claim's evidence matrix.]"
+  },
+  {
+    "case": "reliability_weighted_conflict",
+    "claim": "The new tax law takes effect on April 1, 2027.",
+    "outcome": "resolved",
+    "verdict": "UNVERIFIED",
+    "confidence": 0.0,
+    "confidence_band": "requires_review",
+    "validation_status": "downgraded_unsupported_stat",
+    "reasoning": "[The Ministry of Finance's gazette notification confirms that] The new tax law takes effect immediately upon its passage into force (no specific date given), but [TaxGossipBlog claims the delay to April 1, 2028], which contradicts this information. Given TaxGossipBlog has a lower reliability score and no official citation.\n\n[VALIDATION NOTE: Numbers ['2028'] in reasoning_summary do not appear in any cited source passage.]"
+  },
+  {
+    "case": "majority_with_credible_outlier",
+    "claim": "The protest drew 10,000 participants.",
+    "outcome": "resolved",
+    "verdict": "UNVERIFIED",
+    "confidence": 0.4,
+    "confidence_band": "requires_review",
+    "validation_status": "downgraded_unsupported_stat",
+    "reasoning": "[[evidence_id=f474f410-8499-4a59-a4fa-bf9b3051d3e3 | source_id=d8eb5487-d66f-43e4-aaca-b0e498fa4623]] and [[evidence_id=4302ac53-62ce-4d07-8bae-1244f794af24 | source_id=9f1a23f9-d2d0-46a5-b970-3e58b8b63ac7]] both report a crowd of around 10,000 participants at the protest. However, [[evidence_id=d7ad19d6-62e5-464a-af22-7d38b9f86ea6 | source_id=c2d7d860-4720-452b-b57d-70d00b5588dd]] and [[evidence_id=888cd295-b806-4591-a1be-3de2d54b5832 | source_id=31e4dd32-f8f0-4cf6-ace3-7c56cb01c25f]] contradict this with a turnout of around 4000.\n\n[VALIDATION NOTE: Numbers ['4000'] in reasoning_summary do not appear in any cited source passage.]"
+  }
+]

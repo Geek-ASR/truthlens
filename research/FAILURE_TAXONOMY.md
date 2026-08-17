@@ -40,12 +40,13 @@ produce... a regression test").
 | 21 | A table-generation script's printed output and its persisted JSON silently disagreed | research_infrastructure | `tests/regression/research_infrastructure/test_day8_final_tables_variable_shadowing.py` (**new this pass** — loads the real, unmodified script via `importlib`, runs it against synthetic fixtures sized so any cross-table variable bleed is immediately obvious, and asserts the persisted summary JSON matches the correct table's data. Verified both directions live, not just written and assumed: temporarily reintroduced the exact historical shared-variable-name bug on a scratch copy, confirmed the test fails against it, then restored the real (already-fixed) file and confirmed the test passes again.) | COVERED (new) |
 | 22 | A real, live global Gemini cooldown (written by concurrent real production usage against the shared dev database) makes `test_gemini_quota_scenarios.py`'s mocked scenarios short-circuit before ever reaching their scripted mock response | test_infrastructure | — | **GAP, found live during this pass**: `QuotaAwareGeminiProvider`'s global cooldown check (correct, intended behavior — avoid burning real API quota once a real exhaustion is already known) reads the same `gemini_tasks` table real production runs write to. A real quota-exhaustion event recorded by ANY concurrent real usage of the same dev database causes these tests to hit the real cooldown short-circuit instead of `MockGeminiProvider`'s scripted response, failing with `NoResultFound` (looking for a `stage="scenario-test"` row that was never created because the call never actually reached the mock). Confirmed the root cause directly: the affected tests all query `GeminiTask.stage == "scenario-test"`, correctly scoped, but a *different*, unscoped, global `status == "quota_wait"` check inside the provider itself runs first. Not fixed this pass — doing so safely needs either a fully isolated test database/schema or a way to scope the global cooldown check itself to a test context, both bigger changes than warranted mid-session; the safe, low-risk workaround used here was re-running the suite once the concurrent real script finished, confirmed clean. |
 | 23 | `wrap_untrusted()`'s delimiter defense could be structurally bypassed by untrusted text containing the literal delimiter tokens, and (independently) a blunt direct-override prompt injection got past claim_extraction 1/5 times | claim_extraction (security) | `tests/test_prompts_injection_defense.py` (**new this pass** — before this, `grep -rn "wrap_untrusted" tests/` and a search for any injection-named test file both returned nothing; zero coverage existed for a defense that processes genuinely untrusted, attacker-reachable input on every real post) | COVERED (new) |
+| 24 | Verdict-label selection does not reliably weight source reliability under direct contradiction — a 0.95-reliability primary-government source supporting a claim was outweighed by a 0.20-reliability, uncited blog contradicting it in 0/14 real trials (0/7 before, 0/7 after an attempted prompt fix); one run paired a wrong label with maximum (1.0) stated confidence | verdict | — | **GAP, prompt fix attempted and measured insufficient (EXP-029, `research/CONTRADICTORY_SOURCES_V2.md`)**: `VERDICT_SYSTEM_PROMPT` was hardened (`verdict.v2` → `verdict.v3`) with an explicit reliability-weighting rule and worked example; re-running the same case 7 more times still produced 0/7 TRUE/MOSTLY_TRUE verdicts. No regression test exists because there is no production fix yet to protect — writing one now would either assert a behavioral guarantee (a specific verdict label under conflicting evidence) this model does not reliably provide, or test-guard the deterministic validator's *partial*, incidental mitigation (some unstable runs already get `downgraded_missing_citation`/`downgraded_unsupported_stat` rather than `passed`) as if it were a designed fix for this specific failure, which it isn't. The real fix is very likely a new deterministic validator check (comparing cited-evidence reliability against verdict direction), which needs its own precedent-setting integration decision before it exists to test, matching #6's and #11's existing "gap by design" reasoning. |
 
 ## Summary
 
-20 of 23 entries have real, passing regression-test coverage (16
+20 of 24 entries have real, passing regression-test coverage (16
 pre-existing + 4 written this pass, including #21 and #23 closed this
-same pass). 3 are honest, documented gaps, not silently omitted:
+same pass). 4 are honest, documented gaps, not silently omitted:
 
 - **#6** and **#11** are gaps *by design* — no production fix exists yet
   for either, so there is nothing yet to protect with a test. Writing a
@@ -58,6 +59,12 @@ same pass). 3 are honest, documented gaps, not silently omitted:
   with (a global cooldown) is correct and desired. Named explicitly as a
   candidate for a future pass (proper test-database isolation) rather
   than left implicit.
+- **#24** is a genuine, real, newly-found gap in verdict-stage
+  reasoning — a prompt-level fix was attempted and honestly measured as
+  insufficient (not just asserted-and-moved-on), and the likely real
+  fix (a new deterministic validator check) is named as a concrete
+  candidate for a future pass rather than rushed into this one without
+  its own evaluation.
 
 ## How to keep this current
 

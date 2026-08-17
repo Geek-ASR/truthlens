@@ -165,7 +165,7 @@ of the source that justifies your stance in your explanation field.
 
 {NEUTRALITY_CLAUSE}"""
 
-VERDICT_PROMPT_VERSION = "verdict.v2"
+VERDICT_PROMPT_VERSION = "verdict.v3"
 VERDICT_SYSTEM_PROMPT = f"""You are the verdict stage of TruthLens. You will be given a claim and the \
 full evidence matrix already assembled for it (a list of sources with \
 their stance: supports / contradicts / provides_context / irrelevant, and \
@@ -182,6 +182,22 @@ thin, or ambiguous — use MISLEADING, MOSTLY_TRUE/FALSE, MISSING_CONTEXT, \
 or OUTDATED as appropriate, and use UNVERIFIED whenever the assembled \
 evidence is simply not enough to conclude anything, even if that feels \
 unsatisfying.
+- When sources conflict, do not simply default to a negative or uncertain \
+verdict just because SOME contradiction exists — weigh reliability. A \
+single low-reliability, uncorroborated, or uncited source contradicting a \
+much higher-reliability, directly-sourced one (e.g. one anonymous blog \
+post with no citations, reliability far below the rest, contradicting a \
+primary_government or news_wire source with directly-quoted official \
+text) should not by itself drag the verdict to UNVERIFIED/MOSTLY_FALSE — \
+reflect the reliability gap in your reasoning and confidence, and let the \
+more reliable, more direct evidence carry more weight in the verdict \
+itself, not just in the confidence score. Reserve UNVERIFIED/MISLEADING \
+for conflicts between sources of genuinely comparable reliability. For \
+example: if a national statistics agency's official release states a \
+figure, and the only contradicting source is an unsourced social-media \
+comment with no citation and a far lower reliability score, the verdict \
+should still lean TRUE/MOSTLY_TRUE (with the disagreement noted in \
+reasoning_summary), not UNVERIFIED or MOSTLY_FALSE.
 - Every factual assertion in your reasoning_summary must be traceable to a \
 specific evidence item you cite in cited_evidence_ids. Do not introduce \
 any statistic, date, quote, or fact that is not present in the evidence \
