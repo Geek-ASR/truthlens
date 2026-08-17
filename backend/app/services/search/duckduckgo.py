@@ -55,18 +55,25 @@ class DuckDuckGoSearchProvider(SearchProvider):
                 continue
             if exclude_domains and any(d in url for d in exclude_domains):
                 continue
-            full_content = await self._fetch_page_text(url)
+            full_content, published_date = await self._fetch_page_text_and_date(url)
             snippet = item.get("body") or ""
             results.append(
                 SearchResult(
                     url=url,
                     title=item.get("title"),
                     snippet=snippet,
-                    # Never invent a publish date DuckDuckGo doesn't report —
-                    # left None like every other unconfirmed field in this
-                    # codebase (see url_downloader.py's same convention).
                     full_content=full_content or snippet,
-                    published_date=None,
+                    # DDGS's own search results carry no date field at all
+                    # (confirmed: item.get("published_date") is never
+                    # present in the raw response) — but the actual fetched
+                    # page usually does, in its own <meta>/JSON-LD metadata,
+                    # which trafilatura.extract_metadata() already knows how
+                    # to read (research/RESEARCH_ROADMAP_V2.md Phase 5:
+                    # confirmed live against 2 real fact-check articles,
+                    # both recovered exactly). Never invented when genuinely
+                    # absent — stays None like every other unconfirmed field
+                    # in this codebase (see url_downloader.py's convention).
+                    published_date=published_date,
                     raw=item,
                 )
             )
@@ -81,12 +88,16 @@ class DuckDuckGoSearchProvider(SearchProvider):
     def _text_search(self, query: str, max_results: int) -> list[dict]:
         return DDGS().text(query, max_results=max_results)
 
-    async def _fetch_page_text(self, url: str) -> str | None:
+    async def _fetch_page_text_and_date(self, url: str) -> tuple[str | None, str | None]:
         """Best-effort: retrieve the actual article text so a search
         result's title/snippet is never treated as the evidence itself.
         Failure here is not fatal to the search — falls back to the
         snippet DuckDuckGo already returned, which is thinner but still
-        real, never invented text."""
+        real, never invented text. Publication date comes from the same
+        fetched page's own metadata (a separate trafilatura call, since
+        extract()'s own with_metadata mode requires switching
+        output_format away from plain text) — None when the page
+        genuinely doesn't expose one, never guessed."""
         try:
             async with httpx.AsyncClient(
                 timeout=_FETCH_TIMEOUT, follow_redirects=True, headers={"User-Agent": _USER_AGENT}
@@ -95,16 +106,25 @@ class DuckDuckGoSearchProvider(SearchProvider):
                 response.raise_for_status()
         except httpx.HTTPError as exc:
             logger.warning("source_page_fetch_failed", url=url, error=str(exc))
-            return None
+            return None, None
 
         try:
             extracted = trafilatura.extract(response.text, include_comments=False, include_tables=False)
         except Exception as exc:  # noqa: BLE001 — third-party HTML parser, never let it break the search
             logger.warning("source_page_extraction_failed", url=url, error=str(exc))
-            return None
+            extracted = None
+
+        published_date = None
+        try:
+            metadata = trafilatura.extract_metadata(response.text, default_url=url)
+            if metadata is not None:
+                published_date = metadata.date
+        except Exception as exc:  # noqa: BLE001 — same rule: metadata extraction must never break the search
+            logger.warning("source_page_metadata_extraction_failed", url=url, error=str(exc))
+
         if not extracted:
-            return None
-        return extracted[:_MAX_CONTENT_CHARS]
+            return None, published_date
+        return extracted[:_MAX_CONTENT_CHARS], published_date
 
 
 _provider: SearchProvider | None = None
