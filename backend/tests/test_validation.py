@@ -732,3 +732,162 @@ def test_confident_label_with_real_contradicting_evidence_still_passes():
     outcome = validate_verdict(proposal, {evidence_id: object()}, {evidence_id: source})
 
     assert outcome.status == ValidationStatus.passed
+
+
+def test_downgrades_the_exp029_reliability_weighted_conflict_shape():
+    # The exact real shape EXP-029 (research/CONTRADICTORY_SOURCES_V2.md)
+    # found: a high-reliability primary source supports the claim, a
+    # low-reliability, uncited source contradicts it, and 0/14 real
+    # trials produced a correct label -- this check exists to catch that
+    # pattern deterministically.
+    support_id, contradict_id = uuid.uuid4(), uuid.uuid4()
+    support_source = _make_source(reliability_score=0.95, source_type=SourceTier.primary_government)
+    contradict_source = _make_source(reliability_score=0.20, source_type=SourceTier.other)
+    proposal = VerdictProposal(
+        verdict=VerdictLabel.MOSTLY_FALSE,
+        confidence=0.0,
+        reasoning_summary="One source confirms the law takes effect as scheduled; an uncited blog disagrees.",
+        cited_evidence_ids=[support_id, contradict_id],
+    )
+
+    outcome = validate_verdict(
+        proposal,
+        {support_id: _make_evidence(EvidenceStance.supports), contradict_id: _make_evidence(EvidenceStance.contradicts)},
+        {support_id: support_source, contradict_id: contradict_source},
+    )
+
+    assert outcome.status == ValidationStatus.downgraded_reliability_mismatch
+    assert outcome.verdict == VerdictLabel.UNVERIFIED
+
+
+def test_downgrades_the_reverse_direction_reliability_mismatch():
+    # Mirror-image of the case above: a low-reliability source supports
+    # the claim, a high-reliability source contradicts it, but the
+    # verdict is a confident positive label.
+    support_id, contradict_id = uuid.uuid4(), uuid.uuid4()
+    support_source = _make_source(reliability_score=0.20, source_type=SourceTier.other)
+    contradict_source = _make_source(reliability_score=0.95, source_type=SourceTier.primary_government)
+    proposal = VerdictProposal(
+        verdict=VerdictLabel.TRUE,
+        confidence=0.8,
+        reasoning_summary="An uncited blog confirms the claim; the official record disagrees.",
+        cited_evidence_ids=[support_id, contradict_id],
+    )
+
+    outcome = validate_verdict(
+        proposal,
+        {support_id: _make_evidence(EvidenceStance.supports), contradict_id: _make_evidence(EvidenceStance.contradicts)},
+        {support_id: support_source, contradict_id: contradict_source},
+    )
+
+    assert outcome.status == ValidationStatus.downgraded_reliability_mismatch
+
+
+def test_outdated_label_is_covered_by_the_reliability_check():
+    # The real EXP-029 trial this check would otherwise have missed: a
+    # wrong OUTDATED label paired with maximum (1.0) stated confidence,
+    # against a 0.95-reliability primary-government source.
+    support_id, contradict_id = uuid.uuid4(), uuid.uuid4()
+    support_source = _make_source(reliability_score=0.95, source_type=SourceTier.primary_government)
+    contradict_source = _make_source(reliability_score=0.20, source_type=SourceTier.other)
+    proposal = VerdictProposal(
+        verdict=VerdictLabel.OUTDATED,
+        confidence=1.0,
+        reasoning_summary="An uncited blog suggests the rule changed; the official notification still stands.",
+        cited_evidence_ids=[support_id, contradict_id],
+    )
+
+    outcome = validate_verdict(
+        proposal,
+        {support_id: _make_evidence(EvidenceStance.supports), contradict_id: _make_evidence(EvidenceStance.contradicts)},
+        {support_id: support_source, contradict_id: contradict_source},
+    )
+
+    assert outcome.status == ValidationStatus.downgraded_reliability_mismatch
+
+
+def test_passes_when_verdict_correctly_favors_the_higher_reliability_source():
+    # Same reliability gap as the true-positive case above, but this
+    # time the verdict correctly sides with the high-reliability source
+    # -- must not be flagged just because a gap exists.
+    support_id, contradict_id = uuid.uuid4(), uuid.uuid4()
+    support_source = _make_source(reliability_score=0.95, source_type=SourceTier.primary_government)
+    contradict_source = _make_source(reliability_score=0.20, source_type=SourceTier.other)
+    proposal = VerdictProposal(
+        verdict=VerdictLabel.TRUE,
+        confidence=0.9,
+        reasoning_summary="The official notification confirms the claim; an uncited blog's disagreement carries little weight.",
+        cited_evidence_ids=[support_id, contradict_id],
+    )
+
+    outcome = validate_verdict(
+        proposal,
+        {support_id: _make_evidence(EvidenceStance.supports), contradict_id: _make_evidence(EvidenceStance.contradicts)},
+        {support_id: support_source, contradict_id: contradict_source},
+    )
+
+    assert outcome.status == ValidationStatus.passed
+
+
+def test_reliability_check_does_not_fire_on_a_close_reliability_gap():
+    # The real EXP-029 sanity-check shape (majority_with_credible_outlier,
+    # 0.75 vs 0.85 reliability): a genuinely close call, not the wide,
+    # unambiguous gap this check targets -- must stay silent.
+    support_id, contradict_id = uuid.uuid4(), uuid.uuid4()
+    support_source = _make_source(reliability_score=0.75, source_type=SourceTier.established_news)
+    contradict_source = _make_source(reliability_score=0.85, source_type=SourceTier.news_wire)
+    proposal = VerdictProposal(
+        verdict=VerdictLabel.MOSTLY_TRUE,
+        confidence=0.8,
+        reasoning_summary="Most coverage agrees on the figure, though one wire report gives a lower estimate.",
+        cited_evidence_ids=[support_id, contradict_id],
+    )
+
+    outcome = validate_verdict(
+        proposal,
+        {support_id: _make_evidence(EvidenceStance.supports), contradict_id: _make_evidence(EvidenceStance.contradicts)},
+        {support_id: support_source, contradict_id: contradict_source},
+    )
+
+    assert outcome.status == ValidationStatus.passed
+
+
+def test_reliability_check_does_not_fire_with_only_one_stance_cited():
+    # No real conflict to evaluate -- must never flag based on a single
+    # side's reliability alone.
+    evidence_id = uuid.uuid4()
+    source = _make_source(reliability_score=0.10, source_type=SourceTier.other)
+    proposal = VerdictProposal(
+        verdict=VerdictLabel.FALSE,
+        confidence=0.8,
+        reasoning_summary="The only cited source, though low-reliability, directly contradicts the claim.",
+        cited_evidence_ids=[evidence_id],
+    )
+
+    outcome = validate_verdict(
+        proposal, {evidence_id: _make_evidence(EvidenceStance.contradicts)}, {evidence_id: source}
+    )
+
+    assert outcome.status == ValidationStatus.passed
+
+
+def test_reliability_check_never_fires_for_plain_object_placeholders():
+    # Backward-compatibility guarantee, same discipline as Check 7's
+    # equivalent test: callers using plain object() stand-ins (no
+    # .stance, no .reliability_score) must never be evaluated by this
+    # check either.
+    support_id, contradict_id = uuid.uuid4(), uuid.uuid4()
+    proposal = VerdictProposal(
+        verdict=VerdictLabel.MOSTLY_FALSE,
+        confidence=0.8,
+        reasoning_summary="Unemployment rose to 12% in March 2026 according to the labor ministry.",
+        cited_evidence_ids=[support_id, contradict_id],
+    )
+
+    outcome = validate_verdict(
+        proposal,
+        {support_id: object(), contradict_id: object()},
+        {support_id: _make_source(), contradict_id: _make_source()},
+    )
+
+    assert outcome.status == ValidationStatus.passed

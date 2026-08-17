@@ -138,6 +138,25 @@ _ENTITY_TYPE_NORMALIZATION = {
 }
 _ENTITY_EVALUABLE_TYPES = {"PERSON", "ORGANIZATION", "LOCATION"}
 
+# Check 8 (research/RESEARCH_ROADMAP_V2.md Phase 11 follow-up, EXP-029/
+# EXP-030, research/CONTRADICTORY_SOURCES_V2.md). Calibrated against
+# EXP-029's own two real evidence-reliability gaps: 0.75 (0.95 vs 0.20)
+# never produced a correct verdict across 14 real trials; 0.10 (0.85 vs
+# 0.75) behaved reasonably (or at least not clearly wrong) about half
+# the time. 0.4 sits clear of the "genuinely close call" zone the
+# second case demonstrated while still catching the first.
+_RELIABILITY_GAP_THRESHOLD = 0.4
+_RELIABILITY_MISMATCH_NEGATIVE_LABELS = {
+    VerdictLabel.FALSE, VerdictLabel.MOSTLY_FALSE, VerdictLabel.UNVERIFIED,
+    # OUTDATED effectively sides with "this used to be true but changed" --
+    # functionally the same as siding with the contradicting evidence; the
+    # real EXP-029 case this check targets included exactly this label,
+    # paired with confidence 1.0, against a 0.95-reliability primary
+    # -government source.
+    VerdictLabel.OUTDATED,
+}
+_RELIABILITY_MISMATCH_POSITIVE_LABELS = {VerdictLabel.TRUE, VerdictLabel.MOSTLY_TRUE}
+
 # Calibrated against this project's own real cases (research/
 # entity_consistency_v2/evaluate.py's module docstring has the full
 # numbers): "abhijit dipke" vs "abhijeet deepke" (the real case that
@@ -413,6 +432,54 @@ def validate_verdict(
                         f"wrong-entity/wrong-incident citation."
                     ],
                 )
+
+    # Check 8 (EXP-029/EXP-030): among CITED evidence, does one stance
+    # (supports/contradicts) have a meaningfully higher-reliability source
+    # than the other, while the verdict sides with the LOWER-reliability
+    # stance? EXP-029 found this exact pattern in 0/14 real trials
+    # producing a correct label -- a prompt-level fix did not resolve it,
+    # so this deterministic cross-check exists to catch it after the fact.
+    # Evidence objects without `.stance` (plain placeholders used by
+    # callers that don't exercise this check) are skipped, same
+    # discipline as Check 7's has_evaluable_entity guard.
+    supporting_reliability: list[float] = []
+    contradicting_reliability: list[float] = []
+    for eid in cited:
+        evidence = evidence_by_id[eid]
+        source = source_by_evidence_id[eid]
+        stance = getattr(evidence, "stance", None)
+        reliability = getattr(source, "reliability_score", None)
+        if stance is None or reliability is None:
+            continue
+        if stance == EvidenceStance.supports:
+            supporting_reliability.append(reliability)
+        elif stance == EvidenceStance.contradicts:
+            contradicting_reliability.append(reliability)
+
+    if supporting_reliability and contradicting_reliability:
+        max_support = max(supporting_reliability)
+        max_contradict = max(contradicting_reliability)
+        gap = max_support - max_contradict
+        reliability_violation_note = None
+        if gap >= _RELIABILITY_GAP_THRESHOLD and proposal.verdict in _RELIABILITY_MISMATCH_NEGATIVE_LABELS:
+            reliability_violation_note = (
+                f"Cited evidence includes a supporting source with reliability {max_support:.2f} "
+                f"vs. the highest contradicting source's {max_contradict:.2f} (gap {gap:.2f}), but the "
+                f"verdict is {proposal.verdict.value} -- possible reliability-direction mismatch."
+            )
+        elif -gap >= _RELIABILITY_GAP_THRESHOLD and proposal.verdict in _RELIABILITY_MISMATCH_POSITIVE_LABELS:
+            reliability_violation_note = (
+                f"Cited evidence includes a contradicting source with reliability {max_contradict:.2f} "
+                f"vs. the highest supporting source's {max_support:.2f} (gap {-gap:.2f}), but the "
+                f"verdict is {proposal.verdict.value} -- possible reliability-direction mismatch."
+            )
+        if reliability_violation_note is not None:
+            return ValidationOutcome(
+                ValidationStatus.downgraded_reliability_mismatch,
+                VerdictLabel.UNVERIFIED,
+                min(proposal.confidence, _CAPPED_CONFIDENCE),
+                [reliability_violation_note],
+            )
 
     all_passages = " ".join(
         s.relevant_passage for s in source_by_evidence_id.values() if s.relevant_passage

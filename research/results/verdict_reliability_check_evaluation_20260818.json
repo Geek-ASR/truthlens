@@ -1,0 +1,172 @@
+{
+  "part1_synthetic": [
+    {
+      "case": "R1_exact_exp029_shape_mostly_false",
+      "verdict": "MOSTLY_FALSE",
+      "expected_flag": true,
+      "flagged": true,
+      "correct": true,
+      "note": "Cited evidence includes a supporting source with reliability 0.95 vs. the highest contradicting source's 0.20 (gap 0.75), but the verdict is MOSTLY_FALSE -- possible reliability-direction mismatch."
+    },
+    {
+      "case": "R2_exact_exp029_shape_unverified",
+      "verdict": "UNVERIFIED",
+      "expected_flag": true,
+      "flagged": true,
+      "correct": true,
+      "note": "Cited evidence includes a supporting source with reliability 0.95 vs. the highest contradicting source's 0.20 (gap 0.75), but the verdict is UNVERIFIED -- possible reliability-direction mismatch."
+    },
+    {
+      "case": "R3_exact_exp029_shape_correct_true",
+      "verdict": "TRUE",
+      "expected_flag": false,
+      "flagged": false,
+      "correct": true,
+      "note": null
+    },
+    {
+      "case": "R4_reverse_direction_wrong_true",
+      "verdict": "TRUE",
+      "expected_flag": true,
+      "flagged": true,
+      "correct": true,
+      "note": "Cited evidence includes a contradicting source with reliability 0.95 vs. the highest supporting source's 0.20 (gap 0.75), but the verdict is TRUE -- possible reliability-direction mismatch."
+    },
+    {
+      "case": "R5_reverse_direction_correct_false",
+      "verdict": "FALSE",
+      "expected_flag": false,
+      "flagged": false,
+      "correct": true,
+      "note": null
+    },
+    {
+      "case": "R6_close_call_gap_should_not_fire",
+      "verdict": "UNVERIFIED",
+      "expected_flag": false,
+      "flagged": false,
+      "correct": true,
+      "note": null
+    },
+    {
+      "case": "R7_majority_outlier_shape_should_not_fire",
+      "verdict": "MOSTLY_TRUE",
+      "expected_flag": false,
+      "flagged": false,
+      "correct": true,
+      "note": null
+    },
+    {
+      "case": "R8_only_supporting_no_conflict",
+      "verdict": "FALSE",
+      "expected_flag": false,
+      "flagged": false,
+      "correct": true,
+      "note": null
+    },
+    {
+      "case": "R9_only_contradicting_no_conflict",
+      "verdict": "TRUE",
+      "expected_flag": false,
+      "flagged": false,
+      "correct": true,
+      "note": null
+    },
+    {
+      "case": "R10_multi_evidence_takes_max_each_side",
+      "verdict": "UNVERIFIED",
+      "expected_flag": true,
+      "flagged": true,
+      "correct": true,
+      "note": "Cited evidence includes a supporting source with reliability 0.90 vs. the highest contradicting source's 0.20 (gap 0.70), but the verdict is UNVERIFIED -- possible reliability-direction mismatch."
+    }
+  ],
+  "part2_replay": {
+    "reliability_weighted_conflict": [
+      {
+        "verdict": "MOSTLY_FALSE",
+        "flagged": true
+      },
+      {
+        "verdict": "UNVERIFIED",
+        "flagged": true
+      },
+      {
+        "verdict": "OUTDATED",
+        "flagged": true
+      },
+      {
+        "verdict": "UNVERIFIED",
+        "flagged": true
+      },
+      {
+        "verdict": "UNVERIFIED",
+        "flagged": true
+      },
+      {
+        "verdict": "MOSTLY_FALSE",
+        "flagged": true
+      },
+      {
+        "verdict": "MOSTLY_FALSE",
+        "flagged": true
+      },
+      {
+        "verdict": "MOSTLY_FALSE",
+        "flagged": true
+      },
+      {
+        "verdict": "UNVERIFIED",
+        "flagged": true
+      },
+      {
+        "verdict": "UNVERIFIED",
+        "flagged": true
+      },
+      {
+        "verdict": "UNVERIFIED",
+        "flagged": true
+      },
+      {
+        "verdict": "UNVERIFIED",
+        "flagged": true
+      },
+      {
+        "verdict": "MOSTLY_FALSE",
+        "flagged": true
+      },
+      {
+        "verdict": "UNVERIFIED",
+        "flagged": true
+      }
+    ],
+    "majority_with_credible_outlier": [
+      {
+        "verdict": "MOSTLY_TRUE",
+        "flagged": false
+      },
+      {
+        "verdict": "MOSTLY_TRUE",
+        "flagged": false
+      },
+      {
+        "verdict": "MOSTLY_TRUE",
+        "flagged": false
+      },
+      {
+        "verdict": "UNVERIFIED",
+        "flagged": false
+      },
+      {
+        "verdict": "UNVERIFIED",
+        "flagged": false
+      }
+    ]
+  },
+  "part3_existing_benchmark": {
+    "total_cases": 34,
+    "evaluable_cases": 0,
+    "flagged_cases": 0,
+    "flagged_case_ids": []
+  }
+}

@@ -157,6 +157,17 @@ class ValidationStatus(str, enum.Enum):
     # text -- the "wrong entity, wrong incident" pattern (e.g. Delhi
     # Police claim cited against a Burdwan, West Bengal police incident).
     downgraded_entity_mismatch = "downgraded_entity_mismatch"
+    # research/RESEARCH_ROADMAP_V2.md Phase 11 follow-up (EXP-029/EXP-030,
+    # app/pipeline/validation.py's Check 8): among cited evidence, one
+    # stance (supports/contradicts) has a source with meaningfully higher
+    # reliability_score than the other, but the verdict label sides with
+    # the LOWER-reliability stance -- e.g. a 0.95-reliability primary
+    # -government source is cited as supporting, a 0.20-reliability
+    # uncited source is cited as contradicting, yet the verdict is
+    # FALSE/UNVERIFIED/OUTDATED rather than TRUE/MOSTLY_TRUE. Found live:
+    # EXP-029 measured this exact pattern in 14/14 real trials of one
+    # constructed scenario; a prompt-level fix did not resolve it.
+    downgraded_reliability_mismatch = "downgraded_reliability_mismatch"
 
 
 class FactCheckStatus(str, enum.Enum):

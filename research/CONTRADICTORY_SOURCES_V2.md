@@ -132,6 +132,46 @@ uncharacterized-at-scale, safety net already in place before this pass.
   → `verdict.v3`. Kept despite not resolving the target failure, per
   the reasoning above.
 
+## Follow-up (EXP-030): the named deterministic check, built and integrated
+
+The "likely real fix" named above — a deterministic validator check
+comparing cited-evidence reliability against verdict direction — was
+built as a candidate
+(`backend/research/verdict_reliability_v2/reliability_direction_check.py`)
+and evaluated before any integration decision, per this project's own
+Rule 4 discipline and the same pattern Checks 6/7 were held to:
+
+- **10 hand-designed synthetic cases** (ground-truth precision/recall,
+  including edge cases: no conflict, a close reliability gap that
+  should NOT fire, missing reliability data, multiple evidence items
+  per side): **10/10 correct**.
+- **A replay of this document's own 19 real observed verdict labels**
+  (14 `reliability_weighted_conflict` trials across both prompt
+  versions, 5 `majority_with_credible_outlier` trials): **14/14 real
+  wrong trials would have been caught** (this required adding
+  `OUTDATED` to the checked negative-label set — the one real trial
+  that paired a wrong label with maximum confidence used it, and it
+  wasn't originally covered), and **0/5 false positives** on the
+  genuinely closer-call sanity-check trials (0.10 reliability gap,
+  below the 0.4 threshold).
+- **The existing 34-case adversarial benchmark** (`build_and_run_v2.py`):
+  **0 interactions** — none of those cases wire real
+  `Evidence.stance` + `Source.reliability_score` together for cited
+  evidence, confirming zero regression risk before integration, not
+  just assuming it.
+
+Integrated as **Check 8** (`app/pipeline/validation.py`,
+`ValidationStatus.downgraded_reliability_mismatch`, migration
+`403a421884b7`), with 8 new regression tests in `tests/test_validation.py`
+covering the true-positive shape, its mirror image, the `OUTDATED`
+edge case, a correctly-resolved control, the close-gap non-fire case,
+the single-stance non-fire case, and the plain-`object()`
+backward-compatibility guarantee. Re-ran the full 34-case benchmark
+through the real, now-updated `validate_verdict()` after integration:
+precision/recall unchanged (87.5%/60.9%, identical to pre-integration),
+confirming the zero-regression prediction empirically, not just in
+theory. This directly closes `research/FAILURE_TAXONOMY.md` #24.
+
 ## Raw data
 
 `research/results/contradictory_sources_stress_20260818.json` (3-case
