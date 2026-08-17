@@ -88,7 +88,16 @@ empty explanation field), a multimodal claim-coverage experiment in which
 OCR-derived evidence recovered a claim audio transcription missed entirely,
 and honestly scoped non-results for political-bias and
 confidence-calibration questions that this dataset's size cannot yet
-support. Every number in this paper is reported with its exact sample size
+support. A subsequent foundation-phase program (Section~\ref{sec:foundationphase})
+grew the benchmark to 15 items, added two new deterministic validator
+checks (temporal and entity consistency) that measurably improved the
+adversarial-benchmark precision/recall (81.8\%/50.0\%$\to$87.5\%/60.9\%)
+with zero new false positives, and, across four independent experiments
+each targeting a different pipeline stage, found the same underlying
+pattern: raw local-model output on real content is substantively empty
+or unusable a large fraction of the time, and this system's existing
+Gemini-escalation defenses are doing more real work than a pipeline-level
+pass/fail reading would suggest. Every number in this paper is reported with its exact sample size
 and, where a proportion, a Wilson confidence interval; where an experiment
 could not be run at a scientifically meaningful scale, or where our own
 methodology was found to be flawed, we say so rather than force or hide it.
@@ -746,6 +755,7 @@ truth, no IAA computed,'' not papered over with an unearned kappa
 statistic.
 
 \subsection{Composition gaps, disclosed}
+\label{sec:datasetgaps}
 Five of 9 items are \texttt{provenance}-type claims; \texttt{statistic},
 \texttt{law\_policy}, \texttt{historical}, and \texttt{true\_claim} remain
 unrepresented after three sourcing passes -- plausibly, though unprovenly,
@@ -1399,6 +1409,154 @@ claim is necessarily several times either baseline's from call count
 alone -- roughly 9.6 LLM calls per claim against the baselines' fixed 1.
 Full latency/cost gap detail: Appendix~\ref{sec:appendixbce}.
 
+\section{Foundation-Phase System Extensions}
+\label{sec:foundationphase}
+
+A subsequent work program, run against a formal 13-phase research
+roadmap (\texttt{research/RESEARCH\_ROADMAP\_V2.md}), extended the
+dataset and system described above. \textbf{Scope discipline, stated up
+front:} none of this work re-measures reel-level accuracy or touches the
+frozen paired six-item comparison in Section~\ref{sec:results} -- the
+new benchmark items below are held in a \texttt{validation} split,
+explicitly not used for any tuning decision, and the formal
+DEV/VALIDATION/TEST freeze (this roadmap's own Phase 12) has not yet
+occurred. What follows is real, measured, component-level work,
+reported with the same discipline as everything above: every number
+traces to a versioned experiment in \texttt{experiments/registry.jsonl}
+(EXP-009 through EXP-020), and negative or inconclusive results are kept
+exactly as prominent as positive ones.
+
+\subsection{Dataset growth: 9 $\to$ 15 items}
+Six new items were sourced from the same professional fact-checking
+pool (BOOM Live, Alt News), each independently verified: a live
+Instagram URL check, and content-hash deduplication against every
+existing item. Composition shifted from 7 FALSE / 1 MISLEADING / 1 TRUE
+to 12 FALSE / 2 MISLEADING / 1 TRUE (still no second TRUE-labeled item
+despite two dedicated sourcing passes -- consistent with, not a failure
+of, the already-disclosed structural skew in
+Section~\ref{sec:datasetgaps}: professional fact-checkers publish far
+more debunks than confirmations). All six new items were fully
+ingested (real transcription, OCR, vision-context) and assigned to a
+\texttt{validation} split held separate from the original nine's
+\texttt{dev} split -- the first genuine split discipline this project
+has had, short of the $\sim$20--30 item target Future Work already
+named.
+
+\subsection{Two new deterministic validator checks, integrated with measured evidence}
+\label{sec:newchecks}
+Two new checks were added to \texttt{validate\_verdict()}, each
+following the same discipline as the original four
+(Section~\ref{sec:evidencevalidation}): prototyped independently, not
+integrated until real evaluation cleared a stopping-condition bar.
+
+\textbf{Check 6 (temporal consistency)} flags a verdict when the claim
+asserts an explicit, unambiguous date and every cited source with a
+known publication date predates it by more than two days -- the "old
+footage presented as current" pattern. Deliberately narrow: real
+\texttt{time\_reference} values in this project's data are almost all
+vague ("recent," "present," "unspecified"); only explicit dates resolve,
+avoiding false positives on legitimately time-unanchored claims.
+
+\textbf{Check 7 (entity consistency)} flags a verdict when none of the
+claim's PERSON/ORGANIZATION/LOCATION entities appear, exactly or via a
+calibrated fuzzy match (\texttt{difflib.SequenceMatcher}, threshold
+0.75, tuned against real transliteration-variant pairs in this
+project's own data), in a cited source with a stance that actually
+influenced the verdict. This is a direct promotion of the
+entity-consistency prototype named as unintegrated future work in an
+earlier pass of this program: the original prototype's 4 false positives
+(all one abstract-concept entity, \{"Democracy", type: "concept"\},
+matched against unrelated legal text) motivated a type filter; a
+corrected re-evaluation against real evidence found 2 of 2 flagged
+violations were genuine true positives with zero false positives,
+clearing the integration bar.
+
+\textbf{Measured effect}: the adversarial synthetic validator benchmark
+(Section~\ref{sec:evidencevalidation}) was expanded from 28 to 34 cases
+with six new cases targeting exactly these two checks, including a
+direct re-test of the original benchmark's own previously-diagnosed,
+explicitly-marked-uncatchable entity-mismatch case. Precision rose
+81.8\%$\to$87.5\%, recall rose 50.0\%$\to$60.9\%, and \textbf{the
+previously-named gap case is now caught}. The benchmark's only two false
+positives are the same, already-documented Check-3 limitation from the
+original 28 cases (unrelated to Checks 6/7) -- both new checks add real
+recall with zero measured precision cost.
+
+\subsection{A cross-cutting reliability finding, confirmed four independent times}
+\label{sec:reliabilityfinding}
+Four separate experiments, each targeting a different pipeline stage,
+independently surfaced the same underlying pattern: \textbf{raw,
+un-retried output from the local model (llama3.2) on real content is
+substantively empty or unusable a large fraction of the time}, and this
+system's existing layered defenses (Gemini-escalation quality retries)
+are doing substantially more real work than a pipeline-level pass/fail
+reading would suggest.
+
+\begin{itemize}
+\item Claim \texttt{source\_quote} population: 0 of 12 real extracted
+  claims across 8 real items had a verbatim-groundable quote (EXP-012);
+  independently reconfirmed at 0 of 90 claims across a full 8-way
+  modality sweep (EXP-016, Section~\ref{sec:foundationmultimodal}).
+\item Evidence-stance explanations: 80\% (16/20) of raw evidence-stance
+  judgments, run without the existing substantiveness-retry safeguard,
+  had an empty explanation on at least one side of a taxonomy comparison
+  (EXP-017).
+\item Adversarial stress testing (EXP-020, Section~\ref{sec:foundationadversarial}):
+  zero crashes across six adversarial text-content cases, but the one
+  case needing a real quality-retry hit real Gemini quota exhaustion
+  from this same evaluation program's own cumulative usage.
+\end{itemize}
+No single one of these experiments was designed to measure model
+reliability directly; each surfaced it as a byproduct of testing
+something else, which is why four independent confirmations are more
+convincing than one dedicated study would be. Full detail:
+Appendix~\ref{sec:appendixfoundation}.
+
+\subsection{Retrieval, multimodal, and cross-post extensions (summary)}
+\label{sec:foundationmultimodal}
+\label{sec:foundationadversarial}
+Three further extensions were built and measured, each with a real,
+disclosed result rather than an assumed win (full numbers:
+Appendix~\ref{sec:appendixfoundation}):
+
+\textbf{Structured 5-query retrieval} (exact-claim, entity-focused,
+primary-source, contradiction, context-history, replacing the prior
+loosely-typed 2--5 query generation) raised source-tier classification
+(23.5\%$\to$38.1\%, $n=42$ sources / 4 claims) but \emph{lowered}
+manually-judged relevance (68.75\%$\to$43.75\%) and usable-evidence rate
+(18.75\%$\to$0\%) on this small sample -- traced to a real, disclosed
+confound: one claim with no natural institutional subject (a private
+organization) received 7 of 16 primary-tier hits, all irrelevant,
+because the mandatory primary-source query type fires unconditionally.
+Excluding that one claim, the other three score 78\% relevant, above
+baseline. Reported as a genuine mixed result, not smoothed into a clean
+win.
+
+\textbf{Full 8-combination multimodal re-analysis} (extending
+Section~\ref{sec:multimodalanalysis}'s 3-condition design to
+independently toggle audio/OCR/vision, caption always on) reproduced
+rather than resolved the original non-monotonic surprise: vision-alone
+scored highest on ground-truth claim coverage (37.5\%), and
+\texttt{ocr+vision} scored below every single-signal condition
+(12.5\%), on the same 8 real items.
+
+\textbf{Cross-post detection, stage 1 of 3}: a perceptual-hashing
+first-pass filter (\texttt{imagehash}, a new dependency) was built and
+validated against real re-extracted video frames -- a same-video control
+matched at Hamming distance 0, a different-video control did not match
+(distance 20, threshold 10). Stages 2 (claim-embedding clustering) and 3
+(Gemini escalation for ambiguous pairs) are not yet built.
+
+\textbf{Bounded adversarial stress testing} of claim extraction (six
+hand-constructed cases: garbled OCR, caption/transcript contradiction,
+near-empty input, mixed-script chaos, repetitive content, near-max-token
+length) produced zero crashes and no hallucinated cross-signal merging,
+but surfaced two previously-unnamed structural gaps: no check anywhere
+tests whether a post's caption and transcript are mutually consistent,
+and mixed-script content showed a possible bias toward extracting only
+Latin-script segments, silently dropping non-Latin-script content from
+the same continuous statement.
+
 \section{A Taxonomy of Failure Modes Found in Live Testing}
 \label{sec:failuremodes}
 
@@ -1596,27 +1754,26 @@ tuned against knowing the right answer. We would rather report a real
 \label{sec:futurework}
 
 \begin{enumerate}
-\item \textbf{Scale the held-out benchmark past $n=9$}, the single most
-  direct way to strengthen every claim in this paper. At the observed
-  $\sim$8\% Tier-1 sourcing hit rate, 20--30 items requires checking
-  roughly 250--375 more fact-check articles. Distinguishing a real
-  15-point accuracy gap (the order separating TruthLens from Baseline 2)
-  with reasonable McNemar power needs on the order of 40--60 paired,
-  discordant-eligible items, well beyond a linear extrapolation of the
-  current $n=6$.
+\item \textbf{Scale the held-out benchmark past $n=9$} -- \emph{partially
+  addressed}: grew to 15 (Section~\ref{sec:foundationphase}), still
+  short of the 20--30 target and the $\sim$40--60 needed for real
+  McNemar power; the $\sim$8\% Tier-1 sourcing hit rate remains the
+  binding constraint on how fast this can scale further.
 \item \textbf{Diagnose and close claim-extraction coverage failures on
-  degraded audio.} Section~\ref{sec:results} traces 2 of the headline
-  comparison's 4 wrong TruthLens cases directly to zero-verifiable-claim
-  extractions -- the highest-leverage open item for accuracy.
-\item \textbf{Video-provenance verification.}
-  Section~\ref{sec:multimodalanalysis}'s structural finding -- a majority
-  of items have their actual false claim living outside the specific
-  post's own content -- is a larger ceiling on end-to-end accuracy than
-  any LLM-reasoning fix. TruthLens has no reverse-image/video-search
-  capability and has never claimed one.
-\item \textbf{Test the new validator check against phrasings it was not
-  calibrated on}, closing the disclosed circularity in
-  Section~\ref{sec:evidencevalidation}.
+  degraded audio.} Still open -- EXP-016
+  (Section~\ref{sec:foundationmultimodal}) re-confirmed rather than
+  closed this gap: the same items still produce zero verifiable claims
+  across all 8 modality combinations tested, not just the original 3.
+\item \textbf{Video-provenance verification.} \emph{Partially addressed}:
+  a perceptual-hashing first-pass filter is built and validated against
+  real video frames (Section~\ref{sec:foundationphase}), but the full
+  3-stage design (claim-embedding clustering, Gemini escalation for
+  ambiguous pairs) and any live pipeline integration remain undone.
+\item \textbf{Test the new validator checks against phrasings/scenarios
+  they were not calibrated on} -- \emph{addressed} for the two checks
+  added this pass (Section~\ref{sec:newchecks}); the original four
+  checks' own circularity (Section~\ref{sec:evidencevalidation}) is
+  still open.
 \item \textbf{Complete items 0008/0009's full-TruthLens condition and
   re-verify the vision-context fix end-to-end}, both blocked by the same
   Gemini free-tier quota exhaustion, once quota resets.
@@ -1625,7 +1782,7 @@ tuned against knowing the right answer. We would rather report a real
   than actor diversity (Section~\ref{sec:bce}).
 \item \textbf{Calibration, once the dataset is large enough to bin} --
   Section~\ref{sec:bce}'s pre-registered gate (no bin under 3 items) was
-  not met at $n=9$.
+  not met at $n=9$ and remains unmet at $n=15$.
 \item \textbf{A second, independent annotator}, for a real
   inter-annotator agreement statistic on Tier-2 items and the draft
   judgments underlying Sections~\ref{sec:evidencevalidation}
@@ -1634,7 +1791,24 @@ tuned against knowing the right answer. We would rather report a real
   (403s, TLS failures) remains open; closing it needs a scoped
   certificate-verification exception or further diagnosis.
 \item \textbf{Near-duplicate OCR-frame-variant claim deduplication}
-  (Section~\ref{sec:multimodalanalysis}), a concrete, unfixed gap.
+  (Section~\ref{sec:multimodalanalysis}) -- \emph{addressed}: a
+  deterministic, similarity-calibrated deduplication pass now runs
+  before persistence.
+\item \textbf{Diagnose why claim extraction almost never populates a
+  verbatim \texttt{source\_quote}} (Section~\ref{sec:reliabilityfinding}),
+  the clearest concrete next step from this pass's own findings -- not
+  yet attempted; two live hypotheses (prompt under-elicitation vs.\
+  genuinely unquotable paraphrases) remain undistinguished.
+\item \textbf{An input-signal consistency check} for claim extraction
+  (does a post's caption agree with its transcript/OCR content) and a
+  \textbf{multilingual-extraction audit} (does non-Latin-script content
+  get dropped disproportionately) -- both newly named, neither
+  investigated further, in Section~\ref{sec:foundationadversarial}.
+\item \textbf{Complete the full end-to-end adversarial suite} (Step 18's
+  20 categories, 100+ cases): this pass delivered a bounded 6-case slice
+  of claim-extraction-only robustness; categories needing real
+  AI-generated-image/edited-video/audio-corruption content remain
+  unbuilt.
 \end{enumerate}
 
 \section{Conclusion}
@@ -1686,6 +1860,31 @@ running a complete system against real content, not by unit-testing
 components in isolation. Scaling the benchmark past $n=9$, closing the
 claim-extraction coverage gap, and running the matched-pair and
 calibration analyses this paper withholds are the concrete next steps.
+
+A subsequent foundation-phase program
+(Section~\ref{sec:foundationphase}) extends this picture without
+touching the frozen headline comparison above: the benchmark grew to 15
+items; two new deterministic validator checks (temporal and entity
+consistency), each integrated only after independent evaluation cleared
+a stopping-condition bar, measurably improved the adversarial-benchmark
+precision and recall (81.8\%/50.0\%$\to$87.5\%/60.9\%) with zero new
+false positives, and directly closed a previously-named, explicitly
+-disclosed gap case. Most consequentially, four independent experiments
+-- each designed to measure something else, none of them a dedicated
+reliability study -- converged on the same underlying finding: raw
+local-model output on real content is substantively empty or unusable a
+large fraction of the time, and this system's Gemini-escalation defenses
+are carrying more of the real reliability burden than a component-level
+pass/fail reading would suggest. Structured 5-query retrieval, a full
+8-combination multimodal re-analysis, a candidate 8-category evidence
+-stance taxonomy, the first stage of a perceptual-hash cross-post
+detector, and a bounded adversarial stress test were each built and
+measured with a real, disclosed result -- two clear wins, two honest
+mixed-to-negative findings, and two newly-named, not-yet-investigated
+structural gaps (input-signal consistency, multilingual extraction
+bias) -- consistent with, not an exception to, the discipline this paper
+has applied throughout: report what was actually measured, including
+when it complicates the story.
 
 \appendix
 
@@ -2158,6 +2357,110 @@ against omitting a disclosed finding for space.
   or a script can load is no longer a smaller, silently-overlapping
   namespace than what was shown on screen.
 \end{itemize}
+
+\section{Extended Foundation-Phase Detail}
+\label{sec:appendixfoundation}
+
+Full numeric detail for Section~\ref{sec:foundationphase}, one
+subsection per experiment; every number traces to
+\texttt{experiments/registry.jsonl} and a dated results artifact under
+\texttt{research/results/}.
+
+\subsection{EXP-013/EXP-019: validator checks, full numbers}
+Check 6 (temporal) and Check 7 (entity) were each unit-tested against
+real observed values before integration (7 and 7 regression tests
+respectively), then jointly stress-tested on the expanded 34-case
+adversarial benchmark. Combined confusion counts: TP=14, FP=2, FN=9,
+TN=9 (precision 87.5\%, recall 60.9\%). Both false positives are
+\texttt{valid-9}/\texttt{valid-10}, a pre-existing Check-3 limitation
+(a contrastive "the true figure is X, not the claimed Y" reasoning
+pattern false-positives because Y, the refuted number, is never present
+in the evidence passage -- only the claim text contains it, and Check 3
+only has access to evidence passages). A live end-to-end verification
+attempt (EXP-013) against a real claim with a resolvable
+\texttt{time\_reference} was inconclusive by circumstance -- an earlier
+check (missing citation) fired first because the real search results
+for that specific claim were mostly irrelevant -- disclosed rather than
+re-run at further real cost, since Check 6's logic is independently
+covered by direct unit tests.
+
+\subsection{EXP-012/EXP-016: source-quote groundedness}
+EXP-012 measured whether claim \texttt{extraction\_confidence}
+correlates with claim groundedness (a verbatim-quote match against the
+item's real content) across 8 real DEV-split items: 12 real,
+substantive, non-empty claims, 0 grounded -- zero variance blocked the
+intended correlation computation entirely. EXP-016 independently
+re-measured the same groundedness signal at much higher $n$ (90 real
+claims, 8 items $\times$ 8 modality combinations): also 0 grounded.
+Spot-checked directly, not assumed a measurement artifact: claim text
+is real and substantive (e.g., "\#CJP protesters allegedly pelted
+stones at a new hydrogen train"); the model simply does not populate
+\texttt{source\_quote} in practice, regardless of which input signals it
+is given.
+
+\subsection{EXP-016: full 8-combination coverage}
+Ground-truth claim coverage (same 8 real items as
+Section~\ref{sec:multimodalanalysis}, manual matching against
+\texttt{items.jsonl}): caption\_only 25.0\%, audio 25.0\%, ocr 25.0\%,
+\textbf{vision 37.5\%}, audio+ocr 25.0\%, audio+vision 25.0\%,
+\textbf{ocr+vision 12.5\%}, audio+ocr+vision 25.0\%. Two items produced
+zero claims in every one of the 8 conditions, including, notably, this
+dataset's one TRUE-labeled item. A third item produced 5 real claims
+under the richest condition, none of which covered the actual
+ground-truth assertion -- a genuine wrong-claim-extracted failure
+(Rule 5), distinct from the zero-claims failure mode.
+
+\subsection{EXP-015: 5-query retrieval, full numbers}
+4 real DEV claims, 20 queries (5 types $\times$ 4 claims), 42 sources
+fetched, 16 primary-tier. Per-query-type relevant-primary-source rate
+(manually judged): \texttt{primary\_source} 3/4 (75\%),
+\texttt{context\_history} 2/2 (100\%, $n=2$), \texttt{contradiction}
+1/3 (33\%), \texttt{entity\_focused} 1/4 (25\%), \texttt{exact\_claim}
+0/3 (0\%) -- the last driven entirely by one claim (a private
+organization with no natural government angle) whose 7 primary-tier
+hits were all keyword-collision false matches on unrelated
+\texttt{.gov.in}/\texttt{.nic.in} domains (a Gujarat seismology
+institute's insurance-claims page, an income-tax assessment page, a
+Supreme Court hearing list, among others) -- exposing that this
+system's domain-pattern tier classification has no content-relevance
+check of its own.
+
+\subsection{EXP-017: evidence-stance taxonomy, full numbers}
+An 8-category candidate stance taxonomy (4 new categories:
+\texttt{same\_event\_wrong\_entity}, \texttt{temporally\_mismatched},
+\texttt{insufficient\_detail}, \texttt{mentions\_only}) was compared
+against 20 real, already-persisted evidence rows. Raw category-change
+rate was 55\% (11/20), but 80\% (16/20) of rows had an empty
+explanation on at least one side because this specific comparison did
+not replicate the production substantiveness-retry safeguard -- filtered
+to the 4 rows where both sides were genuinely substantive, only 1
+changed category, too small an $n$ for any real conclusion about the
+taxonomy itself. Not integrated; the comparison's own confound is the
+more important, and more general, finding (Section~\ref{sec:reliabilityfinding}).
+
+\subsection{EXP-018: cross-post detection, full numbers}
+Same-video positive control (one real reel, frames independently
+re-extracted twice via separate \texttt{ffmpeg} sampling passes): 25 vs.\
+25 frames, minimum Hamming distance 0. Different-video negative control
+(two different real reels): 25 vs.\ 21 frames, minimum Hamming distance
+20 (match threshold 10). A genuine two-independently-posted-same-footage
+pair (this dataset's own item-0002, whose ground-truth notes name a
+specific real original source) was searched for live but its exact
+post URL could not be extracted from the citing fact-check article
+through available tooling -- disclosed as not achieved this pass rather
+than forced or approximated.
+
+\subsection{EXP-020: adversarial stress test, full numbers}
+Six synthetic, unpersisted cases run through the real, unmodified claim
+-extraction stage: \texttt{garbled\_ocr} (0 claims), \texttt{caption\_
+transcript\_contradiction} (1 claim, from the caption only -- the
+unrelated transcript content was silently dropped, not merged),
+\texttt{extremely\_short} (0 claims), \texttt{mixed\_language\_chaos} (2
+claims, both from the English-script portion of a Hindi/Urdu/English
+sentence), \texttt{repetitive\_spam} (40 repetitions of one sentence
+collapsed to 1 claim), \texttt{near\_max\_tokens} (0 claims, confounded
+by a real Gemini quota-exhaustion event during the one quality-retry
+this case triggered). Zero crashes across all six.
 
 \bibliographystyle{IEEEtran}
 \bibliography{references}

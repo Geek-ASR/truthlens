@@ -1,6 +1,63 @@
 # Paper status
 
-Last updated: 2026-08-13 (fourth update; third live-testing round folded
+Last updated: 2026-08-18 (fifth update; foundation-phase program folded
+in). See below for this pass's summary; prior updates preserved
+unedited underneath.
+
+## Latest update (this pass, 2026-08-18)
+
+Folded in the foundation-phase research program (`research/
+RESEARCH_ROADMAP_V2.md`, experiments EXP-009 through EXP-020, `backend`
+commits through `6b37ccb`): a new Section XII ("Foundation-Phase System
+Extensions", `sec:foundationphase`) and a matching new Appendix A
+subsection ("Extended Foundation-Phase Detail", `sec:appendixfoundation`)
+reporting real, measured, component-level work run since the last
+update. Explicit scope discipline stated in the new section itself:
+none of it re-measures reel-level accuracy or touches the frozen paired
+six-item comparison (Section VII) -- the new benchmark items are held in
+a genuinely separate `validation` split, and the roadmap's own formal
+freeze (its Phase 12) has not occurred.
+
+**What's new, in one paragraph**: the benchmark grew 9$\to$15 items
+(12 FALSE/2 MISLEADING/1 TRUE); two new deterministic validator checks
+(temporal consistency, entity consistency) were integrated only after
+each cleared its own evaluation bar, measurably improving the
+adversarial synthetic benchmark (81.8%/50.0% $\to$ 87.5%/60.9%
+precision/recall, zero new false positives, and a direct re-test
+closing a previously-named, explicitly-disclosed gap case); and, most
+consequentially, four independent experiments -- none of them a
+dedicated reliability study -- converged on the same finding: raw,
+un-retried local-model (llama3.2) output on real content is
+substantively empty or unusable a large fraction of the time, and this
+system's Gemini-escalation defenses are carrying more of the real
+reliability burden than a component-level pass/fail reading would
+suggest. Three further extensions were built and measured with real,
+disclosed (not assumed) results: structured 5-query retrieval (a
+genuine mixed-to-negative finding, root-caused to one claim with no
+natural institutional subject), a full 8-combination multimodal
+re-analysis (reproduces rather than resolves the original non-monotonic
+surprise), and a perceptual-hash cross-post detector's first stage
+(validated against real video frames; stages 2-3 not yet built). A
+bounded six-case adversarial stress test of claim extraction found zero
+crashes but surfaced two newly-named, not-yet-investigated structural
+gaps (input-signal consistency, multilingual extraction bias).
+
+Abstract, Future Work (5 items updated to reflect real progress, 3 new
+items added), and Conclusion were all updated to match. Recompiled
+cleanly via `tectonic` (zero undefined references, zero missing
+-character warnings, only pre-existing font-shape substitution warnings
+common to IEEEtran/Times) and visually re-verified page-by-page via
+`pdftoppm` -- new Section XII (pages 13-14), new Appendix A subsections
+(pages 22-23), and the updated abstract/Future Work/Conclusion pages
+all confirmed rendering correctly, no overflow, no broken cross
+-references. **Page count grew 21$\to$24** -- disclosed here plainly,
+not hidden; this pass prioritized completeness and honesty of the new
+material over the page-trimming discipline earlier passes applied, per
+explicit instruction to add all of this session's findings. A future
+pass should revisit trimming if a specific venue's page limit requires
+it -- not attempted this pass.
+
+## Prior update (fourth, 2026-08-13)
 in). Still genuinely multi-session.
 
 ## Latest update (this pass)

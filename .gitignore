@@ -16,6 +16,7 @@ out/
 dist/
 build/
 *.log
+*.blg
 .DS_Store
 .idea/
 .vscode/
