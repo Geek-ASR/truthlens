@@ -1,0 +1,61 @@
+[
+  {
+    "case": "garbled_ocr",
+    "outcome": "resolved",
+    "error": null,
+    "claims": []
+  },
+  {
+    "case": "caption_transcript_contradiction",
+    "outcome": "resolved",
+    "error": null,
+    "claims": [
+      {
+        "text": "Thousands of people marched in a massive protest in Delhi against a new policy.",
+        "claim_type": "factual",
+        "importance": 0.9
+      }
+    ]
+  },
+  {
+    "case": "extremely_short",
+    "outcome": "resolved",
+    "error": null,
+    "claims": []
+  },
+  {
+    "case": "mixed_language_chaos",
+    "outcome": "resolved",
+    "error": null,
+    "claims": [
+      {
+        "text": "the government has decided",
+        "claim_type": "factual",
+        "importance": 0.8
+      },
+      {
+        "text": "to make everyone happy forever.",
+        "claim_type": "opinion",
+        "importance": 0.0
+      }
+    ]
+  },
+  {
+    "case": "repetitive_spam",
+    "outcome": "resolved",
+    "error": null,
+    "claims": [
+      {
+        "text": "This is fake news.",
+        "claim_type": "opinion",
+        "importance": 0.0
+      }
+    ]
+  },
+  {
+    "case": "near_max_tokens",
+    "outcome": "resolved",
+    "error": null,
+    "claims": []
+  }
+]
