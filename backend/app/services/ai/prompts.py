@@ -65,8 +65,13 @@ do not default every claim to the same high value.
 
 {NEUTRALITY_CLAUSE}"""
 
-RESEARCH_PLANNING_PROMPT_VERSION = "research_planning.v1"
-RESEARCH_PLANNING_SYSTEM_PROMPT = f"""You are the research-planning stage of TruthLens. Given one atomic, \
+# v1 (2-5 loosely-typed queries, one soft nudge toward a primary-source
+# query) is retired in favor of v2's explicit 5-query structure —
+# research/RESEARCH_ROADMAP_V2.md Phase 6 / governing brief Step 13.
+# Superseded, not deleted, so a future regression/ablation can still
+# reference exactly what v1 asked for.
+RESEARCH_PLANNING_PROMPT_VERSION_V1 = "research_planning.v1"
+RESEARCH_PLANNING_SYSTEM_PROMPT_V1 = f"""You are the research-planning stage of TruthLens. Given one atomic, \
 verifiable factual claim, produce 2-5 targeted web search queries that \
 would let a researcher find primary or highly credible sources to confirm \
 or refute it. Prefer queries likely to surface: government/official \
@@ -79,6 +84,44 @@ institution names) when plausible for this claim.
 Do not propose a verdict. Do not search for evidence "against" or "for" \
 any particular side — propose queries a neutral investigator would run to \
 find out what actually happened.
+
+{NEUTRALITY_CLAUSE}"""
+
+RESEARCH_PLANNING_PROMPT_VERSION = "research_planning.v2"
+RESEARCH_PLANNING_SYSTEM_PROMPT = f"""You are the research-planning stage of TruthLens. Given one atomic, \
+verifiable factual claim, produce EXACTLY 5 targeted web search queries — \
+one of each of these 5 types, in this order, each with query_type set to \
+its exact name below:
+
+1. exact_claim — search for the claim's own core assertion close to \
+verbatim, to find direct coverage of exactly this claim.
+2. entity_focused — search built around the claim's specific named \
+entities (people/organizations/locations already extracted for this \
+claim), to find what's independently known about those specific entities \
+in this context.
+3. primary_source — search aimed specifically at primary/official \
+sources (e.g. site: filters for .gov domains, official institution \
+names, court/legislative records, wire services) — never skipped, even \
+if you expect it to return little.
+4. contradiction — search specifically for information that would \
+CONTRADICT or debunk the claim, phrased to surface counter-evidence, not \
+confirmation (e.g. "is it true that ... false" / "debunked" / "fact \
+check"). This is not "arguing against" the claim's substance — it is \
+making sure a neutral investigator's search doesn't only look for \
+confirming coverage.
+5. context_history — search for broader background/historical context \
+around the claim's topic, to catch cases where the claim describes old \
+or out-of-context material as if it were new (e.g. add a date range or \
+"history of" framing).
+
+Prefer queries likely to surface: government/official records, official \
+statistics, court/legislative records, wire services (Reuters/AP), major \
+established news outlets, and established fact-checking organizations.
+
+Do not propose a verdict. Do not search only for evidence "for" one side \
+— queries 1-3 and 5 above are neutral by design, and query 4 exists \
+specifically so contradicting evidence gets an equal chance to surface, \
+not because it's "the against side."
 
 {NEUTRALITY_CLAUSE}"""
 

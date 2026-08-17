@@ -1,0 +1,512 @@
+[
+  {
+    "claim_id": "8dad1c21-bb51-4cef-8d1f-9305938bb2bb",
+    "claim_text": "Delhi Police are attacking children using lathis/sticks embedded with nails.",
+    "queries": [
+      {
+        "id": "43c40893-21ae-4594-801f-6ad90d22081e",
+        "query_type": "exact_claim",
+        "query_text": "delhi police attack on children using lathis/sticks embedded with nails"
+      },
+      {
+        "id": "fd3549c6-4194-43ab-9cd9-fa9e705ea240",
+        "query_type": "entity_focused",
+        "query_text": "'Delhi Police' and child abuse India 2023"
+      },
+      {
+        "id": "364f2835-f524-407b-816e-f5324fe88150",
+        "query_type": "primary_source",
+        "query_text": "(site:.gov) Delhi police children lathis/sticks embedded with nails"
+      },
+      {
+        "id": "9b78c166-9f8f-4fca-abea-e6cd4c8e873c",
+        "query_type": "contradiction",
+        "query_text": "'Delhi Police' and child abuse India debunked 2023"
+      },
+      {
+        "id": "446a735c-6c6d-49fd-9466-15572439b9f8",
+        "query_type": "context_history",
+        "query_text": "(site:.gov) Delhi police history of violence against children"
+      }
+    ],
+    "sources": [
+      {
+        "url": "https://timesofindia.indiatimes.com/city/delhi/students-recount-beatings-with-nail-fitted-sticks/articleshow/132544741.cms",
+        "title": "Students recount beatings with \u2018nail-fitted sticks\u2019 | Delhi ...",
+        "source_type": "established_news",
+        "is_primary_tier": false,
+        "query_type": "exact_claim",
+        "relevant_passage": "Jul 24, 2026 \u00b7 Students protesting at Jantar Mantar recount police lathicharge injuries, alleging beatings with nail- or screw-fitted sticks and assaults on women and minors.",
+        "stance": "supports"
+      },
+      {
+        "url": "https://www.ibtimes.co.in/nail-fitted-lathi-videos-are-fake-says-delhi-police-250-videos-under-scanner-cjp-violence-case-904056",
+        "title": "'Nail-fitted lathi' videos are fake, says Delhi Police; 250 ...",
+        "source_type": "other",
+        "is_primary_tier": false,
+        "query_type": "exact_claim",
+        "relevant_passage": "Jul 21, 2026 \u00b7 Amid allegations that Delhi Police used lathis fitted with nails during the Cockroach Janta Party's (CJP) 'Sansad Chalo' protest, the force has dismissed the claims as \"false and misleading\" while intensifying its investigation into the violence that erupted in central Delhi on Monday. Videos shared ...",
+        "stance": "irrelevant"
+      },
+      {
+        "url": "https://indianexpress.com/article/cities/delhi/delhi-police-respond-alleged-brutalities-parliament-march-protesters-cjp-jantar-mantar-10798342/",
+        "title": "\u2018Lathis with nails\u2019: High Court seeks police response on ...",
+        "source_type": "established_news",
+        "is_primary_tier": false,
+        "query_type": "exact_claim",
+        "relevant_passage": "Jul 23, 2026 \u00b7 In the Delhi High Court, two PILs, one by advocate Umesh Kumar and another by Delhi resident Anshul Kumar, sought directions for an independent inquiry into alleged police excesses against protesters, preferably a judicial inquiry.",
+        "stance": "irrelevant"
+      },
+      {
+        "url": "https://timesofindia.indiatimes.com/city/delhi/sexual-crimes-against-children-on-rise-many-targeted-online/articleshow/108907559.cms",
+        "title": "Sexual Crimes Against Children: Sexual Crimes Against Children On Rise, Many Targeted Online | Delhi News - Times of India",
+        "source_type": "established_news",
+        "is_primary_tier": false,
+        "query_type": "entity_focused",
+        "relevant_passage": "March 31, 2024 - Delhi Police solved 1,742 cases (97%) in 2023 compared to 1,440 cases (95%) in 2022. While 2,378 people were arrested last year, 1,434 arrests were made in 2022. According to police, in most cases, the accused were known to the survivors and ...",
+        "stance": "irrelevant"
+      },
+      {
+        "url": "https://dcpcr.delhi.gov.in/",
+        "title": "Home | Delhi Commission for Protection of Child Rights (DCPCR)",
+        "source_type": "primary_government",
+        "is_primary_tier": true,
+        "query_type": "entity_focused",
+        "relevant_passage": "Draft guidelines formulated by DCPCR for the Prevention of Child abuse inviting comments and inputs from Public. ... Registration Link for the Event(6th May 2023) - POCSO@10 \u201cRehabilitation of POCSO Victims: Strategies , Challenges and Way Forward\u201d",
+        "stance": "irrelevant"
+      },
+      {
+        "url": "https://www.indiatoday.in/india/story/child-rights-body-issues-notice-delhi-officer-minor-rape-case-2424531-2023-08-21",
+        "title": "Minor raped by officer: Child rights panel's notice to Delhi government - India Today",
+        "source_type": "factcheck_org",
+        "is_primary_tier": false,
+        "query_type": "entity_focused",
+        "relevant_passage": "August 21, 2023 - The accused, Premoday Khakha, had allegedly sexually assaulted the girl several times between November 2020 and January 2021. (Photo: India Today) ... The National Commission for Protection of Child Rights (NCPCR) on Monday issued a notice to the Delhi Chief Secretary in connection with the rape of a minor by a Delhi officer.",
+        "stance": "irrelevant"
+      },
+      {
+        "url": "https://en.wikipedia.org/wiki/Lathi_(stick)",
+        "title": "Lathi (stick) - Wikipedia",
+        "source_type": "other",
+        "is_primary_tier": false,
+        "query_type": "primary_source",
+        "relevant_passage": "Indian police officer with a lathi stick. The lathi is a bamboo stick used by the police in India, Pakistan, Bangladesh, Nepal and Sri Lanka. It has been used in mainland Indian subcontinent since the Mughal Empire.[1]. [dead link].",
+        "stance": "irrelevant"
+      },
+      {
+        "url": "https://delhipolice.gov.in/",
+        "title": "DELHI POLICE Shanti Sewa Nyay",
+        "source_type": "primary_government",
+        "is_primary_tier": true,
+        "query_type": "primary_source",
+        "relevant_passage": "Hon'ble Lieutenant Governor of Delhi, Sardar Taranjit Singh Sandhu, graced the occasion as the Chief Guest and took the salute in the presence of Shri Satish Golchha, IPS, Commissioner of Police, Delhi. Delhi Police Celebrates the 12th International Day of Yoga.",
+        "stance": "irrelevant"
+      },
+      {
+        "url": "https://ssc.gov.in/",
+        "title": "This is Official Website of Staff Selection Commission.",
+        "source_type": "primary_government",
+        "is_primary_tier": true,
+        "query_type": "primary_source",
+        "relevant_passage": "SSC. Government of India. Staff Selection Commission.Sub Inspector in Delhi Police and CAPFs Examination, 2024:- Uploading Final Marks of candidates.",
+        "stance": "irrelevant"
+      },
+      {
+        "url": "https://nhrc.nic.in/media/press-release/nhrc-notices-to-the-delhi-chief-secretary-police-commissioner-over-the-reported-sexual-abuse-two-juveniles-by-fellow-inmates-in-a-child-protection-home-at-mukherjee-nagar-20-11-2023",
+        "title": "NHRC notices to the Delhi Chief Secretary and Police ...",
+        "source_type": "primary_government",
+        "is_primary_tier": true,
+        "query_type": "contradiction",
+        "relevant_passage": "Nov 20, 2023 \u00b7 The National Human Rights Commission, NHRC, India has taken suo motu cognizance of a media report that two juveniles lodged in the Child Protection Home in Mukherjee Nagar area of Delhi were subjected to sexual abuse by fellow inmates.",
+        "stance": "irrelevant"
+      },
+      {
+        "url": "https://timesofindia.indiatimes.com/city/delhi/delhi-tops-in-crime-against-women-seniors-and-children-ncrb-releases-data-for-2023/articleshow/124230748.cms",
+        "title": "Delhi tops in crime against women, seniors and children: NCRB ...",
+        "source_type": "established_news",
+        "is_primary_tier": false,
+        "query_type": "contradiction",
+        "relevant_passage": "Sep 30, 2025 \u00b7 Among the top 19 metropolitan cities, Delhi ranked highest in crimes against women, with 13,366 cases reported in 2023, followed by Mumbai (6,025 cases) and Bengaluru (4,870).",
+        "stance": "irrelevant"
+      },
+      {
+        "url": "https://www.livemint.com/news/india/delhi-5-year-old-child-suffers-sexual-abuse-police-not-allowed-to-take-any-action-against-the-accused-here-s-why-11739024718678.html",
+        "title": "Delhi: 5-year-old child suffers sexual abuse; police not ...Home | Delhi Commission for Protection of Child Rights (DCPCR)Minor raped by officer: Child rights panel's notice to Delhi ...Won\u2019t tolerate child abuse: Delhi government to HC",
+        "source_type": "established_news",
+        "is_primary_tier": false,
+        "query_type": "contradiction",
+        "relevant_passage": "Feb 8, 2025 \u00b7 Despite an FIR being filed, no police action has been taken against him due to his diplomatic immunity, ThePrint has reported citing top sources in the Delhi Police. The incident happened in... Jun 19, 2025 \u00b7 The Delhi Commission for Protection of Child Rights (DCPCR) has been constituted under the Commission for Protection of Child Rights (CPCR) Act, 2005. It is the statutory watchd",
+        "stance": "irrelevant"
+      }
+    ]
+  },
+  {
+    "claim_id": "056f8350-5988-497b-bd31-285728f67821",
+    "claim_text": "Babajani Durrani held a courtesy meeting with Abhijit Dipke at Dipke's residence in Chhatrapati Sambhajinagar.",
+    "queries": [
+      {
+        "id": "c03836e5-1ac5-4a34-a8b9-2d12c1f1361c",
+        "query_type": "exact_claim",
+        "query_text": "Babajani Durrani Abhijit Dipke meeting August 4, 2026"
+      },
+      {
+        "id": "7434c78f-1a45-4fa6-b133-3671088b6afe",
+        "query_type": "entity_focused",
+        "query_text": "'Babajani Durrani' 'Abhijit Dipke' Chhatrapati Sambhajinagar 2026"
+      },
+      {
+        "id": "1e437487-0beb-42c6-a9c7-264ab1ace033",
+        "query_type": "primary_source",
+        "query_text": "'Chhatrapati Sambhajinagar' government records August 4, 2026"
+      },
+      {
+        "id": "ab4e55f2-0989-4c83-9536-2308240f7907",
+        "query_type": "contradiction",
+        "query_text": "(\"Babajani Durrani\" + \"Abhijit Dipke\") NOT (\"meeting\" OR \"event\").site:.gov -2026"
+      },
+      {
+        "id": "085ae590-569e-4a7a-b6ac-26923347ee0c",
+        "query_type": "context_history",
+        "query_text": "'Chhatrapati Sambhajinagar' history 2026 August events"
+      }
+    ],
+    "sources": [
+      {
+        "url": "https://www.vishvasnews.com/english/politics/fact-check-claim-of-abhijeet-dipke-meeting-jharkhand-congress-chief-amid-student-protests-in-ranchi-is-fake/",
+        "title": "Fact Check: Claim of Abhijeet Dipke Meeting Jharkhand Congress...",
+        "source_type": "other",
+        "is_primary_tier": false,
+        "query_type": "exact_claim",
+        "relevant_passage": "He confirmed, \u201dThere has been no meeting between him and Abhijeet Dipke.\u201d We then searched for the man standing with Abhijeet Dipke in the viral photo. A reverse image search found the photo on the official Instagram page of \u2018Babajani Durrani\u2019, which was shared on August 4, 2026.",
+        "stance": "irrelevant"
+      },
+      {
+        "url": "https://factly.in/video-of-abhijeet-dipke-with-maharashtra-congress-leader-falsely-shared-as-meeting-with-jharkhand-congress-president/",
+        "title": "Video of Abhijeet Dipke with Maharashtra Congress leader... - FACTLY",
+        "source_type": "other",
+        "is_primary_tier": false,
+        "query_type": "exact_claim",
+        "relevant_passage": "Fact: The person seen alongside Abhijeet Dipke in the viral video is not Jharkhand Congress president Keshav Mahto Kamlesh. The individual is Babajani Durrani, also known as Abdullah Khan Durrani, a Congress leader from Maharashtra. Hence, the claim made in the post is MISLEADING.",
+        "stance": "irrelevant"
+      },
+      {
+        "url": "https://www.youtube.com/watch?v=LJ7TRLyxxxM",
+        "title": "Morning News LIVE | 10August 2026 | Sharad Pawar MP's Meet Modi",
+        "source_type": "other",
+        "is_primary_tier": false,
+        "query_type": "exact_claim",
+        "relevant_passage": "\u00a9 2026 Google LLC.",
+        "stance": "irrelevant"
+      },
+      {
+        "url": "https://timesofindia.indiatimes.com/education/news/who-is-abhijit-dipke-the-boston-university-graduate-behind-the-youth-led-cockroach-janta-party-protests/articleshow/132553278.cms",
+        "title": "Abhijeet Dipke education background: The Boston... - The Times of India",
+        "source_type": "established_news",
+        "is_primary_tier": false,
+        "query_type": "entity_focused",
+        "relevant_passage": "Abhijeet Dipke was born in Aurangabad, Maharashtra, now renamed Chhatrapati Sambhajinagar.After completing his degree, he launched the Cockroach Janta Party on May 16, 2026, days after Chief Justice of India Surya Kant compared unemployed youth to cockroaches during a hearing.",
+        "stance": "irrelevant"
+      },
+      {
+        "url": "https://www.indiatoday.in/india/story/abhijeet-dipke-chhatrapati-sambhajinagar-cjp-chief-seeks-psi-removal-over-visitor-curbs-ptag-2966125-2026-08-07",
+        "title": "Abhijeet Dipke, Chhatrapati Sambhajinagar: Cockroach... - India Today",
+        "source_type": "factcheck_org",
+        "is_primary_tier": false,
+        "query_type": "entity_focused",
+        "relevant_passage": "Chhatrapati Sambhajinagar,UPDATED: Aug 7, 2026 23:48 IST.Dipke alleged that the PSI had been preventing people from meeting him and was behaving discourteously with visitors. The incident took place at Dipke\u2019s house in the Waluj MIDC area of the city.",
+        "stance": "irrelevant"
+      },
+      {
+        "url": "https://chhatrapatisambhajinagar.maharashtra.gov.in/en/",
+        "title": "District Chhatrapati Sambhajinagar | Government of Maharashtra",
+        "source_type": "primary_government",
+        "is_primary_tier": true,
+        "query_type": "primary_source",
+        "relevant_passage": "District Strategic Plan \u2013 Chhatrapati Sambhajinagar. Zilla Parishad and Panchayat Samiti General Elections, 2026. Live telecast of official flag hoisting ceremony on Marathwada Mukti Sangram Din.",
+        "stance": "irrelevant"
+      },
+      {
+        "url": "https://www.narendramodi.in/pa/prime-minister-narendra-modi-attends-public-meeting-in-chhatrapati-sambhajinagar-panvel-and-mumbai-maharashtra-588042",
+        "title": "PM Modi delivers impactful addresses in Chhatrapati Sambhajinagar...",
+        "source_type": "other",
+        "is_primary_tier": false,
+        "query_type": "primary_source",
+        "relevant_passage": "In powerful speeches at public meetings in Chhatrapati Sambhajinagar, Panvel & Mumbai, Prime Minister Narendra Modi highlighted the crucial choice facing Maharashtra in the upcoming elections - between patriotism and divisive forces.",
+        "stance": "irrelevant"
+      },
+      {
+        "url": "https://www.youtube.com/watch?v=ocDpGcaQpLA",
+        "title": "Chhatrapati Sambhajinagar News | \u0935\u094d\u0939\u0947\u0902\u091f\u093f\u0932\u0947\u091f\u0930\u0935\u0930\u0940\u0932 \u0906\u0908\u0932\u093e... - YouTube",
+        "source_type": "other",
+        "is_primary_tier": false,
+        "query_type": "primary_source",
+        "relevant_passage": "A heartbreaking incident from Chhatrapati Sambhajinagar has sparked emotional reactions. An 80-year-old woman undergoing treatment after surgery was allegedly abandoned by her sons, who refused to visit her in the hospital.",
+        "stance": "irrelevant"
+      },
+      {
+        "url": "https://chhatrapatisambhajinagar.maharashtra.gov.in/en/events/",
+        "title": "Events | District Chhatrapati Sambhajinagar | India",
+        "source_type": "primary_government",
+        "is_primary_tier": true,
+        "query_type": "context_history",
+        "relevant_passage": "\u091c\u093f\u0932\u094d\u0939\u093e \u091b\u0924\u094d\u0930\u092a\u0924\u0940 \u0938\u0902\u092d\u093e\u091c\u0940\u0928\u0917\u0930 District Chhatrapati Sambhajinagar",
+        "stance": "irrelevant"
+      },
+      {
+        "url": "https://chhatrapatisambhajinagar.maharashtra.gov.in/en/upcoming-events/",
+        "title": "Upcoming Events | District Chhatrapati Sambhajinagar | India",
+        "source_type": "primary_government",
+        "is_primary_tier": true,
+        "query_type": "context_history",
+        "relevant_passage": "\u091c\u093f\u0932\u094d\u0939\u093e \u091b\u0924\u094d\u0930\u092a\u0924\u0940 \u0938\u0902\u092d\u093e\u091c\u0940\u0928\u0917\u0930 District Chhatrapati Sambhajinagar",
+        "stance": "irrelevant"
+      }
+    ]
+  },
+  {
+    "claim_id": "e414a765-95ee-4c5a-b3a8-0a09405f867b",
+    "claim_text": "The Education Minister of Bihar is part of the BJP-NDA government.",
+    "queries": [
+      {
+        "id": "09edebbf-52a3-40e2-b11d-6df8a7a328db",
+        "query_type": "exact_claim",
+        "query_text": "Education Minister of Bihar"
+      },
+      {
+        "id": "6b1f9599-67a8-49d5-b157-3a28320956ab",
+        "query_type": "entity_focused",
+        "query_text": "'BJP' 'NDA' Bihar Education Minister"
+      },
+      {
+        "id": "6868a8da-e400-42f3-999f-dbe2b897ec3a",
+        "query_type": "primary_source",
+        "query_text": "'Education Minister of Bihar' government 2023"
+      },
+      {
+        "id": "7d9952c0-8dbf-4e97-aa6e-7fa54bf54a5c",
+        "query_type": "contradiction",
+        "query_text": "'BJP' 'NDA' Bihar Education Minister false"
+      },
+      {
+        "id": "caba4308-2ae4-42e2-b77d-ffd06adf8e43",
+        "query_type": "context_history",
+        "query_text": "'Education policy' Bihar India 2023 history"
+      }
+    ],
+    "sources": [
+      {
+        "url": "https://en.wikipedia.org/wiki/Education_ministers_of_bihar",
+        "title": "Education ministers of bihar",
+        "source_type": "other",
+        "is_primary_tier": false,
+        "query_type": "exact_claim",
+        "relevant_passage": "This is a list of education ministers of Bihar, India.",
+        "stance": "irrelevant"
+      },
+      {
+        "url": "https://en.wikipedia.org/wiki/Ninth_Nitish_Kumar_ministry",
+        "title": "Ninth Nitish Kumar ministry - Wikipedia",
+        "source_type": "other",
+        "is_primary_tier": false,
+        "query_type": "exact_claim",
+        "relevant_passage": "The Ninth Nitish Kumar ministry was the Council of Ministers in Bihar Legislative Assembly headed by Chief Minister Nitish Kumar. On 28 January 2024, he walked out of the INDIA (alliance) and announced his resignation.",
+        "stance": "irrelevant"
+      },
+      {
+        "url": "https://www.pw.live/ssc/exams/education-minister-of-india",
+        "title": "pw.live/ssc/exams/education-minister-of-india",
+        "source_type": "other",
+        "is_primary_tier": false,
+        "query_type": "exact_claim",
+        "relevant_passage": "Education Minister of India, List of Educational Ministers\u2026",
+        "stance": "irrelevant"
+      },
+      {
+        "url": "https://timesofindia.indiatimes.com/elections/assembly-elections/bihar/results",
+        "title": "Bihar Election Results 2025: Results of Bihar Assembly Elections 2025",
+        "source_type": "established_news",
+        "is_primary_tier": false,
+        "query_type": "entity_focused",
+        "relevant_passage": "Bihar Election Results. The 2025 Bihar Assembly elections delivered a decisive mandate to the National Democratic Alliance (NDA), led by Nitish Kumar. In a 243-member assembly, the NDA crossed the 200-seat mark, securing roughly 202 seats and delivering a sweeping victory.",
+        "stance": "irrelevant"
+      },
+      {
+        "url": "https://myind.net/Home/viewArticle/bjp-wants-bihar-education-minister-immediately-sacked-for-his-remarks-on-ramcharitmanas",
+        "title": "BJP wants Bihar Education Minister immediately sacked for his...",
+        "source_type": "other",
+        "is_primary_tier": false,
+        "query_type": "entity_focused",
+        "relevant_passage": "\"The way Bihar`s Education Minister has described Ramcharitmanas book as a book that spreads hatred, the whole country is hurt by it, it is an insult to all Sanatanis, and I demand legal action for this statement.",
+        "stance": "contradicts"
+      },
+      {
+        "url": "https://www.business-standard.com/elections",
+        "title": "Election Results 2026, Lok Sabha Election News... | Business Standard",
+        "source_type": "other",
+        "is_primary_tier": false,
+        "query_type": "entity_focused",
+        "relevant_passage": "From Mamata's minister to chief minister: Suvendu's journey to CM's office.BJP set to reach century mark in Rajya Sabha with latest nominations | Ujjwal Nikam. Why is AAP fighting alone in Delhi? Watch: Delhi election dates announced by CEC Rajiv Kumar.",
+        "stance": "irrelevant"
+      },
+      {
+        "url": "https://en.wikipedia.org/wiki/List_of_ministers_of_education_of_Bihar",
+        "title": "List of ministers of education of Bihar - Wikipedia",
+        "source_type": "other",
+        "is_primary_tier": false,
+        "query_type": "primary_source",
+        "relevant_passage": "List of ministers of education of Bihar This is a list of education ministers of Bihar, India.",
+        "stance": "irrelevant"
+      },
+      {
+        "url": "https://en.wikipedia.org/wiki/Chandrashekhar_Yadav",
+        "title": "Chandrashekhar Yadav - Wikipedia",
+        "source_type": "other",
+        "is_primary_tier": false,
+        "query_type": "primary_source",
+        "relevant_passage": "Chandrashekhar Yadav (born 1962) is an Indian politician from Bihar. [1] He is 4th term MLA from Madhepura Assembly constituency and also served as a Minister of Education in the Government of Bihar.",
+        "stance": "irrelevant"
+      },
+      {
+        "url": "https://state.bihar.gov.in/educationbihar/",
+        "title": "Education Department - Government of Bihar",
+        "source_type": "primary_government",
+        "is_primary_tier": true,
+        "query_type": "primary_source",
+        "relevant_passage": "19 hours ago \u00b7 With five directorates and several apex bodies, the department has been working to create facilitative environment in which youth, women and others would explore their knowledge and skills by pursuing primary, secondary, higher and mass education.",
+        "stance": "irrelevant"
+      },
+      {
+        "url": "https://en.wikipedia.org/wiki/National_Democratic_Alliance",
+        "title": "National Democratic Alliance - Wikipedia",
+        "source_type": "other",
+        "is_primary_tier": false,
+        "query_type": "contradiction",
+        "relevant_passage": "3 days ago - Its first chairman was then Prime Minister of India, Atal Bihari Vajpayee, who served from 1998 until 2004. L. K. Advani, the former Deputy Prime Minister, took over as chairman in 2004 and served until 2014. Amit Shah has been the chairman since 2014. The NDA controlled a majority in the Indian Parliament from 1998 to 2004. The alliance returned to power in the 2014 general elections",
+        "stance": "irrelevant"
+      },
+      {
+        "url": "https://en.wikipedia.org/wiki/List_of_National_Democratic_Alliance_members",
+        "title": "List of National Democratic Alliance members - Wikipedia",
+        "source_type": "other",
+        "is_primary_tier": false,
+        "query_type": "contradiction",
+        "relevant_passage": "3 weeks ago - In 2014, 2019 and 2024 the alliance ... prime ministerial candidate, won the elections with a great majority, and formed the government. \u2191 https://www.thehindu.com/news/national/bihar/pashupati-parass-rljp-quits-nda/article69450076.ece \u00b7 \u2191 \"How Hisar, Bhiwani-Mahendragarh Seats Scripted End of BJP-JJP Alliance ...",
+        "stance": "irrelevant"
+      },
+      {
+        "url": "https://en.wikipedia.org/wiki/Education_in_Bihar",
+        "title": "Education in Bihar - Wikipedia",
+        "source_type": "other",
+        "is_primary_tier": false,
+        "query_type": "context_history",
+        "relevant_passage": "July 4, 2026 - The Times of India. ISSN 0971-8257. Retrieved 26 November 2023. 1 2 3 4 Sabba, D (24 September 2014). Annual Site Environmental Report: 2013 (ASER) (Report). Office of Scientific and Technical Information (OSTI). doi:10.2172/1156661. OSTI 1156661. \u2191 Singh, Raghubar Prasad (2021). \"Women Literacy in Bihar: Issues, Challenges and Its Social Impact\". National Education Policy ...",
+        "stance": "irrelevant"
+      }
+    ]
+  },
+  {
+    "claim_id": "5d4df076-2d10-43da-9ad3-fe5c821dde98",
+    "claim_text": "Kunwar Vishnu Singh Rajput is an Organization Secretary of Karni Sena.",
+    "queries": [
+      {
+        "id": "7836b90b-7808-4e7e-a2dc-e29442c5bc31",
+        "query_type": "exact_claim",
+        "query_text": "exact_claim"
+      },
+      {
+        "id": "df74dc74-3df0-4f2f-88e3-b51f8840fa11",
+        "query_type": "entity_focused",
+        "query_text": "(\"Karni Sena\" OR \"Karni Sena organization\") AND (\"Organization Secretary\" OR \"Secretary\")"
+      },
+      {
+        "id": "6c7014a9-45f8-4882-9e21-55110609bfab",
+        "query_type": "primary_source",
+        "query_text": "(site:.gov OR site:legislative.gov) (\"Karni Sena\" OR \"Karni Sena organization\")"
+      },
+      {
+        "id": "19728af6-4a0a-4a96-8603-7a6068608883",
+        "query_type": "contradiction",
+        "query_text": "(\"Karni Sena\" OR \"Karni Sena organization\") AND (NOT \"Organization Secretary\" OR NOT \"Secretary\")"
+      },
+      {
+        "id": "597f196e-ab78-4d88-982f-0afaf37cbbdc",
+        "query_type": "context_history",
+        "query_text": "(\"Karni Sena\" OR \"Karni Sena organization\") AND (history:2024-01) OR (site:reuters.com OR site:apnews.com)"
+      }
+    ],
+    "sources": [
+      {
+        "url": "https://www.isr.gujarat.gov.in/isr.gujarat.gov.in/html/insurance-claims",
+        "title": "Insurance Claims | Official Website of Institute of Seismological Research, Government Of Gujarat, India",
+        "source_type": "primary_government",
+        "is_primary_tier": true,
+        "query_type": "exact_claim",
+        "relevant_passage": "For obtaining such a certificate, ... the Insurance Company as per their official procedure and also intimating the details of claimant, Policy No., Claim No., exact date & approximate time and place of damage due to the earthquake etc....",
+        "stance": "irrelevant"
+      },
+      {
+        "url": "https://irdai.gov.in/documents/37343/931203/GODHLGP21147V012021_2020-2021.pdf/6583e10d-75f2-99ff-55a2-344d10d76948?version=1.1&t=1668579696763&download=true",
+        "title": "https://irdai.gov.in/documents/37343/931203/GODHLG...",
+        "source_type": "primary_government",
+        "is_primary_tier": true,
+        "query_type": "exact_claim",
+        "relevant_passage": "Digit Simplification: Some covers have a defined period in which you cannot make claims.",
+        "stance": "irrelevant"
+      },
+      {
+        "url": "https://www.incometaxindia.gov.in/w/assessment",
+        "title": "Assessment - Income Tax",
+        "source_type": "primary_government",
+        "is_primary_tier": true,
+        "query_type": "exact_claim",
+        "relevant_passage": "May 27, 2026 - The term \u2018assessment\u2019 refers to the examination of a return of income to determine the exact income and tax liability of an assessee. The process, which was earlier manual, is now largely electronic.",
+        "stance": "irrelevant"
+      },
+      {
+        "url": "https://karnataka.nic.in/en/directory/",
+        "title": "Directory | NIC Karnataka, MeiTY | India",
+        "source_type": "primary_government",
+        "is_primary_tier": true,
+        "query_type": "entity_focused",
+        "relevant_passage": "Feb 16, 2026 \u00b7 Details of government officials and services appear here such as entity name, contact person name, designation, and contact details.",
+        "stance": "irrelevant"
+      },
+      {
+        "url": "https://api.sci.gov.in/jonew/cl/2026-08-11/M_J_2.pdf",
+        "title": "PART HEARD MATTERS - api.sci.gov.in",
+        "source_type": "primary_government",
+        "is_primary_tier": true,
+        "query_type": "entity_focused",
+        "relevant_passage": "BAIL, DEATH PENALTY, HABEAS CORPUS, EVICTION/DISPOSSESSION, DEMOLITION AND ANY OTHER MATTER INVOLVING URGENT INTERIM RELIEF WILL BE LISTED WITHIN TWO WORKING DAYS AFTER VERIFICATION AND CURING OF DEFECTS.",
+        "stance": "irrelevant"
+      },
+      {
+        "url": "https://karnataka.gov.in/g2c/en",
+        "title": "Karnataka Government",
+        "source_type": "primary_government",
+        "is_primary_tier": true,
+        "query_type": "entity_focused",
+        "relevant_passage": "This official Karnataka portal contains total information on history, language history, customs, rituals, religious practices, cultural heritage, awards received by the state, state awards, information of districts and their representatives, Complete contact directory ranging from the honourable Governor up to the District Police Superintendents, complete information depicting current affairs ...",
+        "stance": "irrelevant"
+      },
+      {
+        "url": "https://advocategeneral.punjab.gov.in/?q=law-officers-directory-2026",
+        "title": "Law Officers Directory 2026 | The Official website of ...",
+        "source_type": "primary_government",
+        "is_primary_tier": true,
+        "query_type": "contradiction",
+        "relevant_passage": "2022-11-18 00:00:00 Last modified date : 02-07-2026 Updated On: 02/07/2026 - 11:18",
+        "stance": "irrelevant"
+      },
+      {
+        "url": "https://punjab.nalsa.gov.in/",
+        "title": "Homepage | Punjab State Legal Services Authority | Access to ...",
+        "source_type": "primary_government",
+        "is_primary_tier": true,
+        "query_type": "contradiction",
+        "relevant_passage": "3 days ago \u00b7 Access to Justice for All Launch of the Comprehensive Youth Recovery and Rehabilitation Campaign by the Hon'ble Chief Justice of India at the Punjab and Haryana High Court, Chandigarh.",
+        "stance": "irrelevant"
+      }
+    ]
+  }
+]

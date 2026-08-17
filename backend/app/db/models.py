@@ -204,6 +204,23 @@ class TargetTier(str, enum.Enum):
     unrestricted = "unrestricted"
 
 
+# research/RESEARCH_ROADMAP_V2.md Phase 6 (evidence retrieval, Step 13):
+# distinct from TargetTier above -- TargetTier is about SOURCE
+# credibility (which domains a query should prefer), QueryType is about
+# QUERY INTENT (what angle on the claim this specific query is trying to
+# surface). The two are orthogonal: a "contradiction" query can still
+# target tier1_primary domains. `unspecified` exists only for rows
+# created before this schema existed (server_default on the migration
+# that added this column) -- never assigned to a newly-planned query.
+class QueryType(str, enum.Enum):
+    exact_claim = "exact_claim"
+    entity_focused = "entity_focused"
+    primary_source = "primary_source"
+    contradiction = "contradiction"
+    context_history = "context_history"
+    unspecified = "unspecified"
+
+
 # research/RESEARCH_ROADMAP_V2.md Phase-1 finding: the live dev DB had no
 # way to distinguish a reel used for ad-hoc development/manual testing
 # from one that is part of a frozen, versioned benchmark — so a query
@@ -414,6 +431,9 @@ class SearchQuery(UUIDPrimaryKeyMixin, Base):
     claim_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("claims.id"))
     query_text: Mapped[str] = mapped_column(Text)
     target_tier: Mapped[TargetTier] = mapped_column(Enum(TargetTier, name="target_tier"))
+    query_type: Mapped[QueryType] = mapped_column(
+        Enum(QueryType, name="query_type"), server_default=QueryType.unspecified.value
+    )
     provider: Mapped[str] = mapped_column(String(64))
     executed_at: Mapped[str] = mapped_column(DateTime(timezone=True))
     result_count: Mapped[int] = mapped_column(Integer, default=0)

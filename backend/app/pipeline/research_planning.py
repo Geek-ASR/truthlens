@@ -43,6 +43,7 @@ async def plan_research(db: AsyncSession, claim: Claim) -> list[SearchQuery]:
             claim_id=claim.id,
             query_text=planned.query_text,
             target_tier=planned.target_tier,
+            query_type=planned.query_type,
             provider=settings.SEARCH_PROVIDER,
             executed_at=now,
             result_count=0,
