@@ -1,0 +1,168 @@
+[
+  {
+    "case": "causal_chain_three_deep",
+    "note": "3 chained causal assertions: factory shutdown, job losses, unemployment claims rise",
+    "expected_min_claims": 3,
+    "outcome": "resolved",
+    "error": null,
+    "claims": [
+      {
+        "text": "the factory shut down",
+        "claim_type": "factual",
+        "verifiable": true
+      },
+      {
+        "text": "400 workers lost their jobs",
+        "claim_type": "factual",
+        "verifiable": true
+      },
+      {
+        "text": "this caused a sharp rise in local unemployment claims",
+        "claim_type": "factual",
+        "verifiable": true
+      }
+    ],
+    "n_claims": 3,
+    "n_verifiable": 3,
+    "meets_expectation": true
+  },
+  {
+    "case": "three_way_conjunction_different_actors",
+    "note": "3 independent actor-specific assertions joined by 'and'",
+    "expected_min_claims": 3,
+    "outcome": "resolved",
+    "error": null,
+    "claims": [
+      {
+        "text": "the mayor cut the ribbon on the new bridge",
+        "claim_type": "factual",
+        "verifiable": true
+      },
+      {
+        "text": "the governor announced a statewide infrastructure fund",
+        "claim_type": "factual",
+        "verifiable": true
+      },
+      {
+        "text": "and the opposition leader called the project a waste of money",
+        "claim_type": "opinion",
+        "verifiable": false
+      }
+    ],
+    "n_claims": 3,
+    "n_verifiable": 2,
+    "meets_expectation": true
+  },
+  {
+    "case": "compound_same_subject_two_actions",
+    "note": "same subject, two independently-checkable actions",
+    "expected_min_claims": 2,
+    "outcome": "resolved",
+    "error": null,
+    "claims": [
+      {
+        "text": "a new vaccination drive was announced",
+        "claim_type": "factual",
+        "verifiable": true
+      },
+      {
+        "text": "the health minister inaugurated a hospital",
+        "claim_type": "opinion",
+        "verifiable": false
+      },
+      {
+        "text": "a 200-bed hospital was built",
+        "claim_type": "factual",
+        "verifiable": true
+      }
+    ],
+    "n_claims": 3,
+    "n_verifiable": 2,
+    "meets_expectation": true
+  },
+  {
+    "case": "attribution_with_nested_sub_claims",
+    "note": "attributed statement containing 2 sub-assertions (confession, accomplices at large)",
+    "expected_min_claims": 2,
+    "outcome": "resolved",
+    "error": null,
+    "claims": [],
+    "n_claims": 0,
+    "n_verifiable": 0,
+    "meets_expectation": false
+  },
+  {
+    "case": "numeric_compound_two_time_periods",
+    "note": "2 distinct numeric claims about different months",
+    "expected_min_claims": 2,
+    "outcome": "resolved",
+    "error": null,
+    "claims": [
+      {
+        "text": "inflation rose",
+        "claim_type": "opinion",
+        "verifiable": false
+      },
+      {
+        "text": "rose to 8.2%",
+        "claim_type": "factual",
+        "verifiable": true
+      },
+      {
+        "text": "in January this year",
+        "claim_type": "opinion",
+        "verifiable": false
+      },
+      {
+        "text": "fell to",
+        "claim_type": "factual",
+        "verifiable": true
+      },
+      {
+        "text": "to 5.4%",
+        "claim_type": "opinion",
+        "verifiable": false
+      },
+      {
+        "text": "in February",
+        "claim_type": "factual",
+        "verifiable": true
+      },
+      {
+        "text": "according to the latest government data",
+        "claim_type": "opinion",
+        "verifiable": false
+      }
+    ],
+    "n_claims": 7,
+    "n_verifiable": 3,
+    "meets_expectation": true
+  },
+  {
+    "case": "contradictory_compound_tension",
+    "note": "2 claims in real tension: safety declaration and later collapse",
+    "expected_min_claims": 2,
+    "outcome": "resolved",
+    "error": null,
+    "claims": [
+      {
+        "text": "the bridge was declared structurally safe",
+        "claim_type": "factual",
+        "verifiable": true
+      },
+      {
+        "text": "it collapsed during rush hour",
+        "claim_type": "factual",
+        "verifiable": true
+      },
+      {
+        "text": "at least a dozen commuters were killed",
+        "claim_type": "factual",
+        "verifiable": true
+      }
+    ],
+    "n_claims": 3,
+    "n_verifiable": 3,
+    "meets_expectation": true
+  }
+]

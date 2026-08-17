@@ -81,6 +81,75 @@ uncaught exception. Per-case detail:
   read — the honest, disclosed limitation stands rather than being
   silently worked around.
 
+## Follow-up (EXP-031): Step 18 category #19, "multiple claims"
+
+A distinct category from anything above: does compound-sentence
+splitting (`CLAIM_EXTRACTION_SYSTEM_PROMPT`'s own instruction --
+"Compound statements... must be split into separate atomic claims")
+hold up against adversarial compound sentences? 6 real cases
+(causal chains, multi-actor conjunctions, same-subject compound
+actions, attributed nested sub-claims, numeric compounds across two
+time periods, and an internally-tense compound), run through the real
+`extract_claims()`.
+
+**A methodology mistake, caught and corrected before being reported as
+a result**: this experiment's own metric (claim count $\geq$ an
+expected minimum) is too crude -- it can't distinguish *correct* atomic
+splitting from *pathological over-fragmentation*, and initially scored
+one case as "meeting expectations" that, read manually, clearly wasn't.
+Corrected below rather than reported as designed.
+
+| Case | Claims | Qualitative outcome |
+|---|---|---|
+| `causal_chain_three_deep` | 3 | Clean: each causal link is its own coherent, verifiable claim |
+| `three_way_conjunction_different_actors` | 3 | Clean: 3 independent actor claims, the opinion one correctly marked non-verifiable |
+| `compound_same_subject_two_actions` | 3 | Mostly clean, one inconsistency (see below) |
+| `attribution_with_nested_sub_claims` | 0 | **Real failure: zero claims extracted** |
+| `numeric_compound_two_time_periods` | 7 | **Real failure: pathological over-fragmentation, not correct splitting** |
+| `contradictory_compound_tension` | 3 | Clean: each side of the tension is its own coherent, verifiable claim |
+
+**4 of 6 cases show genuinely correct atomic decomposition** -- multi
+-actor conjunctions and causal chains, exactly the pattern the prompt's
+own worked example targets, are handled well.
+
+**A real, novel failure mode: pathological over-fragmentation.** The
+numeric-compound case ("Inflation rose to 8.2% in January... then fell
+to 5.4% in February...") did not produce the 2 coherent claims a
+correct reading would give -- it produced 7 incomplete fragments:
+`"inflation rose"`, `"rose to 8.2%"`, `"in January this year"`,
+`"fell to"`, `"to 5.4%"`, `"in February"`,
+`"according to the latest government data"`. None of these fragments is
+independently checkable on its own; several (`"rose to 8.2%"` with no
+subject) are not even grammatical claims. A naive claim-count metric
+would call this a success (7 $\geq$ 2 expected) -- it is the opposite: a
+distinct failure mode from every other case in this document, over
+-splitting rather than under-splitting or merging, not previously
+observed this session.
+
+**A real, complete extraction failure**: the attribution case ("According
+to police, the accused confessed to the robbery and named two
+accomplices who are still at large") produced zero claims -- both
+llama3.2's raw attempt and the Gemini quality-retry failed, the latter
+hitting the same real, quantified `429` quota exhaustion documented in
+`FAILURE_TAXONOMY.md` #22 (20 requests/day, already exhausted by this
+session's own concurrent usage). Whether llama3.2 alone would have
+produced something reasonable without the retry is not established --
+disclosed as inconclusive on that specific point, consistent with this
+document's own `near_max_tokens` precedent above, rather than re-run
+speculatively.
+
+**A minor, disclosed inconsistency**: `compound_same_subject_two_actions`
+split "the health minister inaugurated a hospital" as
+`verifiable=False` while a near-duplicate fragment, "a 200-bed hospital
+was built", was marked `verifiable=True` -- an odd, inconsistent call
+(a minister inaugurating a hospital is clearly a checkable fact) but not
+a splitting failure per se, and consistent with this session's broader,
+already-well-documented pattern of raw local-model output being
+unreliable a meaningful fraction of the time.
+
+Raw data: `research/results/compound_claim_stress_20260818.json`.
+Generator: `backend/research/adversarial_v2/run_compound_claim_stress.py`.
+
 ## Raw data
 
 `research/results/adversarial_claim_extraction_stress_20260818.json`.
