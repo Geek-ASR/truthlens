@@ -20,6 +20,7 @@ faster-whisper==1.1.0
 requests==2.34.2
 pytesseract==0.3.13
 Pillow==11.0.0
+imagehash==4.3.2
 python-jose[cryptography]==3.3.0
 argon2-cffi==23.1.0
 cryptography==44.0.0
