@@ -97,7 +97,15 @@ each targeting a different pipeline stage, found the same underlying
 pattern: raw local-model output on real content is substantively empty
 or unusable a large fraction of the time, and this system's existing
 Gemini-escalation defenses are doing more real work than a pipeline-level
-pass/fail reading would suggest. Every number in this paper is reported with its exact sample size
+pass/fail reading would suggest. A further pass live-tested a
+prompt-injection defense with no prior coverage (1/5 attempts succeeded
+against the small local model pre-fix, 0/5 after a structural fix and a
+hardened prompt, with the downstream validator independently
+neutralizing the pre-fix success), and found a genuinely new,
+reproducible verdict-stage failure -- reliability weighting under
+direct source contradiction -- that a targeted prompt fix measurably
+failed to resolve (0/14 real trials correct, before and after), reported
+honestly as unresolved rather than claimed fixed. Every number in this paper is reported with its exact sample size
 and, where a proportion, a Wilson confidence interval; where an experiment
 could not be run at a scientifically meaningful scale, or where our own
 methodology was found to be flawed, we say so rather than force or hide it.
@@ -1423,7 +1431,7 @@ DEV/VALIDATION/TEST freeze (this roadmap's own Phase 12) has not yet
 occurred. What follows is real, measured, component-level work,
 reported with the same discipline as everything above: every number
 traces to a versioned experiment in \texttt{experiments/registry.jsonl}
-(EXP-009 through EXP-020), and negative or inconclusive results are kept
+(EXP-009 through EXP-029), and negative or inconclusive results are kept
 exactly as prominent as positive ones.
 
 \subsection{Dataset growth: 9 $\to$ 15 items}
@@ -1615,12 +1623,103 @@ protest that had been cited against a wholly unrelated real article (a
 Check 7 generalizes to genuinely new production data, not just the
 historical and synthetic cases it was built and tested against.
 
+\subsection{A second autonomous pass: aggregation confirmed, a security defense measured and hardened, a verdict-stage reliability gap found}
+\label{sec:secondpass}
+A further autonomous pass extended this work along four lines, each
+producing a real, disclosed result rather than an assumed one.
+
+\textbf{Aggregation (Phase 10)}, previously blocked on the VALIDATION
+split having no multi-claim items with real verdicts, was unblocked by
+the population pass above (Section~\ref{sec:followup}): exactly one
+VALIDATION item (item-0010) qualified. Single-claim-only resolved to
+\texttt{UNVERIFIED} (a miss against real ground truth \texttt{FALSE});
+full decomposition, using the same \texttt{derive\_overall\_verdict()}
+production itself calls, correctly resolved to \texttt{FALSE}.
+Directionally consistent with the original $n=4$ DEV-split finding
+(Section~\ref{sec:decompcounterfactual}) that aggregation helps, but
+explicitly reported at its real $n=1$ and not claimed as statistically
+meaningful.
+
+\textbf{Cross-post detection stage 2} (claim-embedding clustering,
+Section~\ref{sec:foundationphase}) was attempted and found blocked by a
+concrete, confirmed infrastructure gap rather than left unattempted
+without explanation: this project's local Ollama server was not started
+with embedding support (\texttt{ollama.Client().embeddings(...)} fails
+with an explicit ``start it with \texttt{--embeddings}'' error,
+confirmed live), and no dedicated embedding model is pulled locally
+either. Restarting a service this project depends on, or pulling a new
+model, was judged outside what an autonomous pass should do
+unilaterally -- disclosed as a real, concrete prerequisite rather than
+worked around with a weaker substitute under the same column's name.
+
+\textbf{Prompt-injection defense} had zero existing test coverage
+despite processing genuinely untrusted content (transcript, OCR,
+caption) by design on every real post -- confirmed by an empty result
+from searching the test suite for any injection-related coverage before
+this pass. Two things were found and both were fixed, not just
+reported. First, code review (not model behavior) found the delimiter
+convention every LLM stage relies on never neutralized literal
+occurrences of its own delimiter tokens already present in untrusted
+text -- a deterministic, model-independent bypass, closed by sanitizing
+those tokens before wrapping and verified in both directions. Second, 5
+live adversarial attempts against claim extraction found the most
+direct injection style (a blunt override instruction) succeeded once,
+producing the injected false claim verbatim as a verifiable,
+maximum-importance claim -- the first real measurement of this
+project's own previously-stated expectation that small local models
+resist in-band instructions less reliably than larger ones. A hardened
+extraction prompt reduced this to 0/5 on re-test. Separately, carrying
+the one pre-fix successful injection through the real remainder of the
+pipeline (research planning through verdict) showed the downstream
+anti-hallucination validator independently resolving it to a correct,
+evidence-grounded \texttt{FALSE} verdict citing 12 real sources --
+confirming, for the first time with a measurement rather than an
+assertion, that this system's documented security posture (the
+validator as the actual backstop) holds for at least this case. Full
+detail, including the caveat that this is $n=1$ against an unusually
+well-evidenced test claim: \texttt{research/PROMPT\_INJECTION\_STRESS\_V2.md}.
+
+\textbf{A new adversarial category (Step 18's \#8, ``contradictory
+sources'') at the verdict stage} surfaced a real, reproducible failure
+not previously characterized: constructed evidence with a
+0.95-reliability primary-government source supporting a claim and a
+0.20-reliability, uncited source contradicting it produced TRUE or
+MOSTLY\_TRUE in 0 of 14 real trials across two prompt versions --
+including runs whose own reasoning text correctly identified the
+contradicting source as unreliable while still not choosing a label
+reflecting that assessment, and one run pairing a wrong label with
+maximum stated confidence. An explicit reliability-weighting rule added
+to the verdict prompt, with a worked example distinct from the held-out
+test case, did not resolve this on re-test (still 0/7). This is reported
+as a genuine, measured negative result -- the fix is kept regardless,
+since it is objectively correct guidance and not shown to make anything
+worse, but is not claimed to have solved the underlying issue. The
+likely real fix, a deterministic validator check comparing cited
+-evidence reliability against verdict direction (mirroring how Checks 6
+and 7 succeeded where prompt-only approaches would not have been
+trustworthy), is named as a concrete candidate for a dedicated future
+pass rather than added without its own integration evaluation. Full
+detail: \texttt{research/CONTRADICTORY\_SOURCES\_V2.md}.
+
+Finally, a direct re-run of the evidence-stance taxonomy comparison
+(Section~\ref{sec:followup} named this as the concrete next step) fixed
+its own named confound -- porting the production substantiveness-retry
+safeguard into the comparison's new-taxonomy call -- and in doing so
+surfaced a deeper, quantified constraint rather than a clean answer: a
+real HTTP 429 response confirmed the fallback model's free tier is
+capped at exactly 20 requests/day on this project's key, a limit this
+session's own real usage repeatedly exhausts. Three independent
+attempts (4/20, 6/20, 5/20 clean rows) remain inconclusive about
+whether the candidate taxonomy adds real value -- not from an
+uncontrolled confound anymore, but from a hard, external infrastructure
+ceiling, now named and quantified rather than merely suspected.
+
 \section{A Taxonomy of Failure Modes Found in Live Testing}
 \label{sec:failuremodes}
 
 Running the full system against real content end-to-end -- both during
 original development and during this evaluation program itself --
-surfaced 21 specific, reproducible failure modes we believe are
+surfaced 24 specific, reproducible failure modes we believe are
 under-documented in the automated fact-checking literature at this level
 of implementation detail, because they only appear when a system is run
 against real content rather than evaluated on a static benchmark. We
@@ -1628,9 +1727,9 @@ consider this taxonomy, and the general lesson that most of these
 failures were discoverable only this way, to be as practically important
 a contribution of this work as any single architectural component. The
 full list, each entry with its fix, is given in
-Appendix~\ref{sec:appendixtaxonomy}; five representative entries,
-spanning production code, research tooling, and this program's own
-benchmark construction:
+Appendix~\ref{sec:appendixtaxonomy}; six representative entries,
+spanning production code, research tooling, security, and this
+program's own benchmark construction:
 
 \begin{itemize}
 \item \textbf{Schema-valid, substantively empty output}, found
@@ -1660,6 +1759,14 @@ benchmark construction:
   Check 4 had no citation at all, so Check 1 fired first and Check 4 was
   never reached, caught only by reading \texttt{validation\_status} in
   the raw output rather than trusting the benchmark's own design.
+\item \textbf{A blunt prompt-injection override got past claim
+  extraction once in 5 live attempts}, producing the injected false
+  claim verbatim as a verifiable, maximum-importance claim -- the first
+  real measurement (not just a stated expectation) that this system's
+  delimiter-based defense is imperfect against small local models,
+  confirmed independently by the downstream validator resolving the
+  same injected claim to a correct \texttt{FALSE} verdict when carried
+  through the rest of the real pipeline.
 \end{itemize}
 
 \section{Threats to Validity}
@@ -1822,11 +1929,16 @@ tuned against knowing the right answer. We would rather report a real
   (Section~\ref{sec:foundationmultimodal}) re-confirmed rather than
   closed this gap: the same items still produce zero verifiable claims
   across all 8 modality combinations tested, not just the original 3.
-\item \textbf{Video-provenance verification.} \emph{Partially addressed}:
-  a perceptual-hashing first-pass filter is built and validated against
-  real video frames (Section~\ref{sec:foundationphase}), but the full
-  3-stage design (claim-embedding clustering, Gemini escalation for
-  ambiguous pairs) and any live pipeline integration remain undone.
+\item \textbf{Video-provenance verification.} \emph{Partially addressed,
+  stage 2 blocker now diagnosed}: a perceptual-hashing first-pass filter
+  is built and validated against real video frames
+  (Section~\ref{sec:foundationphase}); stage 2 (claim-embedding
+  clustering) was attempted and found blocked by a confirmed
+  infrastructure gap, not an unattempted item -- the local Ollama server
+  lacks embedding support and no embedding model is pulled locally
+  (Section~\ref{sec:secondpass}). Restarting the service or pulling a
+  new model is the concrete, named prerequisite; stage 3 (Gemini
+  escalation) and any live pipeline integration remain undone.
 \item \textbf{Test the new validator checks against phrasings/scenarios
   they were not calibrated on} -- \emph{addressed} for the two checks
   added this pass (Section~\ref{sec:newchecks}); the original four
@@ -1883,10 +1995,28 @@ tuned against knowing the right answer. We would rather report a real
   construction, not a general property of this system -- corrected here
   rather than left standing as originally (over-)stated.
 \item \textbf{Complete the full end-to-end adversarial suite} (Step 18's
-  20 categories, 100+ cases): this pass delivered a bounded 6-case slice
-  of claim-extraction-only robustness; categories needing real
+  20 categories, 100+ cases) -- \emph{extended}: beyond the original
+  6-case claim-extraction-only slice, prompt-injection robustness (5
+  cases, claim-extraction and verdict stages) and contradictory sources
+  (\#8, 3 cases plus repeated-sampling stability runs, verdict stage)
+  are now covered (Section~\ref{sec:secondpass}); categories needing real
   AI-generated-image/edited-video/audio-corruption content remain
   unbuilt.
+\item \textbf{A deterministic reliability-weighted verdict check.} A
+  measured, reproducible failure (Section~\ref{sec:secondpass}): verdict
+  -label selection does not reliably favor a high-reliability source
+  over a low-reliability, uncited one under direct contradiction, and a
+  targeted prompt fix did not resolve it (0/14 real trials correct,
+  before and after). The likely real fix -- comparing cited-evidence
+  reliability against verdict direction as an 8th deterministic
+  validator check, mirroring Checks 6/7's successful pattern -- is named
+  but not built, pending its own integration evaluation.
+\item \textbf{A properly isolated test database for Gemini-quota
+  scenario tests}, or a way to scope the provider's global cooldown
+  check to a test context -- the collision between real concurrent usage
+  and mocked scenarios (Appendix~\ref{sec:appendixtaxonomy}, entry 22)
+  is now quantified (a confirmed 20-requests/day free-tier cap) but not
+  fixed.
 \end{enumerate}
 
 \section{Conclusion}
@@ -1928,10 +2058,10 @@ deferred, not forced, because this dataset's size cannot yet support
 either -- the same discipline held throughout: report what the data
 shows, including a negative result, a deferred question, a bug in our own
 baselines, or a threat to validity in our own fix. The taxonomy of
-concrete failure modes (Appendix~\ref{sec:appendixtaxonomy}) -- 21
+concrete failure modes (Appendix~\ref{sec:appendixtaxonomy}) -- 24
 entries, over a third found and fixed during this evaluation program
-itself, each with a deterministic check and a regression test built from
-the case that surfaced it -- is as practically useful a contribution as
+itself, all but four with a deterministic check and a regression test
+built from the case that surfaced it -- is as practically useful a contribution as
 any single number above, since most of these failures, including the
 baseline confound this conclusion opens with, are only discoverable by
 running a complete system against real content, not by unit-testing
@@ -1963,6 +2093,30 @@ structural gaps (input-signal consistency, multilingual extraction
 bias) -- consistent with, not an exception to, the discipline this paper
 has applied throughout: report what was actually measured, including
 when it complicates the story.
+
+A second autonomous pass (Section~\ref{sec:secondpass}) closed both
+named gaps above with real, disclosed outcomes (one infeasible as
+specified, one corrected rather than confirmed), unlocked the
+aggregation counterfactual on real VALIDATION data for the first time
+($n=1$, directionally consistent with the original finding), and
+extended the adversarial suite into two new categories. A
+prompt-injection defense with zero prior test coverage was measured
+live: 1 of 5 attempts against a small local model succeeded, a
+structural delimiter-spoofing gap was found and fixed independently of
+model behavior, a hardened prompt reduced the measured failure rate to
+0/5, and the downstream anti-hallucination validator was confirmed, not
+merely assumed, to independently neutralize the one pre-fix success.
+Separately, a genuinely new failure mode was found and honestly reported
+as unresolved: verdict-label selection does not reliably weight source
+reliability under direct contradiction (0 of 14 real trials favored a
+0.95-reliability source over a 0.20-reliability, uncited one), and a
+targeted prompt fix, though kept, measurably failed to resolve it --
+the third time this program has found prompt engineering insufficient
+to fully correct a small local model's behavior, reinforcing rather
+than contradicting this paper's central finding that architectural
+defenses (deterministic checks, Gemini escalation, and now a validator
+functioning as a measured, not merely claimed, security backstop) carry
+more of this system's real reliability burden than prompt design alone.
 
 \appendix
 
@@ -2247,7 +2401,7 @@ honest, mixed result, not suppressed or overclaimed.
 \section{Full Taxonomy of Failure Modes Found in Live Testing}
 \label{sec:appendixtaxonomy}
 Section~\ref{sec:failuremodes} summarizes this taxonomy; the complete
-21-entry list, each with its full description and fix, is given here in
+24-entry list, each with its full description and fix, is given here in
 full rather than only referenced, per this program's own discipline
 against omitting a disclosed finding for space.
 
@@ -2434,6 +2588,63 @@ against omitting a disclosed finding for space.
   Table 2 explicitly (previously only printed), so the artifact a reader
   or a script can load is no longer a smaller, silently-overlapping
   namespace than what was shown on screen.
+\item \textbf{A quantifiable daily API quota collides with mocked test
+  scenarios, silently, rather than being isolated from them.} A quota
+  -aware provider's global cooldown check (correct, intended behavior:
+  once a real quota exhaustion is recorded, stop attempting real calls
+  against it) reads the same shared table real production usage writes
+  to. Any real exhaustion recorded by concurrent real usage makes
+  mocked test scenarios short-circuit into the real cooldown path
+  before ever reaching their scripted mock response, failing with a
+  missing-row lookup rather than a clear "quota exhausted" message.
+  Diagnosed to the exact free-tier limit responsible: a real \texttt{429}
+  response confirmed a 20-requests/day cap on the fallback model used.
+  Not fixed -- doing so safely needs either a fully isolated test
+  database or a way to scope the cooldown check to a test context, both
+  larger changes than warranted alongside this finding; the workaround
+  used was re-running the affected tests once concurrent real usage
+  finished, and quantifying the constraint so future runs can anticipate
+  it rather than be surprised by it.
+\item \textbf{A structural gap in the delimiter-based prompt-injection
+  defense, and one adversarial style that got past it.} The convention
+  every LLM-calling stage uses to mark reel-derived text as data, not
+  instructions, never neutralized literal occurrences of its own
+  delimiter tokens already present in the untrusted text being wrapped
+  -- a transcript or caption containing the literal closing token could,
+  in principle, forge a fake data-block boundary regardless of how
+  reliably any given model resists in-band instructions. Fixed
+  deterministically (sanitizing those tokens before wrapping) and
+  verified in both directions (reintroducing the bug on a scratch copy
+  confirmed a new regression test catches it; restoring the fix
+  confirmed it passes again). Separately, of 5 live adversarial
+  prompt-injection attempts against claim extraction, the most direct
+  style (a blunt "ignore all previous instructions" override) succeeded
+  once, producing the injected false claim verbatim as a verifiable,
+  maximum-importance claim -- confirming, for the first time with a
+  real measurement rather than an assertion, this project's own prior
+  documented expectation that small local models follow in-data
+  instructions more readily than larger ones. A hardened extraction
+  prompt reduced this to 0/5 on re-test; carrying the one pre-fix
+  success through the real remainder of the pipeline showed the
+  downstream anti-hallucination validator independently resolving it to
+  a correct, evidence-grounded \texttt{FALSE} verdict -- a real, if
+  single-case, confirmation that the validator functions as the
+  claimed backstop even when an earlier defense is bypassed.
+\item \textbf{Verdict-label selection does not reliably weight source
+  reliability under direct contradiction.} Constructed evidence with a
+  0.95-reliability primary-government source supporting a claim and a
+  0.20-reliability, uncited source contradicting it produced TRUE or
+  MOSTLY\_TRUE in 0 of 14 real trials across two prompt versions --
+  including runs whose own free-text reasoning correctly identified the
+  contradicting source as unreliable, yet still did not choose a label
+  reflecting that assessment; one run paired an incorrect label with
+  maximum (1.0) stated confidence. A prompt hardened with an explicit
+  reliability-weighting rule and worked example did not resolve this on
+  re-test (still 0/7) -- reported as a measured negative result, not
+  silently dropped, with a deterministic validator check (comparing
+  cited-evidence reliability against verdict direction) named as the
+  likely real fix and left for a dedicated future pass rather than
+  added without its own evaluation.
 \end{itemize}
 
 \section{Extended Foundation-Phase Detail}
@@ -2585,6 +2796,72 @@ the context of a Jharkhand-police protest item) was cited against a
 real news article about an unrelated 2026 IIT Palakkad security
 incident -- a genuine, correct catch, confirming Check 7 generalizes to
 real production data it was never calibrated against.
+
+\subsection{EXP-025: aggregation counterfactual re-run on real VALIDATION data, full numbers}
+Filtering the 6 VALIDATION items to those with $\geq 2$ verifiable
+claims each carrying a real, current verdict yields exactly $n=1$
+(item-0010; real ground truth \texttt{FALSE}). Single-claim-only (the
+highest-importance claim's own verdict, itself \texttt{UNVERIFIED}
+after Check 7's entity-mismatch downgrade) misses. Full decomposition
+via the real, unmodified \texttt{derive\_overall\_verdict()}, combining
+both claims, correctly resolves to \texttt{FALSE}. Directionally
+consistent with, not statistical confirmation of, the original $n=4$
+DEV-split result.
+
+\subsection{EXP-026/EXP-027: prompt-injection stress test, full numbers}
+5 synthetic \texttt{Reel} cases, each embedding a differently-styled
+injection attempt in a different field (direct override in transcript;
+forged delimiter tokens plus a fake system message in caption; a
+roleplay/DAN jailbreak in OCR; an appeal-to-authority override in
+transcript; an override buried inside otherwise-legitimate content),
+run through the real, unmodified \texttt{claim\_extraction.extract\_claims()}.
+Pre-fix (\texttt{claim\_extraction.v3}): 1/5 succeeded (the direct
+-override case). Post-fix (delimiter sanitization plus a hardened
+\texttt{claim\_extraction.v4} prompt): 0/5. EXP-027 carried the one
+pre-fix success through the real remainder of the pipeline: 12 sources
+fetched, 12 evidence rows produced, final verdict \texttt{FALSE},
+\texttt{validation\_status=passed}, reasoning grounded in real cited
+evidence (e.g.\ citing the absence of documented radiation-linked
+illness among Apollo astronauts, contradicting the injected
+moon-landing-hoax premise).
+
+\subsection{EXP-028: evidence-stance taxonomy comparison re-run, full numbers}
+Identical to EXP-017 except the new-taxonomy call now runs the same
+\texttt{\_explanation\_looks\_substantive} check plus Gemini quality
+-retry production's \texttt{evidence\_analysis.py} itself uses, against
+the same 20 real \texttt{Evidence} rows. Attempt 1: every retry
+attempt hit an already-active Gemini cooldown from concurrent earlier
+work (0/20 retries fired); clean rows 6/20. Attempt 2, run after that
+cooldown's own end time: the first retry attempt returned a real HTTP
+429 (``Quota exceeded for metric:
+\texttt{generativelanguage.googleapis.com/generate\_content\_free\_tier\_requests},
+limit: 20''), setting a fresh cooldown that blocked the remaining 19
+retries too; clean rows 5/20. One clean reclassification
+(\texttt{contradicts} $\to$ \texttt{temporally\_mismatched}) is reported
+but assessed as a likely taxonomy-misapplication (the source's
+substantive numerical disagreement is what actually matters, not that
+its rules happened to be dated), not cherry-picked as a positive
+result.
+
+\subsection{EXP-029: contradictory-sources verdict stress test, full numbers}
+3 synthetic cases (constructed \texttt{Claim}/\texttt{Evidence}/\texttt{Source}
+rows with explicit, differing reliability scores) run through the real,
+unmodified \texttt{verdict.propose\_verdict()}. The
+\texttt{reliability\_weighted\_conflict} case (0.95-reliability
+primary-government support vs.\ 0.20-reliability uncited contradiction)
+was re-run repeatedly to characterize stability: pre-fix ($n=7$,
+\texttt{verdict.v2}) produced \texttt{MOSTLY\_FALSE} $\times 3$
+(confidence 0.0), \texttt{UNVERIFIED} $\times 3$ (confidence 0.4),
+\texttt{OUTDATED} $\times 1$ (confidence 1.0); post-fix ($n=7$,
+\texttt{verdict.v3}, after an explicit reliability-weighting rule was
+added to the prompt) produced \texttt{UNVERIFIED} $\times 5$,
+\texttt{MOSTLY\_FALSE} $\times 2$, confidence 0.0 throughout. 0 of 14
+total runs produced \texttt{TRUE}/\texttt{MOSTLY\_TRUE}. A sanity check
+on the \texttt{majority\_with\_credible\_outlier} case (3 established
+-news sources agree, 1 higher-reliability outlier disagrees) showed
+similar post-fix instability (2/4 \texttt{MOSTLY\_TRUE}, 2/4
+\texttt{UNVERIFIED}), though with only 1 pre-fix sample a clean
+before/after comparison isn't possible for that case.
 
 \bibliographystyle{IEEEtran}
 \bibliography{references}

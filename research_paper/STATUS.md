@@ -1,10 +1,50 @@
 # Paper status
 
-Last updated: 2026-08-18 (fifth update; foundation-phase program folded
-in). See below for this pass's summary; prior updates preserved
-unedited underneath.
+Last updated: 2026-08-18 (sixth/seventh update, same day; two further
+autonomous passes folded in on top of the foundation-phase program).
+See below for this pass's summary; prior updates preserved unedited
+underneath.
 
 ## Latest update (this pass, 2026-08-18)
+
+Folded in everything from EXP-021 through EXP-029 (`backend` commits
+`a06cb9f` through `491d4b5`), across two further autonomous passes that
+followed the foundation-phase program below. New content: a
+`sec:followup` subsection (EXP-021-024: `source_quote` prompt fix
+measured negative; input-signal consistency check found infeasible;
+multilingual-extraction bias corrected after checking a much larger
+sample; real VALIDATION-split data populated for the first time) --
+this was written in an earlier pass but not yet logged here -- plus a
+new `sec:secondpass` subsection (EXP-025-029): the aggregation
+counterfactual unlocked on real VALIDATION data ($n=1$); cross-post
+stage 2 diagnosed as blocked on a concrete, confirmed infrastructure
+gap (no local embedding support); a prompt-injection defense with zero
+prior test coverage measured live (1/5 attempts succeeded pre-fix, 0/5
+after a structural delimiter fix plus a hardened prompt, with the
+downstream validator independently confirmed to neutralize the pre-fix
+success); a genuinely new, reproducible verdict-stage reliability
+-weighting failure found and honestly reported as unresolved after a
+measured, insufficient prompt fix (0/14 real trials correct, before and
+after); and the evidence-stance taxonomy re-run with its named
+confound fixed, surfacing a deeper, now-quantified constraint (a
+confirmed 20-requests/day Gemini free-tier cap) rather than a clean
+answer.
+
+The failure-mode taxonomy grew from 21 to 24 entries (3 new: a
+Gemini-quota test-isolation gap, the prompt-injection delimiter
+-spoofing structural fix plus its measured partial mitigation, and the
+verdict reliability-weighting gap) -- Appendix A and
+Section~XIII/\ref{sec:failuremodes} both updated, plus every "21" count
+elsewhere in the paper. Future Work items 3 and 14 updated from
+"undone" to "diagnosed, concrete blocker named"; two new items (15, 16)
+added. Abstract and Conclusion both extended with a summary paragraph,
+matching this paper's standing practice of never letting the abstract
+undersell what the body now supports. Recompiled clean (0 errors, 0
+undefined references), 25$\to$28 pages, every new page visually
+verified against source content via `pdftoppm`, not just checked for
+compiler success.
+
+## Prior update (fifth, 2026-08-18, foundation-phase program)
 
 Folded in the foundation-phase research program (`research/
 RESEARCH_ROADMAP_V2.md`, experiments EXP-009 through EXP-020, `backend`
