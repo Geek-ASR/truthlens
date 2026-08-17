@@ -22,7 +22,9 @@ from ddgs import DDGS
 from ddgs.exceptions import DDGSException
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
+from app.core.exceptions import ProviderError
 from app.core.logging import get_logger
+from app.core.url_safety import require_public_http_url
 from app.services.search.base import SearchProvider, SearchResult
 
 logger = get_logger(__name__)
@@ -99,12 +101,21 @@ class DuckDuckGoSearchProvider(SearchProvider):
         output_format away from plain text) — None when the page
         genuinely doesn't expose one, never guessed."""
         try:
+            # This URL comes from a third-party search engine's own index,
+            # not directly from operator input -- but it's still a URL this
+            # backend fetches based on automated research derived from
+            # untrusted reel content (docs/SECURITY.md §3/§7), so the same
+            # SSRF guard used for the operator-supplied auto_fetch path
+            # applies here too, as defense in depth. A blocked URL is
+            # treated the same as any other fetch failure -- falls back to
+            # the snippet, not fatal to the search.
+            require_public_http_url(url)
             async with httpx.AsyncClient(
                 timeout=_FETCH_TIMEOUT, follow_redirects=True, headers={"User-Agent": _USER_AGENT}
             ) as client:
                 response = await client.get(url)
                 response.raise_for_status()
-        except httpx.HTTPError as exc:
+        except (httpx.HTTPError, ProviderError) as exc:
             logger.warning("source_page_fetch_failed", url=url, error=str(exc))
             return None, None
 

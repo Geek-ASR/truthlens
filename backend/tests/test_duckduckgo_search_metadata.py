@@ -13,7 +13,16 @@ These tests use real trafilatura calls against literal HTML fixtures
 (deterministic, local, no network) -- only the httpx fetch itself is
 mocked, via monkeypatching httpx.AsyncClient.get directly (this project
 has no respx/httpx-mock dependency; matches the direct-method-patch
-style already used in tests/test_gemini_provider.py)."""
+style already used in tests/test_gemini_provider.py).
+
+require_public_http_url() (the SSRF guard added to this fetch path,
+research/PROMPT_INJECTION_STRESS_V2.md-adjacent defense-in-depth work)
+is also monkeypatched to a no-op in every test here -- it does a real
+synchronous DNS lookup, which would otherwise fail outright for the
+non-resolvable example.test fixture host before the mocked httpx call
+is ever reached. The guard's own behavior is covered separately by
+tests/test_url_safety.py; these tests are about trafilatura extraction,
+not the guard."""
 from unittest.mock import AsyncMock
 
 import httpx
@@ -42,6 +51,7 @@ def _mock_response(html: str, status_code: int = 200) -> httpx.Response:
 
 @pytest.mark.asyncio
 async def test_fetch_page_text_and_date_recovers_a_real_publication_date(monkeypatch):
+    monkeypatch.setattr("app.services.search.duckduckgo.require_public_http_url", lambda url: None)
     monkeypatch.setattr(httpx.AsyncClient, "get", AsyncMock(return_value=_mock_response(_HTML_WITH_DATE)))
     provider = DuckDuckGoSearchProvider()
 
@@ -53,6 +63,7 @@ async def test_fetch_page_text_and_date_recovers_a_real_publication_date(monkeyp
 
 @pytest.mark.asyncio
 async def test_fetch_page_text_and_date_stays_none_when_page_has_no_date(monkeypatch):
+    monkeypatch.setattr("app.services.search.duckduckgo.require_public_http_url", lambda url: None)
     monkeypatch.setattr(httpx.AsyncClient, "get", AsyncMock(return_value=_mock_response(_HTML_WITHOUT_DATE)))
     provider = DuckDuckGoSearchProvider()
 
@@ -67,6 +78,7 @@ async def test_fetch_page_text_and_date_returns_none_none_on_fetch_failure(monke
     async def _raise(*args, **kwargs):
         raise httpx.ConnectTimeout("timed out")
 
+    monkeypatch.setattr("app.services.search.duckduckgo.require_public_http_url", lambda url: None)
     monkeypatch.setattr(httpx.AsyncClient, "get", _raise)
     provider = DuckDuckGoSearchProvider()
 
@@ -78,6 +90,7 @@ async def test_fetch_page_text_and_date_returns_none_none_on_fetch_failure(monke
 
 @pytest.mark.asyncio
 async def test_search_wires_the_recovered_date_into_search_result(monkeypatch):
+    monkeypatch.setattr("app.services.search.duckduckgo.require_public_http_url", lambda url: None)
     monkeypatch.setattr(httpx.AsyncClient, "get", AsyncMock(return_value=_mock_response(_HTML_WITH_DATE)))
 
     class _StubDDGS:

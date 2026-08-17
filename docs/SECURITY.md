@@ -67,17 +67,42 @@ FIELD_ENCRYPTION_KEY=
   are never trusted (server generates the storage key).
 - SQL injection: SQLAlchemy parameterized queries only, no raw string
   interpolation into SQL anywhere in the codebase.
-- Outbound requests to hardcoded API endpoints (search provider,
-  Instagram Graph API) use a timeout but need no SSRF guard — the base
-  URL isn't attacker-influenced there, only query parameters are.
-  `auto_fetch` (ARCHITECTURE §2a) is different: the *entire URL* is
-  operator-supplied and gets fetched server-side, so
-  `app/core/url_safety.py` resolves the hostname and rejects anything
-  that isn't a public IP (blocks loopback, RFC1918/private ranges,
-  link-local, and cloud metadata endpoints like `169.254.169.254`)
-  before `yt-dlp` ever touches it — defense in depth against a
-  compromised or malicious admin/reviewer account, not just an external
-  attacker.
+- Outbound requests to hardcoded API endpoints (Tavily, Instagram Graph
+  API) use a timeout but need no SSRF guard — the base URL isn't
+  attacker-influenced there, only query parameters are. `auto_fetch`
+  (ARCHITECTURE §2a) is different: the *entire URL* is operator-supplied
+  and gets fetched server-side, so `app/core/url_safety.py` resolves the
+  hostname and rejects anything that isn't a public IP (blocks loopback,
+  RFC1918/private ranges, link-local, and cloud metadata endpoints like
+  `169.254.169.254`) before `yt-dlp` ever touches it — defense in depth
+  against a compromised or malicious admin/reviewer account, not just an
+  external attacker.
+  **Correction (found live, `research/PROMPT_INJECTION_STRESS_V2.md`
+  -adjacent follow-up work)**: the claim above was inaccurate for the
+  default DuckDuckGo search provider — unlike Tavily, its page-fetch
+  step (`app/services/search/duckduckgo.py`) retrieves whatever URL a
+  third-party search index returns for a query built from claim text
+  (itself ultimately derived from untrusted reel content), not a fixed
+  base URL, so the same guard now applies there too. A second, more
+  direct gap in `auto_fetch` itself was found and fixed the same pass:
+  `require_public_http_url()` only ever validated the operator-supplied
+  post URL, never the *second* URL (`og:image`) extracted from that
+  page's own HTML in the photo-post fallback path — a compromised
+  operator account pointing `auto_fetch` at a page they control could
+  set that tag to an internal address and this code fetched it with
+  zero validation. Both fixed; regression tests in
+  `tests/test_url_downloader_photo_fallback.py` and
+  `tests/test_duckduckgo_search_metadata.py`.
+  **Known, disclosed, not-yet-fixed limitation**: neither call site
+  re-validates a redirect target after the initial URL passes the
+  guard — both use `httpx`'s `follow_redirects=True`, which follows a
+  `3xx` response's `Location` header without re-checking it resolves to
+  a public address. A malicious or compromised page that passes the
+  initial check could still redirect the fetch to an internal address.
+  Closing this needs either disabling `follow_redirects` and manually
+  re-validating each hop, or an `httpx` event hook doing the same —
+  a real fix, not attempted this pass; named here rather than left
+  implicit.
 
 ## 3a. Object storage access
 

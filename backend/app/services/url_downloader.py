@@ -167,6 +167,14 @@ def _fetch_photo_via_og_tags(url: str, output_dir: str) -> UrlFetchResult:
                 f"{url} has no video AND no photo Open Graph tag — it may be private, "
                 f"deleted, or require login to view."
             )
+        # This URL comes from the fetched page's own HTML (an og:image meta
+        # tag), not from the operator-supplied url itself -- require_public_
+        # http_url() above only validated that one. Without this second
+        # check, a compromised/malicious operator account (this module's own
+        # documented threat model) could point fetch_from_url() at a page
+        # whose og:image tag names an internal address, and this code would
+        # fetch and write it to disk with zero validation.
+        require_public_http_url(image_url)
 
         try:
             image_resp = client.get(image_url)

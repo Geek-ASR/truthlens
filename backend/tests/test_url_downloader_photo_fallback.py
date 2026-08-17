@@ -184,3 +184,41 @@ def test_fetch_photo_via_og_tags_raises_when_no_image_tag_either(monkeypatch):
 
     with pytest.raises(ProviderError, match="no video AND no photo"):
         _fetch_photo_via_og_tags("https://www.instagram.com/p/deleted123/", "/tmp")
+
+
+def test_fetch_photo_via_og_tags_rejects_an_internal_image_url(monkeypatch):
+    # Real gap found live: require_public_http_url() was only ever called
+    # on the operator-supplied post url, never on the SECOND url this
+    # function extracts from that page's own og:image meta tag -- a
+    # compromised/malicious operator account (this module's own documented
+    # threat model) could point fetch_from_url() at a page whose og:image
+    # tag names an internal address, and this code would fetch and write it
+    # to disk with zero validation. Fixed by validating image_url too.
+    import httpx
+
+    import app.services.url_downloader as url_downloader
+
+    class FakeResponse:
+        status_code = 200
+        text = '<html><head><meta property="og:image" content="http://169.254.169.254/latest/meta-data/" /></head></html>'
+
+        def raise_for_status(self):
+            pass
+
+    class FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+        def get(self, url):
+            return FakeResponse()
+
+    monkeypatch.setattr(httpx, "Client", FakeClient)
+
+    with pytest.raises(ProviderError, match="non-public address"):
+        _fetch_photo_via_og_tags("https://www.instagram.com/p/real123/", "/tmp")
