@@ -37,13 +37,14 @@ produce... a regression test").
 | 18 | Recurring vision-output prompt echo | claim_extraction (vision) | `test_vision_context_substantive.py` | COVERED |
 | 19 | A label confidently contradicting the model's own stated reasoning | validator | `test_validation.py::test_downgrades_when_reasoning_says_no_evidence_but_label_is_confident`, `::test_downgrades_real_durrani_meeting_case_from_day5_audit`, `::test_no_evidence_phrase_is_a_noop_when_verdict_is_already_unverified` | COVERED |
 | 20 | A `MissingGreenlet` crash from a stale ORM read after rollback | database | `tests/regression/database/test_missing_greenlet_after_rollback.py` (**new this pass** — the production instance in `app/api/routers/reels.py`'s `quick_fact_check()` had no regression test at all before this; confirmed via repo-wide grep for "greenlet"/"MissingGreenlet" across `app/` and `tests/`, which found the fix's own comment but zero test coverage of it) | COVERED (new) |
-| 21 | A table-generation script's printed output and its persisted JSON silently disagreed | research_infrastructure | — | **GAP**: `backend/research/day8_final_tables.py` is a one-off analysis script, not pipeline code with an existing test harness pattern to extend. A meaningful regression test would need to construct a synthetic multi-loop scenario reproducing the exact variable-shadowing shape and assert the persisted JSON matches stdout — worth doing, not done this pass (named here rather than silently skipped). |
+| 21 | A table-generation script's printed output and its persisted JSON silently disagreed | research_infrastructure | `tests/regression/research_infrastructure/test_day8_final_tables_variable_shadowing.py` (**new this pass** — loads the real, unmodified script via `importlib`, runs it against synthetic fixtures sized so any cross-table variable bleed is immediately obvious, and asserts the persisted summary JSON matches the correct table's data. Verified both directions live, not just written and assumed: temporarily reintroduced the exact historical shared-variable-name bug on a scratch copy, confirmed the test fails against it, then restored the real (already-fixed) file and confirmed the test passes again.) | COVERED (new) |
+| 22 | A real, live global Gemini cooldown (written by concurrent real production usage against the shared dev database) makes `test_gemini_quota_scenarios.py`'s mocked scenarios short-circuit before ever reaching their scripted mock response | test_infrastructure | — | **GAP, found live during this pass**: `QuotaAwareGeminiProvider`'s global cooldown check (correct, intended behavior — avoid burning real API quota once a real exhaustion is already known) reads the same `gemini_tasks` table real production runs write to. A real quota-exhaustion event recorded by ANY concurrent real usage of the same dev database causes these tests to hit the real cooldown short-circuit instead of `MockGeminiProvider`'s scripted response, failing with `NoResultFound` (looking for a `stage="scenario-test"` row that was never created because the call never actually reached the mock). Confirmed the root cause directly: the affected tests all query `GeminiTask.stage == "scenario-test"`, correctly scoped, but a *different*, unscoped, global `status == "quota_wait"` check inside the provider itself runs first. Not fixed this pass — doing so safely needs either a fully isolated test database/schema or a way to scope the global cooldown check itself to a test context, both bigger changes than warranted mid-session; the safe, low-risk workaround used here was re-running the suite once the concurrent real script finished, confirmed clean. |
 
 ## Summary
 
-18 of 21 entries have real, passing regression-test coverage (16
-pre-existing + 2 written this pass). 3 are honest, documented gaps, not
-silently omitted:
+19 of 22 entries have real, passing regression-test coverage (16
+pre-existing + 3 written this pass, including #21 closed this same
+pass). 3 are honest, documented gaps, not silently omitted:
 
 - **#6** and **#11** are gaps *by design* — no production fix exists yet
   for either, so there is nothing yet to protect with a test. Writing a
@@ -51,9 +52,11 @@ silently omitted:
   false confidence about production behavior) or test-guard a
   deliberately-not-fixed limitation (implying a fix commitment that
   hasn't been made).
-- **#21** is a genuine, real gap: a fixable one, just not fixed this
-  pass. Named explicitly as a candidate for a future pass rather than
-  left implicit.
+- **#22** is a genuine, real, newly-found gap in test *infrastructure*
+  rather than production code — the production behavior it's colliding
+  with (a global cooldown) is correct and desired. Named explicitly as a
+  candidate for a future pass (proper test-database isolation) rather
+  than left implicit.
 
 ## How to keep this current
 
