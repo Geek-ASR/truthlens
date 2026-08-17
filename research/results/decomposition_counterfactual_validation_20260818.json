@@ -1,0 +1,13 @@
+[
+  {
+    "source_url": "https://www.instagram.com/reel/DbGTi6SzCWF/",
+    "ground_truth": "FALSE",
+    "n_claims": 2,
+    "primary_claim_text": "A female student was severely beaten.",
+    "single_claim_label": "UNVERIFIED",
+    "single_claim_match": false,
+    "multi_claim_label": "FALSE",
+    "multi_claim_match": true,
+    "multi_claim_reasoning": "Overall verdict FALSE derived from 2 claim-level verdict(s): \"A female student was severely beaten.\" \u2014 UNVERIFIED; \"A female student pleaded for help while holding the feet of police officers.\" \u2014 FALSE."
+  }
+]
