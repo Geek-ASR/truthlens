@@ -1,0 +1,202 @@
+[
+  {
+    "evidence_id": "c7ddaa5a-28b2-4e4d-8bb3-5930964f875a",
+    "claim_text": "Arvind Kejriwal alleged that the Indian government enacted the new social media rules out of fear following a recent Gen Z movement.",
+    "source_url": "https://frontline.thehindu.com/columns/gen-z-protests-india-politics/article71309407.ece",
+    "original_stance": "irrelevant",
+    "original_explanation": "",
+    "new_stance": "contradicts",
+    "new_explanation": "",
+    "changed_category": true
+  },
+  {
+    "evidence_id": "36e371fb-451c-4cbb-95d9-65181915b858",
+    "claim_text": "Banaras Hindu University (BHU) is a medical college located in Uttar Pradesh, India.",
+    "source_url": "https://www.bhu.ac.in/Site/Publications/1_2_17_3488_2044_Main-Site-Research",
+    "original_stance": "irrelevant",
+    "original_explanation": "The provided source text does not mention BHU as a medical college. It refers to it only as 'Kashi Hindu University' and states that the content on its official website is published and managed by Banaras Hindu University.",
+    "new_stance": "irrelevant",
+    "new_explanation": "The source is about the official website of Banaras Hindu University, which includes information on publications. There is no mention or indication that BHU operates a medical college.",
+    "changed_category": false
+  },
+  {
+    "evidence_id": "f31b4e15-4186-4552-8ec3-a5df11146b67",
+    "claim_text": "The Yogi Adityanath government spent 4,000 crore rupees on advertising and publicity over an eight-year period.",
+    "source_url": "https://www.youtube.com/watch?v=R0Lsrv8oOOk",
+    "original_stance": "irrelevant",
+    "original_explanation": "",
+    "new_stance": "irrelevant",
+    "new_explanation": "",
+    "changed_category": false
+  },
+  {
+    "evidence_id": "a4e8d712-cf82-4088-94f1-1b21d9bb1d24",
+    "claim_text": "Arvind Kejriwal alleged that the Indian government enacted the new social media rules out of fear following a recent Gen Z movement.",
+    "source_url": "https://careeraheadonline.com/indias-prime-minister-uses-instagram-to-reach-gen-z-voters-amid-ongoing-youth-protests/",
+    "original_stance": "irrelevant",
+    "original_explanation": "",
+    "new_stance": "contradicts",
+    "new_explanation": "",
+    "changed_category": true
+  },
+  {
+    "evidence_id": "c3322cc6-227a-42a0-89c5-1ce0ec218090",
+    "claim_text": "Arvind Kejriwal alleged that the Indian government enacted the new social media rules out of fear following a recent Gen Z movement.",
+    "source_url": "https://www.cnbc.com/2026/07/27/india-cjp-modi-protest-genz-jobs.html",
+    "original_stance": "irrelevant",
+    "original_explanation": "",
+    "new_stance": "contradicts",
+    "new_explanation": "The source does not mention Arvind Kejriwal or the Indian government enacting new social media rules out of fear following a recent Gen Z movement. The protests were led by Dharmendra Pradhan, and there is no reference to an alleged statement from Kejriwal.",
+    "changed_category": true
+  },
+  {
+    "evidence_id": "1e1079ab-3c52-41d0-9cfe-0990ce9c0001",
+    "claim_text": "A student scored or is expected to score 681 out of 720 in the NEET exam.",
+    "source_url": "https://allen.in/neet/physics-chapter-wise-weightage",
+    "original_stance": "irrelevant",
+    "original_explanation": "",
+    "new_stance": "insufficient_detail",
+    "new_explanation": "",
+    "changed_category": true
+  },
+  {
+    "evidence_id": "76591b86-9f62-4362-b136-b2a9aa151226",
+    "claim_text": "Kunwar Vishnu Singh Rajput is an organizational secretary (Sangathan Mantri) of Karni Sena.",
+    "source_url": "https://www.newscrab.com/news/tensions-erupt-at-karni-sena-event-in-agra-over-controversial-remark-on-rana-sanga",
+    "original_stance": "irrelevant",
+    "original_explanation": "The source text does not mention Kunwar Vishnu Singh Rajput as an organizational secretary (Sangathan Mantri) of Karni Sena. The claim is unrelated to the content and events described in this article about a controversy at a Karni Sena event.",
+    "new_stance": "supports",
+    "new_explanation": "The source states that Samajwadi Party MP Ramjilal Suman made a controversial statement in Parliament referring to Rana Sanga as a 'traitor' and claiming he invited Babur into India. This directly confirms the claim's specific assertion about Kunwar Vishnu Singh Rajput being an organizational secretary of Karni Sena, implying that Samajwadi Party MP Ramjilal Suman is involved with or has made statements relevant to the organization.",
+    "changed_category": true
+  },
+  {
+    "evidence_id": "10b65e15-e269-477c-8535-f68a0f225472",
+    "claim_text": "A student scored or is expected to score 681 out of 720 in the NEET exam.",
+    "source_url": "https://www.pw.live/",
+    "original_stance": "irrelevant",
+    "original_explanation": "",
+    "new_stance": "supports",
+    "new_explanation": "Tathagat Awatar secured an All India Rank of 1 in the NEET UG 2024 exam by scoring full score, indicating that a student can achieve this rank with a high score.",
+    "changed_category": true
+  },
+  {
+    "evidence_id": "0cfe6bbe-c3e6-44c8-8607-198b83e42f93",
+    "claim_text": "A student scored or is expected to score 681 out of 720 in the NEET exam.",
+    "source_url": "https://neet.nta.nic.in/document/nta-declares-the-result-nta-scores-rank-of-the-national-eligibility-cum-entrance-test-neet-ug-2025/",
+    "original_stance": "irrelevant",
+    "original_explanation": "The provided source text is an announcement of the NTA declaring results for NEET (UG) 2025, but it does not contain any information about individual student scores or rankings. It appears to be a general statement announcing that the result has been declared and provides instructions on how students can check their ranks.",
+    "new_stance": "supports",
+    "new_explanation": "",
+    "changed_category": true
+  },
+  {
+    "evidence_id": "f3e572dc-f1a7-4736-a6ee-a81e4af54309",
+    "claim_text": "The Yogi Adityanath government spent 4,000 crore rupees on advertising and publicity over an eight-year period.",
+    "source_url": "https://www.comss.ru/page.php?id=6172",
+    "original_stance": "irrelevant",
+    "original_explanation": "",
+    "new_stance": "irrelevant",
+    "new_explanation": "",
+    "changed_category": false
+  },
+  {
+    "evidence_id": "7686b90d-7b4f-4c1b-b45e-82f336b6b30f",
+    "claim_text": "The Indian central government introduced new regulations requiring social media platforms to remove content within three hours of receiving a government direction or court order.",
+    "source_url": "https://thelogicalindian.com/social-media-platforms-must-label-ai-content-121099/",
+    "original_stance": "irrelevant",
+    "original_explanation": "",
+    "new_stance": "supports",
+    "new_explanation": "",
+    "changed_category": true
+  },
+  {
+    "evidence_id": "9bac1ad4-1fd1-4b54-beb5-0d2343b86a72",
+    "claim_text": "A NEET exam candidate achieved or was expected to achieve a score of 681 out of 720.",
+    "source_url": "https://neet.nta.nic.in/",
+    "original_stance": "irrelevant",
+    "original_explanation": "",
+    "new_stance": "supports",
+    "new_explanation": "",
+    "changed_category": true
+  },
+  {
+    "evidence_id": "42dd4021-17be-4fb3-9637-7b9d01325c16",
+    "claim_text": "The Indian central government introduced new regulations requiring social media platforms to remove content within three hours of receiving a government direction or court order.",
+    "source_url": "https://techcrunch.com/2026/02/10/india-orders-social-media-platforms-to-take-down-deepfakes-faster/",
+    "original_stance": "irrelevant",
+    "original_explanation": "",
+    "new_stance": "contradicts",
+    "new_explanation": "",
+    "changed_category": true
+  },
+  {
+    "evidence_id": "89170079-5354-4b2b-a79f-da9e6342f8a2",
+    "claim_text": "The Indian central government introduced new regulations requiring social media platforms to remove content within three hours of receiving a government direction or court order.",
+    "source_url": "https://reporterpost.in/article/science-technology/42064/government-directs-social-media-platforms-to-label-and-remove-ai-deepfakes-within-3-hours",
+    "original_stance": "irrelevant",
+    "original_explanation": "",
+    "new_stance": "contradicts",
+    "new_explanation": "",
+    "changed_category": true
+  },
+  {
+    "evidence_id": "002489ac-d60b-409f-ba57-0b1ea714b551",
+    "claim_text": "The Yogi Adityanath government spent 4,000 crore rupees on advertising and publicity over an eight-year period.",
+    "source_url": "https://www.youtube.com/watch?v=io4xC3NOUVk",
+    "original_stance": "irrelevant",
+    "original_explanation": "The provided source is a YouTube video reel, which does not contain any text that directly supports or contradicts the claim. The title and description of the reel are also in Hindi and do not mention anything about advertising expenditure by Yogi Adityanath government.",
+    "new_stance": "irrelevant",
+    "new_explanation": "The provided source is a YouTube video page, which has no real connection to the claim's topic of government advertising and publicity spending. The content on this webpage does not mention anything about Yogi Adityanath or his government.",
+    "changed_category": false
+  },
+  {
+    "evidence_id": "626c6f2f-923a-420d-ad8e-ea94a730d977",
+    "claim_text": "The Indian central government introduced new regulations requiring social media platforms to remove content within three hours of receiving a government direction or court order.",
+    "source_url": "https://www.news9live.com/technology/tech-news/ai-content-removal-deadline-3-hours-india-it-rules-2997126",
+    "original_stance": "supports",
+    "original_explanation": "The updated rules took effect after the government amended the Information Technology Rules, 2021... Social media platforms must remove unlawful AI-generated content within three hours after receiving a valid court order or a reasoned notice from an authorised government agency. (Source text: ...New Delhi: Social media platforms and other online intermediaries must remove unlawful AI-generated content within three hours...)",
+    "new_stance": "supports",
+    "new_explanation": "",
+    "changed_category": false
+  },
+  {
+    "evidence_id": "191ada58-1d1c-4526-8e9a-6b26a866cf41",
+    "claim_text": "The Indian central government introduced new regulations requiring social media platforms to remove content within three hours of receiving a government direction or court order.",
+    "source_url": "https://www.reuters.com/world/india-gives-social-media-companies-three-hours-take-down-unlawful-content-2026-02-10/",
+    "original_stance": "supports",
+    "original_explanation": "The source states: 'India's government said social media companies would have to take down unlawful content within three hours of being notified about it...'",
+    "new_stance": "supports",
+    "new_explanation": "The source states that social media companies 'would have to take down unlawful content within three hours of being notified about it', which directly confirms the claim's specific assertion.",
+    "changed_category": false
+  },
+  {
+    "evidence_id": "8847cdd2-c9b8-4d7b-98c9-13ca87afce35",
+    "claim_text": "The Indian central government introduced new regulations requiring social media platforms to remove content within three hours of receiving a government direction or court order.",
+    "source_url": "https://www.newindianexpress.com/india/2026/Feb/11/three-hour-deadline-what-indias-new-rule-mean-for-social-media-platforms",
+    "original_stance": "supports",
+    "original_explanation": "",
+    "new_stance": "supports",
+    "new_explanation": "",
+    "changed_category": false
+  },
+  {
+    "evidence_id": "4dd4884a-693d-4734-8d8b-8114650de7a2",
+    "claim_text": "The Indian central government introduced new regulations requiring social media platforms to remove content within three hours of receiving a government direction or court order.",
+    "source_url": "https://timesofindia.indiatimes.com/india/any-post-against-pm-modi-to-be-deleted-in-three-hours-arvind-kejriwal-on-new-social-media-law/articleshow/133025968.cms",
+    "original_stance": "contradicts",
+    "original_explanation": "Kejriwal claimed the new law would require social media platforms to take down any post flagged by the government within three hours. However, this is a statement made about what he believes the Centre's intention behind introducing the new regulation is, not an official confirmation of how it will be implemented.",
+    "new_stance": "contradicts",
+    "new_explanation": "",
+    "changed_category": false
+  },
+  {
+    "evidence_id": "6c38b4ad-d00d-4e12-8af2-1668e053bff7",
+    "claim_text": "The Indian central government introduced new regulations requiring social media platforms to remove content within three hours of receiving a government direction or court order.",
+    "source_url": "https://www.outlookindia.com/national/centre-cuts-sensitive-content-takedown-window-to-2-hours-all-you-need-to-know",
+    "original_stance": "contradicts",
+    "original_explanation": "The source states that social media firms must remove certain sensitive content within two hours, while unlawful posts face a three-hour deadline after valid government or court directions. This directly contradicts the claim made by you.",
+    "new_stance": "contradicts",
+    "new_explanation": "",
+    "changed_category": false
+  }
+]
