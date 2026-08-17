@@ -1,0 +1,147 @@
+{
+  "n_reels_attempted": 8,
+  "n_claims_total": 12,
+  "n_claims_with_confidence": 12,
+  "per_item_log": [
+    {
+      "source_url": "https://www.instagram.com/drsudhanshutrivedibjp/reel/DbBbWEsBga3/",
+      "n_claims": 2,
+      "error": null
+    },
+    {
+      "source_url": "https://www.instagram.com/reel/DYCLkKoBpof/",
+      "n_claims": 2,
+      "error": null
+    },
+    {
+      "source_url": "https://www.instagram.com/reel/DbGy_XFz3mS/",
+      "n_claims": 0,
+      "error": null
+    },
+    {
+      "source_url": "https://www.instagram.com/reel/DbNU9W7xA9P/",
+      "n_claims": 0,
+      "error": null
+    },
+    {
+      "source_url": "https://www.instagram.com/reel/DaVcoN2u698/",
+      "n_claims": 0,
+      "error": null
+    },
+    {
+      "source_url": "https://www.instagram.com/aamaadmiparty/reel/DYMK9oIpGzL/",
+      "n_claims": 0,
+      "error": null
+    },
+    {
+      "source_url": "https://www.instagram.com/reel/DbCJDp8SYkn/",
+      "n_claims": 0,
+      "error": null
+    },
+    {
+      "source_url": "https://www.instagram.com/babajanidurrani/p/Dbns78RDIXY/",
+      "n_claims": 8,
+      "error": null
+    }
+  ],
+  "claims": [
+    {
+      "text": "#CJP protesters allegedly pelted stones at a new hydrogen train.",
+      "extraction_confidence": 1.0,
+      "confidence_type": "MODEL_CONFIDENCE",
+      "source_modalities": null,
+      "grounded": false,
+      "has_source_quote": false
+    },
+    {
+      "text": "This isn\u2019t democracy, it\u2019s vandalism.",
+      "extraction_confidence": 0.0,
+      "confidence_type": "MODEL_CONFIDENCE",
+      "source_modalities": null,
+      "grounded": false,
+      "has_source_quote": false
+    },
+    {
+      "text": "Biotechnology is a field of science that deals with the use of living organisms or their products to develop new technologies.",
+      "extraction_confidence": 0.0,
+      "confidence_type": "MODEL_CONFIDENCE",
+      "source_modalities": null,
+      "grounded": false,
+      "has_source_quote": false
+    },
+    {
+      "text": "The expected marks for NEET-2026 are 681/720.",
+      "extraction_confidence": 0.9,
+      "confidence_type": "MODEL_CONFIDENCE",
+      "source_modalities": null,
+      "grounded": false,
+      "has_source_quote": false
+    },
+    {
+      "text": "5,154 likes",
+      "extraction_confidence": 0.9,
+      "confidence_type": "MODEL_CONFIDENCE",
+      "source_modalities": null,
+      "grounded": false,
+      "has_source_quote": false
+    },
+    {
+      "text": "86 comments",
+      "extraction_confidence": 0.8,
+      "confidence_type": "MODEL_CONFIDENCE",
+      "source_modalities": null,
+      "grounded": false,
+      "has_source_quote": false
+    },
+    {
+      "text": "\"\u0926\u0947\u0936\u093e\u0924\u0940\u0932 \u0935\u093f\u0926\u094d\u092f\u093e\u0930\u094d\u0925\u094d\u092f\u093e\u0902\u091a\u093e \u092c\u0941\u0932\u0902\u0926 \u0906\u0935\u093e\u091c \u092c\u0928\u0932\u0947\u0932\u093e \u0906\u092a\u0932\u094d\u092f\u093e \u092e\u0930\u093e\u0920\u0935\u093e\u0921\u094d\u092f\u093e\u091a\u093e \u0938\u0941\u092a\u0941\u0924\u094d\u0930 \u0905\u092d\u093f\u091c\u093f\u0924 \u0926\u093f\u092a\u0915\u0947\"",
+      "extraction_confidence": 1.0,
+      "confidence_type": "MODEL_CONFIDENCE",
+      "source_modalities": null,
+      "grounded": false,
+      "has_source_quote": false
+    },
+    {
+      "text": "\"\u0928\u093f\u0935\u093e\u0938\u0938\u094d\u0925\u093e\u0928\u0940 \u0938\u0926\u093f\u091a\u094d\u091b\u093e \u092d\u0947\u091f \u0918\u0947\u0924\u0932\u0940\"",
+      "extraction_confidence": 0.7,
+      "confidence_type": "MODEL_CONFIDENCE",
+      "source_modalities": null,
+      "grounded": false,
+      "has_source_quote": false
+    },
+    {
+      "text": "\"\u0935\u093f\u0926\u094d\u092f\u093e\u0930\u094d\u0925\u094d\u092f\u093e\u0902\u091a\u094d\u092f\u093e \u0939\u0915\u094d\u0915\u093e\u0938\u093e\u0920\u0940, \u0928\u094d\u092f\u093e\u092f\u093e\u0938\u093e\u0920\u0940 \u0906\u0923\u093f \u0924\u094d\u092f\u093e\u0902\u091a\u094d\u092f\u093e \u092a\u094d\u0930\u0936\u094d\u0928\u093e\u0902\u0928\u093e \u0935\u093e\u091a\u093e \u092b\u094b\u0921\u0923\u094d\u092f\u093e\u0938\u093e\u0920\u0940\"",
+      "extraction_confidence": 1.0,
+      "confidence_type": "MODEL_CONFIDENCE",
+      "source_modalities": null,
+      "grounded": false,
+      "has_source_quote": false
+    },
+    {
+      "text": "\"\u0924\u094d\u092f\u093e\u0928\u0947 \u0909\u092d\u093e\u0930\u0932\u0947\u0932\u093e \u0938\u0902\u0918\u0930\u094d\u0937 \u0916\u0930\u094b\u0916\u0930\u091a \u0915\u094c\u0924\u0941\u0915\u093e\u0938\u094d\u092a\u0926 \u0906\u0939\u0947. \u0905\u0936\u093e \u091c\u093f\u0926\u094d\u0926\u0940, \u0905\u092d\u094d\u092f\u093e\u0938\u0942 \u0906\u0923\u093f \u0932\u0922\u093e\u090a \u0924\u0930\u0941\u0923\u093e\u091a\u093e \u092e\u0932\u093e \u092e\u0928\u093e\u092a\u093e\u0938\u0942\u0928 \u0905\u092d\u093f\u092e\u093e\u0928 \u0935\u093e\u091f\u0924\u094b\"",
+      "extraction_confidence": 1.0,
+      "confidence_type": "MODEL_CONFIDENCE",
+      "source_modalities": null,
+      "grounded": false,
+      "has_source_quote": false
+    },
+    {
+      "text": "\"\u0905\u092d\u093f\u091c\u093f\u0924\u0932\u093e \u092a\u0941\u0922\u0940\u0932 \u0935\u093e\u091f\u091a\u093e\u0932\u0940\u0938\u093e\u0920\u0940 \u092e\u0928\u0903\u092a\u0942\u0930\u094d\u0935\u0915 \u0936\u0941\u092d\u0947\u091a\u094d\u091b\u093e!\" ",
+      "extraction_confidence": 1.0,
+      "confidence_type": "MODEL_CONFIDENCE",
+      "source_modalities": null,
+      "grounded": false,
+      "has_source_quote": false
+    },
+    {
+      "text": "\"\u0938\u092e\u093e\u091c\u0939\u093f\u0924 \u0906\u0923\u093f \u0935\u093f\u0926\u094d\u092f\u093e\u0930\u094d\u0925\u094d\u092f\u093e\u0902\u091a\u094d\u092f\u093e \u0928\u094d\u092f\u093e\u092f\u094d\u092f \u0939\u0915\u094d\u0915\u093e\u0902\u0938\u093e\u0920\u0940 \u0924\u094d\u092f\u093e\u091a\u093e \u0939\u093e \u0932\u0922\u093e \u0905\u0927\u093f\u0915 \u092c\u0933\u0915\u091f \u0939\u094b\u0924 \u0930\u093e\u0939\u094b, \u0906\u092e\u094d\u0939\u0940 \u0938\u094b\u092c\u0924 \u0906\u0939\u094b\u0924\".",
+      "extraction_confidence": 1.0,
+      "confidence_type": "MODEL_CONFIDENCE",
+      "source_modalities": null,
+      "grounded": false,
+      "has_source_quote": false
+    }
+  ],
+  "point_biserial_correlation_confidence_vs_grounded": null,
+  "note": "Not enough variation (need >=2 claims and both grounded/ungrounded present) to compute a correlation."
+}
