@@ -151,6 +151,12 @@ class ValidationStatus(str, enum.Enum):
     # date, but every cited source with a known publication_date predates
     # it -- the "old footage presented as current" misinformation pattern.
     downgraded_temporal_mismatch = "downgraded_temporal_mismatch"
+    # research/RESEARCH_ROADMAP_V2.md Phase 4 (entity consistency,
+    # app/pipeline/validation.py's Check 7): none of the claim's own
+    # named entities appear in a cited, non-irrelevant-stance evidence's
+    # text -- the "wrong entity, wrong incident" pattern (e.g. Delhi
+    # Police claim cited against a Burdwan, West Bengal police incident).
+    downgraded_entity_mismatch = "downgraded_entity_mismatch"
 
 
 class FactCheckStatus(str, enum.Enum):

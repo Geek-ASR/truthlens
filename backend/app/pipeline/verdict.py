@@ -140,7 +140,9 @@ async def propose_verdict(
     # against, and validation_status is recorded either way so a
     # human-audited comparison of "what the gate would have caught" is
     # possible regardless of whether it was actually applied.
-    outcome = validate_verdict(result.parsed, evidence_by_id, source_by_evidence_id, claim.time_reference)
+    outcome = validate_verdict(
+        result.parsed, evidence_by_id, source_by_evidence_id, claim.time_reference, claim.entities
+    )
 
     now = datetime.now(timezone.utc)
     if settings.SKIP_VALIDATION:

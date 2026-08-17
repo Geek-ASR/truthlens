@@ -1,0 +1,257 @@
+[
+  {
+    "claim_id": "34800526-5642-4123-9921-7e3b7fbd9f15",
+    "claim_text": "In a democracy, every citizen has the right to express their views and protest peacefully.",
+    "evidence_id": "e931f345-b0a9-4dc7-b775-179a0e8caf9d",
+    "evidence_title": "indiankanoon.org/doc/111867",
+    "stance": "contradicts",
+    "evaluable": false,
+    "excluded_entities": [
+      "Democracy"
+    ]
+  },
+  {
+    "claim_id": "34800526-5642-4123-9921-7e3b7fbd9f15",
+    "claim_text": "In a democracy, every citizen has the right to express their views and protest peacefully.",
+    "evidence_id": "1bf59312-1d74-4e62-b44a-446760448534",
+    "evidence_title": "Article 19 (1) (b) in Constitution of India - Indian Kanoon",
+    "stance": "contradicts",
+    "evaluable": false,
+    "excluded_entities": [
+      "Democracy"
+    ]
+  },
+  {
+    "claim_id": "34800526-5642-4123-9921-7e3b7fbd9f15",
+    "claim_text": "In a democracy, every citizen has the right to express their views and protest peacefully.",
+    "evidence_id": "b3363e54-5214-4d1e-a70d-d8a67d72adee",
+    "evidence_title": "Article 19(1)(b): Freedom of Assembly under the Indian ...",
+    "stance": "supports",
+    "evaluable": false,
+    "excluded_entities": [
+      "Democracy"
+    ]
+  },
+  {
+    "claim_id": "34800526-5642-4123-9921-7e3b7fbd9f15",
+    "claim_text": "In a democracy, every citizen has the right to express their views and protest peacefully.",
+    "evidence_id": "97e6da07-83bf-46b6-b57a-6058f43191bf",
+    "evidence_title": "Right to Assembly \u2013 GKToday",
+    "stance": "supports",
+    "evaluable": false,
+    "excluded_entities": [
+      "Democracy"
+    ]
+  },
+  {
+    "claim_id": "34800526-5642-4123-9921-7e3b7fbd9f15",
+    "claim_text": "In a democracy, every citizen has the right to express their views and protest peacefully.",
+    "evidence_id": "0918f64c-9393-42e3-aa77-7e76b5fc2633",
+    "evidence_title": "Prohibitory orders imposed in Leh following violent protests ...",
+    "stance": "contradicts",
+    "evaluable": false,
+    "excluded_entities": [
+      "Democracy"
+    ]
+  },
+  {
+    "claim_id": "8dad1c21-bb51-4cef-8d1f-9305938bb2bb",
+    "claim_text": "Delhi Police are attacking children using lathis/sticks embedded with nails.",
+    "evidence_id": "e9aad959-737f-49b4-840f-f75c4b378594",
+    "evidence_title": "Caught on camera: Protesting students beaten with... - India Today",
+    "stance": "contradicts",
+    "evaluable": true,
+    "has_match": false,
+    "exact_matched_entities": [],
+    "fuzzy_matched_entities": [],
+    "claim_entities_checked": [
+      "Delhi Police"
+    ],
+    "excluded_entities": []
+  },
+  {
+    "claim_id": "056f8350-5988-497b-bd31-285728f67821",
+    "claim_text": "Babajani Durrani held a courtesy meeting with Abhijit Dipke at Dipke's residence in Chhatrapati Sambhajinagar.",
+    "evidence_id": "8f68e70f-3759-4981-849e-e83d3d7dfbd0",
+    "evidence_title": "Abhijeet Dipke: '\u092e\u0940 \u0915\u0941\u0923\u093e\u0932\u093e \u092d\u0947\u091f\u093e\u092f\u091a\u0902 \u0939\u0947 \u092a\u094b\u0932\u093f\u0938\u093e\u0902\u0928\u0940 \u0928\u093e\u0939\u0940 \u0938\u093e\u0902\u0917\u093e\u092f\u091a\u0902'; \u0905\u092d\u093f\u091c\u0940\u0924...",
+    "stance": "contradicts",
+    "evaluable": true,
+    "has_match": true,
+    "exact_matched_entities": [
+      "Abhijit Dipke"
+    ],
+    "fuzzy_matched_entities": [],
+    "claim_entities_checked": [
+      "Babajani Durrani",
+      "Abhijit Dipke",
+      "Chhatrapati Sambhajinagar"
+    ],
+    "excluded_entities": []
+  },
+  {
+    "claim_id": "056f8350-5988-497b-bd31-285728f67821",
+    "claim_text": "Babajani Durrani held a courtesy meeting with Abhijit Dipke at Dipke's residence in Chhatrapati Sambhajinagar.",
+    "evidence_id": "4e9cd859-7266-47ee-b2eb-e331c1664cf7",
+    "evidence_title": "Manish Brahmbhatt on Dipke: \u0926\u0940\u092a\u0915\u0947 \u0930\u093e\u091c\u0915\u0940\u092f \u2018\u0921\u0940\u0932\u0930\u2019, \u0915\u0947\u091c\u0930\u0940\u0935\u093e\u0932 \u0938\u0942\u0924\u094d\u0930\u0927\u093e\u0930...",
+    "stance": "contradicts",
+    "evaluable": true,
+    "has_match": true,
+    "exact_matched_entities": [],
+    "fuzzy_matched_entities": [
+      "Abhijit Dipke"
+    ],
+    "claim_entities_checked": [
+      "Babajani Durrani",
+      "Abhijit Dipke",
+      "Chhatrapati Sambhajinagar"
+    ],
+    "excluded_entities": []
+  },
+  {
+    "claim_id": "ecc37578-777c-4c47-bbd0-5732a740e34d",
+    "claim_text": "In a democracy, every citizen has the right to express their views and protest peacefully.",
+    "evidence_id": "3eede790-58e8-42f1-9442-1ad6709e0b2f",
+    "evidence_title": "Freedom of expression in India - Wikipedia",
+    "stance": "contradicts",
+    "evaluable": false,
+    "excluded_entities": []
+  },
+  {
+    "claim_id": "ecc37578-777c-4c47-bbd0-5732a740e34d",
+    "claim_text": "In a democracy, every citizen has the right to express their views and protest peacefully.",
+    "evidence_id": "a6ceaa19-fa93-47d1-bbd7-4e3f2a94b75a",
+    "evidence_title": "The right of peaceful assembly in India | Peaceful Assembly...",
+    "stance": "contradicts",
+    "evaluable": false,
+    "excluded_entities": []
+  },
+  {
+    "claim_id": "ecc37578-777c-4c47-bbd0-5732a740e34d",
+    "claim_text": "In a democracy, every citizen has the right to express their views and protest peacefully.",
+    "evidence_id": "0b6e8a33-cbc3-4d9b-8af5-01dbbcb25f6a",
+    "evidence_title": "Right to Protest: A Fundamental Right - lawbhoomi.com",
+    "stance": "supports",
+    "evaluable": false,
+    "excluded_entities": []
+  },
+  {
+    "claim_id": "ecc37578-777c-4c47-bbd0-5732a740e34d",
+    "claim_text": "In a democracy, every citizen has the right to express their views and protest peacefully.",
+    "evidence_id": "d48faa8c-c9a4-4b11-946c-39c52159e2d4",
+    "evidence_title": "Human rights in India - Wikipedia",
+    "stance": "contradicts",
+    "evaluable": false,
+    "excluded_entities": []
+  },
+  {
+    "claim_id": "ecc37578-777c-4c47-bbd0-5732a740e34d",
+    "claim_text": "In a democracy, every citizen has the right to express their views and protest peacefully.",
+    "evidence_id": "1ece6cbb-8905-407a-9947-4093b6ec0080",
+    "evidence_title": "What are the Constitutional Rights of Peaceful Protesters in India?",
+    "stance": "supports",
+    "evaluable": false,
+    "excluded_entities": []
+  },
+  {
+    "claim_id": "ecc37578-777c-4c47-bbd0-5732a740e34d",
+    "claim_text": "In a democracy, every citizen has the right to express their views and protest peacefully.",
+    "evidence_id": "33292a92-62a7-49f0-a8a5-4ba772c71c96",
+    "evidence_title": "Freedom of Speech and Expression in India: Constitutional ...",
+    "stance": "supports",
+    "evaluable": false,
+    "excluded_entities": []
+  },
+  {
+    "claim_id": "ecc37578-777c-4c47-bbd0-5732a740e34d",
+    "claim_text": "In a democracy, every citizen has the right to express their views and protest peacefully.",
+    "evidence_id": "54a814d8-3b01-4989-a76d-6c8ee7a7e2a4",
+    "evidence_title": "Aakar Patel | Why Indians Need To Protect, Expand The Right To...",
+    "stance": "contradicts",
+    "evaluable": false,
+    "excluded_entities": []
+  },
+  {
+    "claim_id": "d9bff0ad-594d-479c-a0c7-ffcc1341f66c",
+    "claim_text": "Banaras Hindu University (BHU) is a medical educational university located in Uttar Pradesh, India.",
+    "evidence_id": "4a714254-5ff3-46e5-afc6-ddaf203a502e",
+    "evidence_title": "Institute Of Medical Sciences, BHU, Varanasi - Study MBBS, MD ...",
+    "stance": "supports",
+    "evaluable": true,
+    "has_match": true,
+    "exact_matched_entities": [
+      "Banaras Hindu University",
+      "India"
+    ],
+    "fuzzy_matched_entities": [],
+    "claim_entities_checked": [
+      "Banaras Hindu University",
+      "Uttar Pradesh",
+      "India"
+    ],
+    "excluded_entities": []
+  },
+  {
+    "claim_id": "1b6ce1dc-531e-4a84-9008-ef07dc06c7b4",
+    "claim_text": "Kunwar Vishnu Singh Rajput is an organizational secretary (Sangathan Mantri) of Karni Sena.",
+    "evidence_id": "b7e30502-609c-40e9-8371-2515adffaf81",
+    "evidence_title": "Karni Sena to hold mega rally in Agra on Rana... - The Statesman",
+    "stance": "contradicts",
+    "evaluable": true,
+    "has_match": true,
+    "exact_matched_entities": [
+      "Karni Sena"
+    ],
+    "fuzzy_matched_entities": [],
+    "claim_entities_checked": [
+      "Kunwar Vishnu Singh Rajput",
+      "Karni Sena"
+    ],
+    "excluded_entities": []
+  },
+  {
+    "claim_id": "1b6ce1dc-531e-4a84-9008-ef07dc06c7b4",
+    "claim_text": "Kunwar Vishnu Singh Rajput is an organizational secretary (Sangathan Mantri) of Karni Sena.",
+    "evidence_id": "f0d9ee2e-6639-4622-b29b-cccff04ea927",
+    "evidence_title": "Sri Ram Sena - Wikipedia",
+    "stance": "contradicts",
+    "evaluable": true,
+    "has_match": false,
+    "exact_matched_entities": [],
+    "fuzzy_matched_entities": [],
+    "claim_entities_checked": [
+      "Kunwar Vishnu Singh Rajput",
+      "Karni Sena"
+    ],
+    "excluded_entities": []
+  },
+  {
+    "claim_id": "ddfdd0c8-ff16-42ca-b5b5-aba054a3773c",
+    "claim_text": "The student receiving the NEET score is the son of a paan shop owner.",
+    "evidence_id": "cf38358f-46ae-47be-9e1d-d76e2c00234b",
+    "evidence_title": "Paan Vendor's Daughter Cracks NEET And Is Set To Get A Seat In Govt Medical College",
+    "stance": "contradicts",
+    "evaluable": false,
+    "excluded_entities": []
+  },
+  {
+    "claim_id": "0336b50e-e0dd-4d3c-9202-762ca3e58c05",
+    "claim_text": "Banaras Hindu University (BHU) is a medical college located in Uttar Pradesh, India.",
+    "evidence_id": "840a13ad-f9c7-44a2-81b6-e1cef2b20f74",
+    "evidence_title": "IMS BHU: Admission 2026, Cutoff, Courses, Fees, Placements, Ranking",
+    "stance": "contradicts",
+    "evaluable": true,
+    "has_match": true,
+    "exact_matched_entities": [
+      "Banaras Hindu University",
+      "Uttar Pradesh",
+      "India"
+    ],
+    "fuzzy_matched_entities": [],
+    "claim_entities_checked": [
+      "Banaras Hindu University",
+      "Uttar Pradesh",
+      "India"
+    ],
+    "excluded_entities": []
+  }
+]

@@ -4,7 +4,7 @@ verdict could ship without real evidentiary backing."""
 import uuid
 from datetime import datetime, timezone
 
-from app.db.models import Source, SourceTier, ValidationStatus, VerdictLabel
+from app.db.models import EvidenceStance, Source, SourceTier, ValidationStatus, VerdictLabel
 from app.pipeline.validation import validate_verdict
 from app.schemas.verdict import VerdictProposal
 
@@ -527,6 +527,191 @@ def test_check_does_not_fire_when_at_least_one_cited_source_is_current():
         {stale_id: stale_source, current_id: current_source},
         "August 4, 2026",
     )
+
+    assert outcome.status == ValidationStatus.passed
+
+
+# ---------------------------------------------------------------------------
+# Check 7 (research/RESEARCH_ROADMAP_V2.md Phase 4): entity consistency --
+# real cases from research/ENTITY_CONSISTENCY_EVALUATION.md's original
+# audit and its corrected v2 re-evaluation (research/entity_consistency_v2/
+# evaluate.py), which found 2/2 real true positives and 0 false positives
+# on real DEV-split data after the type-filter + fuzzy-match fixes below.
+# ---------------------------------------------------------------------------
+
+def _make_evidence(stance=EvidenceStance.contradicts):
+    from types import SimpleNamespace
+
+    return SimpleNamespace(stance=stance)
+
+
+def test_downgrades_the_real_delhi_police_vs_burdwan_police_case():
+    # research/ENTITY_CONSISTENCY_EVALUATION.md's own original true
+    # positive, re-confirmed live in the v2 re-evaluation: a claim
+    # specifically about Delhi Police, cited against a source about an
+    # entirely different incident in Burdwan, West Bengal.
+    source = _make_source(
+        title="Caught on camera: Protesting students beaten with nail-studded sticks in Burdwan, West Bengal",
+        relevant_passage="Police in Burdwan, West Bengal were filmed beating student protesters.",
+    )
+    evidence_id = uuid.uuid4()
+    proposal = VerdictProposal(
+        verdict=VerdictLabel.FALSE,
+        confidence=0.8,
+        reasoning_summary="Video shows police action, but not by Delhi Police.",
+        cited_evidence_ids=[evidence_id],
+    )
+
+    outcome = validate_verdict(
+        proposal,
+        {evidence_id: _make_evidence(EvidenceStance.contradicts)},
+        {evidence_id: source},
+        None,
+        [{"name": "Delhi Police", "type": "Organization"}],
+    )
+
+    assert outcome.status == ValidationStatus.downgraded_entity_mismatch
+    assert outcome.verdict == VerdictLabel.UNVERIFIED
+
+
+def test_downgrades_the_real_karni_sena_vs_sri_ram_sena_case():
+    # Real violation found live in the v2 re-evaluation (not seen in the
+    # smaller v1 sample): a claim about Karni Sena, cited against a
+    # Wikipedia article about the unrelated Sri Ram Sena organization.
+    source = _make_source(title="Sri Ram Sena - Wikipedia", relevant_passage="Sri Ram Sena is a Hindu nationalist organisation.")
+    evidence_id = uuid.uuid4()
+    proposal = VerdictProposal(
+        verdict=VerdictLabel.FALSE,
+        confidence=0.7,
+        reasoning_summary="The organization described is not the same one.",
+        cited_evidence_ids=[evidence_id],
+    )
+
+    outcome = validate_verdict(
+        proposal,
+        {evidence_id: _make_evidence(EvidenceStance.contradicts)},
+        {evidence_id: source},
+        None,
+        [{"name": "Kunwar Vishnu Singh Rajput", "type": "person"}, {"name": "Karni Sena", "type": "organization"}],
+    )
+
+    assert outcome.status == ValidationStatus.downgraded_entity_mismatch
+
+
+def test_passes_when_entity_matches_via_calibrated_fuzzy_transliteration():
+    # Real case found live in the v2 re-evaluation: "Abhijit Dipke" (the
+    # claim's own spelling) vs "Dipke"/"दीपके" transliteration variants in
+    # real Marathi-script news coverage -- recovered by the fuzzy match
+    # without needing an exact substring hit.
+    source = _make_source(
+        title="Manish Brahmbhatt on Dipke: दीपके राजकीय 'डीलर', केजरीवाल सूत्रधार",
+        relevant_passage="Abhijeet Deepke has denied the allegations in a statement.",
+    )
+    evidence_id = uuid.uuid4()
+    proposal = VerdictProposal(
+        verdict=VerdictLabel.FALSE,
+        confidence=0.7,
+        reasoning_summary="Coverage of the same individual contradicts the claim.",
+        cited_evidence_ids=[evidence_id],
+    )
+
+    outcome = validate_verdict(
+        proposal,
+        {evidence_id: _make_evidence(EvidenceStance.contradicts)},
+        {evidence_id: source},
+        None,
+        [{"name": "Abhijit Dipke", "type": "person"}],
+    )
+
+    assert outcome.status == ValidationStatus.passed
+
+
+def test_passes_when_claim_has_only_abstract_concept_entities():
+    # Real false-positive class from v1 (research/ENTITY_CONSISTENCY_
+    # EVALUATION.md): {"name": "Democracy", "type": "concept"} is not a
+    # PERSON/ORGANIZATION/LOCATION -- must never be checked against
+    # unrelated legal text, unlike v1's uncorrected behavior.
+    source = _make_source(
+        title="Article 19(1)(b): Freedom of Assembly under the Indian Constitution",
+        relevant_passage="The right to peaceful assembly is a fundamental right.",
+    )
+    evidence_id = uuid.uuid4()
+    proposal = VerdictProposal(
+        verdict=VerdictLabel.TRUE,
+        confidence=0.8,
+        reasoning_summary="Every citizen has this right per the Constitution.",
+        cited_evidence_ids=[evidence_id],
+    )
+
+    outcome = validate_verdict(
+        proposal,
+        {evidence_id: _make_evidence(EvidenceStance.supports)},
+        {evidence_id: source},
+        None,
+        [{"name": "Democracy", "type": "concept"}],
+    )
+
+    assert outcome.status == ValidationStatus.passed
+
+
+def test_passes_when_claim_has_zero_entities():
+    # Not evaluable at all -- must never be silently treated as a
+    # violation just because there's nothing to check.
+    source = _make_source()
+    evidence_id = uuid.uuid4()
+    proposal = VerdictProposal(
+        verdict=VerdictLabel.TRUE,
+        confidence=0.8,
+        reasoning_summary="Unemployment rose to 12% in March 2026 according to the labor ministry.",
+        cited_evidence_ids=[evidence_id],
+    )
+
+    outcome = validate_verdict(
+        proposal, {evidence_id: _make_evidence()}, {evidence_id: source}, None, []
+    )
+
+    assert outcome.status == ValidationStatus.passed
+
+
+def test_irrelevant_stance_evidence_is_never_checked_for_entity_consistency():
+    # Irrelevant-stance evidence isn't driving the reasoning -- a mismatch
+    # there is not this check's concern, matching the original
+    # prototype's own scope.
+    source = _make_source(title="Unrelated article", relevant_passage="Nothing to do with the claim.")
+    evidence_id = uuid.uuid4()
+    proposal = VerdictProposal(
+        verdict=VerdictLabel.TRUE,
+        confidence=0.8,
+        reasoning_summary="Some unrelated reasoning that happens to pass the other checks.",
+        cited_evidence_ids=[evidence_id],
+    )
+
+    outcome = validate_verdict(
+        proposal,
+        {evidence_id: _make_evidence(EvidenceStance.irrelevant)},
+        {evidence_id: source},
+        None,
+        [{"name": "Delhi Police", "type": "Organization"}],
+    )
+
+    assert outcome.status == ValidationStatus.passed
+
+
+def test_existing_tests_without_claim_entities_never_touch_evidence_stance():
+    # Backward-compatibility guarantee: a caller that never passes
+    # claim_entities (the default) must never even read evidence.stance,
+    # so plain non-Evidence stand-ins (object(), used throughout this
+    # file's earlier, pre-Phase-4 tests) keep working unmodified.
+    source = _make_source()
+    evidence_id = uuid.uuid4()
+    proposal = VerdictProposal(
+        verdict=VerdictLabel.TRUE,
+        confidence=0.9,
+        reasoning_summary="Unemployment rose to 12% in March 2026 according to the labor ministry.",
+        cited_evidence_ids=[evidence_id],
+    )
+
+    outcome = validate_verdict(proposal, {evidence_id: object()}, {evidence_id: source})
 
     assert outcome.status == ValidationStatus.passed
 

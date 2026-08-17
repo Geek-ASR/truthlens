@@ -8,7 +8,7 @@ from datetime import timedelta, timezone
 
 from dateutil import parser as date_parser
 
-from app.db.models import Source, ValidationStatus, VerdictLabel
+from app.db.models import EvidenceStance, Source, ValidationStatus, VerdictLabel
 from app.schemas.verdict import VerdictProposal
 
 _NUMBER_PATTERN = re.compile(r"\b\d+(?:,\d{3})*(?:\.\d+)?%?")
@@ -97,6 +97,111 @@ def _resolve_explicit_claim_date(time_reference: str | None):
         return None
 
 
+# research/RESEARCH_ROADMAP_V2.md Phase 4 (entity consistency). Promoted
+# from a standalone prototype (research/entity_consistency_eval.py,
+# ENTITY_CONSISTENCY_EVALUATION.md's original audit) to production after
+# a second, corrected evaluation (research/entity_consistency_v2/evaluate.py,
+# real DEV-split data) cleared the roadmap's own integration bar: v1's
+# only 4 false positives were ALL one abstract-concept entity
+# ({"name": "Democracy", "type": "concept"}) matched against unrelated
+# legal text -- fixed by filtering to PERSON/ORGANIZATION/LOCATION before
+# evaluating, which took the corrected sample to 2/2 real true positives
+# (including the exact "Delhi Police vs Burdwan Police" case Step 9
+# names) and 0 false positives, plus 1 real transliteration-variance case
+# (Dipke/Deepke) recovered by the calibrated fuzzy-match fallback below
+# without collapsing either of the two real must-not-match cases in this
+# project's own data (Delhi/Burdwan Police, Karni Sena/Sri Ram Sena).
+#
+# Real Claim.entities `type` values observed live are messy free text
+# ("person", "Organization", "EducationalInstitution", "Examination",
+# "concept", ...) -- canonicalized into a fixed vocabulary here rather
+# than guessed at. This is NOT the roadmap's full aspirational 7
+# -category schema (PERSON/ORGANIZATION/LOCATION/EVENT/DATE/NUMBER/
+# POLITICAL_ACTOR) -- EVENT/DATE/NUMBER/POLITICAL_ACTOR would require a
+# claim_extraction prompt/schema change not made this pass, disclosed
+# here rather than silently narrowed.
+_ENTITY_ALIAS_GROUPS = [
+    {"government of india", "union government", "centre", "central government", "govt of india"},
+]
+
+_ENTITY_TYPE_NORMALIZATION = {
+    "person": "PERSON",
+    "organization": "ORGANIZATION",
+    "organisation": "ORGANIZATION",
+    "educationalinstitution": "ORGANIZATION",
+    "location": "LOCATION",
+    "place": "LOCATION",
+    "policy": "OTHER",
+    "concept": "OTHER",
+    "examination": "OTHER",
+    "other": "OTHER",
+}
+_ENTITY_EVALUABLE_TYPES = {"PERSON", "ORGANIZATION", "LOCATION"}
+
+# Calibrated against this project's own real cases (research/
+# entity_consistency_v2/evaluate.py's module docstring has the full
+# numbers): "abhijit dipke" vs "abhijeet deepke" (the real case that
+# SHOULD match) scores 0.786; "delhi police" vs "burdwan police" and
+# "karni sena" vs "sri ram sena" (the real cases that must NOT collapse)
+# score 0.615 and 0.545 -- 0.75 clears the former with margin and
+# rejects both latter with much larger margin.
+_ENTITY_FUZZY_MATCH_THRESHOLD = 0.75
+
+
+def _normalize_entity_type(raw_type: str | None) -> str:
+    return _ENTITY_TYPE_NORMALIZATION.get((raw_type or "").strip().lower(), "OTHER")
+
+
+def _entity_exact_match(entity_name: str, text_lower: str) -> bool:
+    name = entity_name.lower().strip()
+    if not name:
+        return False
+    if name in text_lower:
+        return True
+    for group in _ENTITY_ALIAS_GROUPS:
+        if name in group:
+            return any(alias in text_lower for alias in group)
+    return False
+
+
+def _entity_fuzzy_match(entity_name: str, text_lower: str) -> bool:
+    """A disclosed secondary signal for transliteration variance --
+    checks the entity name against every word-run of matching length in
+    the text, not one global ratio (a name is usually a small fragment
+    of a much longer passage)."""
+    from difflib import SequenceMatcher
+
+    name = entity_name.lower().strip()
+    if not name or len(name) < 4:  # too short for a meaningful fuzzy ratio
+        return False
+    words = text_lower.split()
+    name_word_count = max(1, len(name.split()))
+    for i in range(len(words) - name_word_count + 1):
+        window = " ".join(words[i : i + name_word_count])
+        if SequenceMatcher(None, name, window).ratio() >= _ENTITY_FUZZY_MATCH_THRESHOLD:
+            return True
+    return False
+
+
+def _entity_consistency_violation(claim_entities: list[dict] | None, title: str | None, passage: str | None) -> bool:
+    """True only when the claim has >=1 evaluable-type entity AND none of
+    them (exact or fuzzy) appears in this evidence's own title+passage --
+    a claim with zero evaluable entities cannot be evaluated by this
+    check at all and is never flagged (matches the prototype's own
+    discipline: not evaluable is not the same as passing)."""
+    evaluable_names = [
+        e["name"] for e in (claim_entities or [])
+        if _normalize_entity_type(e.get("type")) in _ENTITY_EVALUABLE_TYPES and e.get("name")
+    ]
+    if not evaluable_names:
+        return False
+    text_lower = f"{title or ''} {passage or ''}".lower()
+    return not any(
+        _entity_exact_match(name, text_lower) or _entity_fuzzy_match(name, text_lower)
+        for name in evaluable_names
+    )
+
+
 class ValidationOutcome:
     def __init__(
         self,
@@ -169,12 +274,14 @@ def validate_verdict(
     evidence_by_id: dict,
     source_by_evidence_id: dict[object, Source],
     claim_time_reference: str | None = None,
+    claim_entities: list[dict] | None = None,
 ) -> ValidationOutcome:
     """`evidence_by_id` / `source_by_evidence_id` are passed explicitly
     (rather than traversed via Evidence.source) so this stays a pure,
     synchronous function with no ORM lazy-loading involved.
-    `claim_time_reference` is likewise passed as a plain string (Claim.
-    time_reference), not the Claim object itself, for the same reason."""
+    `claim_time_reference` / `claim_entities` are likewise passed as
+    plain values (Claim.time_reference / Claim.entities), not the Claim
+    object itself, for the same reason."""
     valid_evidence_ids = set(evidence_by_id.keys())
 
     # Check 1: every cited evidence id must belong to this claim's evidence.
@@ -264,6 +371,46 @@ def validate_verdict(
                         f"source with a known publication date predates it by more than "
                         f"{_TEMPORAL_MISMATCH_TOLERANCE_DAYS} day(s) — possible old footage/story "
                         f"presented as current."
+                    ],
+                )
+
+    # Check 7 (research/RESEARCH_ROADMAP_V2.md Phase 4): for every cited
+    # evidence with a stance that actually influences the verdict
+    # (supports/contradicts -- irrelevant-stance evidence isn't driving
+    # the reasoning, so a mismatch there is not this check's concern),
+    # at least one of the claim's own PERSON/ORGANIZATION/LOCATION
+    # entities must appear (exact or calibrated-fuzzy) in that evidence's
+    # title+passage. Catches the "wrong entity, wrong incident" pattern
+    # -- e.g. citing a Burdwan, West Bengal police incident as if it
+    # contradicts a claim specifically about Delhi Police.
+    #
+    # A claim with zero evaluable-type entities is not evaluable by this
+    # check at all (same discipline as the original prototype) -- and,
+    # deliberately, `evidence.stance` is never even read in that case:
+    # callers that never pass claim_entities (most existing tests and
+    # any research script that only exercises the other checks) keep
+    # working against plain Evidence-shaped stand-ins that don't
+    # implement `.stance`, since this check has nothing to look at either
+    # way.
+    has_evaluable_entity = any(
+        _normalize_entity_type(e.get("type")) in _ENTITY_EVALUABLE_TYPES and e.get("name")
+        for e in (claim_entities or [])
+    )
+    if has_evaluable_entity:
+        for eid in cited:
+            evidence = evidence_by_id[eid]
+            if evidence.stance == EvidenceStance.irrelevant:
+                continue
+            source = source_by_evidence_id[eid]
+            if _entity_consistency_violation(claim_entities, source.title, source.relevant_passage):
+                return ValidationOutcome(
+                    ValidationStatus.downgraded_entity_mismatch,
+                    VerdictLabel.UNVERIFIED,
+                    min(proposal.confidence, _CAPPED_CONFIDENCE),
+                    [
+                        f"None of the claim's named entities appear in cited evidence {eid} "
+                        f"(source {source.id}) despite a {evidence.stance.value} stance -- possible "
+                        f"wrong-entity/wrong-incident citation."
                     ],
                 )
 
