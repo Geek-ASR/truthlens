@@ -1,0 +1,972 @@
+[
+  {
+    "source_url": "https://www.instagram.com/drsudhanshutrivedibjp/reel/DbBbWEsBga3/",
+    "reel_id": "3e166de3-a7aa-4aca-9076-976ffcab860d",
+    "conditions": {
+      "caption_only": {
+        "condition": "caption_only",
+        "claims": [
+          {
+            "text": "#CJP protesters allegedly pelted stones at a new hydrogen train.",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "This isn\u2019t democracy, it\u2019s vandalism.",
+            "grounded": false,
+            "source_modalities": []
+          }
+        ],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 10.693105124984868
+      },
+      "audio": {
+        "condition": "audio",
+        "claims": [
+          {
+            "text": "#CJP protesters allegedly pelted stones",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "This isn\u2019t democracy, it\u2019s vandalism.",
+            "grounded": false,
+            "source_modalities": []
+          }
+        ],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 5.397396499989554
+      },
+      "ocr": {
+        "condition": "ocr",
+        "claims": [
+          {
+            "text": "#CJP protesters allegedly pelted stones at a new hydrogen train.",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "This isn\u2019t democracy, it\u2019s vandalism.",
+            "grounded": false,
+            "source_modalities": []
+          }
+        ],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 5.235456249996787
+      },
+      "vision": {
+        "condition": "vision",
+        "claims": [
+          {
+            "text": "CJP protesters allegedly pelted stones at a new hydrogen train.",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "This isn\u2019t democracy, it\u2019s vandalism.",
+            "grounded": false,
+            "source_modalities": []
+          }
+        ],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 5.400294207996922
+      },
+      "audio+ocr": {
+        "condition": "audio+ocr",
+        "claims": [
+          {
+            "text": "#CJP protesters allegedly pelted stones",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "at a new hydrogen train.",
+            "grounded": false,
+            "source_modalities": []
+          }
+        ],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 5.433954084001016
+      },
+      "audio+vision": {
+        "condition": "audio+vision",
+        "claims": [
+          {
+            "text": "#CJP protesters allegedly pelted stones at a new hydrogen train.",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "This isn\u2019t democracy, it\u2019s vandalism.",
+            "grounded": false,
+            "source_modalities": []
+          }
+        ],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 6.268211540998891
+      },
+      "ocr+vision": {
+        "condition": "ocr+vision",
+        "claims": [
+          {
+            "text": "CJP protesters allegedly pelted stones at a new hydrogen train.",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "This isn\u2019t democracy, it\u2019s vandalism.",
+            "grounded": false,
+            "source_modalities": []
+          }
+        ],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 5.710207583993906
+      },
+      "audio+ocr+vision": {
+        "condition": "audio+ocr+vision",
+        "claims": [
+          {
+            "text": "#CJP protesters allegedly pelted stones at a new hydrogen train.",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "This isn\u2019t democracy, it\u2019s vandalism.",
+            "grounded": false,
+            "source_modalities": []
+          }
+        ],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 6.656634624989238
+      }
+    }
+  },
+  {
+    "source_url": "https://www.instagram.com/reel/DYCLkKoBpof/",
+    "reel_id": "f634c1e9-e400-4723-994c-9addb9deaff5",
+    "conditions": {
+      "caption_only": {
+        "condition": "caption_only",
+        "claims": [],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 2.926116041984642
+      },
+      "audio": {
+        "condition": "audio",
+        "claims": [
+          {
+            "text": "\u0628\u06cc\u0679\u06be\u0627 \u0622\u067e \u06a9\u0627 \u0646\u06cc\u0679\u06be \u0915\u0947 \u090f\u0915 \u091c\u093e\u092e \u092e\u0947\u0902 681 \u0938\u094d\u0915\u094b\u0921 \u0932\u0947\u0917\u093e \u0906 \u0930\u0939\u093e \u0939\u0948",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "681 \u0938\u094d\u0915\u094b\u0921 \u0915\u093e \u092e\u0924\u0932\u092c \u0939\u094b\u0924\u093e \u0939\u0948, \u092d\u093e\u0930\u0924 \u0915\u0947 TOP MEDICAL COLLEGE \u0939\u0948\u0902 ",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "UP \u092e\u0947\u0902 \u0905\u0917\u0930 \u0906\u092a \u0926\u0947\u0916\u0940 \u0924\u094b BHU \u0939\u0948 \u091c\u093f\u0938\u0947 \u092c\u0928\u093e\u0930\u0938 \u0939\u093f\u0902\u0926\u0942 \u0935\u093f\u0936\u094d\u0935\u0935\u093f\u0926\u094d\u092f\u093e\u0932\u092f \u0915\u093e \u092d\u0940 \u0915\u0939\u093e \u091c\u093e\u0924\u093e \u0939\u0948, \u0935\u0939\u093e\u0902 \u092a\u0948\u0930\u094d\u091f-\u091f\u093e\u0907\u092e \u0928\u093f\u0915\u0932\u0928\u0947 \u0915\u0940 \u092c\u0939\u0941\u0924 \u0938\u0902\u092a\u0939\u093e\u0928 \u0928\u0939\u0940\u0902 \u0939\u0948\u0902 \u0914\u0930 \u092f\u093e \u092b\u093f\u0930 \u0909\u0938\u0940 \u0932\u094b\u0917\u094b\u0902 \u0915\u094b \u092e\u093f\u0932\u0928\u0947 \u0915\u0940 \u092c\u093e\u0930-\u092c\u093e\u0930 \u0938\u092e\u094d\u092a\u0939\u0928 \u0928\u0939\u0940\u0902 \u0939\u0948",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "\u092eeaning of TOP MEDICAL COLLEGE is BHU (Banaras Hindu University) in UP ",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "Paan Wale Ka Beta Banega Doctor \ud83d\udcaf\ud83d\udd25",
+            "grounded": false,
+            "source_modalities": []
+          }
+        ],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 19.213926666008774
+      },
+      "ocr": {
+        "condition": "ocr",
+        "claims": [],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 3.8172191669873428
+      },
+      "vision": {
+        "condition": "vision",
+        "claims": [
+          {
+            "text": "Paan Wale Ka Beta Banega Doctor",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "#physicswallah #neet2026 #viral #\u1d1b\u0280\u1d47\u026a\u0273\u1d05\u026a\u014br\u0ac1\u0a82\u0a97\u0acd\u0ab0\u0ac7\u0ab2",
+            "grounded": false,
+            "source_modalities": []
+          }
+        ],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 7.056442041997798
+      },
+      "audio+ocr": {
+        "condition": "audio+ocr",
+        "claims": [
+          {
+            "text": "Biotechnology student will get 681 marks",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "BHU is a top medical college in UP",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "Biotechnology student will become doctor and get more marks ",
+            "grounded": false,
+            "source_modalities": []
+          }
+        ],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 11.201038791972678
+      },
+      "audio+vision": {
+        "condition": "audio+vision",
+        "claims": [
+          {
+            "text": "\u0628\u06cc\u0679\u06be\u0627 \u0622\u067e \u06a9\u0627 \u0646\u06cc\u0679\u06be \u06a9\u06d2 \u0627\u06cc\u06a9 \u0632\u0627\u0645 \u0645\u06cc\u06ba 681 \u0627\u0633\u30b3\u30fc\u30c9 \u0644\u06d2 \u06af\u06d2 \u0622 \u0631\u06c1\u0627 \u06c1\u06d2",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "681 \u06a9\u0627 \u0645\u0637\u0644\u0628 India \u0915\u0947 TOP MEDICAL COLLEGE \u0939\u0948 ",
+            "grounded": false,
+            "source_modalities": []
+          }
+        ],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 6.739866750023793
+      },
+      "ocr+vision": {
+        "condition": "ocr+vision",
+        "claims": [],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 5.460717125009978
+      },
+      "audio+ocr+vision": {
+        "condition": "audio+ocr+vision",
+        "claims": [
+          {
+            "text": "India\u2019s TOP MEDICAL COLLEGE is UP.",
+            "grounded": false,
+            "source_modalities": []
+          }
+        ],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 7.283477124990895
+      }
+    }
+  },
+  {
+    "source_url": "https://www.instagram.com/reel/DbGy_XFz3mS/",
+    "reel_id": "6e5b28b1-b036-4ccb-9ee7-f7bf5850ac42",
+    "conditions": {
+      "caption_only": {
+        "condition": "caption_only",
+        "claims": [],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 2.9291819169884548
+      },
+      "audio": {
+        "condition": "audio",
+        "claims": [],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 4.989548709010705
+      },
+      "ocr": {
+        "condition": "ocr",
+        "claims": [],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 2.7503115410218015
+      },
+      "vision": {
+        "condition": "vision",
+        "claims": [],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 2.5498629999929108
+      },
+      "audio+ocr": {
+        "condition": "audio+ocr",
+        "claims": [],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 3.288722165976651
+      },
+      "audio+vision": {
+        "condition": "audio+vision",
+        "claims": [],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 4.19266712499666
+      },
+      "ocr+vision": {
+        "condition": "ocr+vision",
+        "claims": [],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 2.9064415419998113
+      },
+      "audio+ocr+vision": {
+        "condition": "audio+ocr+vision",
+        "claims": [],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 3.2906063750269823
+      }
+    }
+  },
+  {
+    "source_url": "https://www.instagram.com/reel/DbNU9W7xA9P/",
+    "reel_id": "fec20d0d-e3de-495d-b6d2-36642dd32053",
+    "conditions": {
+      "caption_only": {
+        "condition": "caption_only",
+        "claims": [],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 5.617187208001269
+      },
+      "audio": {
+        "condition": "audio",
+        "claims": [],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 5.983700749988202
+      },
+      "ocr": {
+        "condition": "ocr",
+        "claims": [],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 3.86182175000431
+      },
+      "vision": {
+        "condition": "vision",
+        "claims": [],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 2.9901631249813363
+      },
+      "audio+ocr": {
+        "condition": "audio+ocr",
+        "claims": [],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 5.697315750003327
+      },
+      "audio+vision": {
+        "condition": "audio+vision",
+        "claims": [],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 3.096823250001762
+      },
+      "ocr+vision": {
+        "condition": "ocr+vision",
+        "claims": [],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 4.3548840830044355
+      },
+      "audio+ocr+vision": {
+        "condition": "audio+ocr+vision",
+        "claims": [
+          {
+            "text": "\u0936\u093f\u0915\u094d\u0937\u093e \u0915\u093e \u0909\u0926\u094d\u0926\u0947\u0936\u094d\u092f \u091c\u094d\u091e\u093e\u0928, \u091a\u0930\u093f\u0924\u094d\u0930 \u0928\u093f\u0930\u094d\u092e\u093e\u0923 \u0914\u0930 \u0938\u092d\u094d\u092f \u0938\u0902\u0935\u093e\u0926 \u0939\u0948 \u092f\u093e \u0905\u0936\u094b\u092d\u0928\u0940\u092f \u0928\u093e\u0930\u094b\u0902 \u090f\u0935\u0902 \u0905\u092d\u0926\u094d\u0930 \u092d\u093e\u0937\u093e \u0915\u093e \u092a\u094d\u0930\u0926\u0930\u094d\u0936\u0928",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "\u0932\u094b\u0915\u0924\u0902\u0924\u094d\u0930 \u092e\u0947\u0902 \u092a\u094d\u0930\u0924\u094d\u092f\u0947\u0915 \u0928\u093e\u0917\u0930\u093f\u0915 \u0915\u094b \u0905\u092a\u0928\u0940 \u092c\u093e\u0924 \u0930\u0916\u0928\u0947 \u0914\u0930 \u0936\u093e\u0902\u0924\u093f\u092a\u0942\u0930\u094d\u0923 \u0935\u093f\u0930\u094b\u0927 \u0915\u0930\u0928\u0947 \u0915\u093e \u0905\u0927\u093f\u0915\u093e\u0930 \u0939\u0948",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "\u0935\u093f\u0930\u094b\u0927 \u0915\u0940 \u092d\u093e\u0937\u093e \u0914\u0930 \u0935\u094d\u092f\u0935\u0939\u093e\u0930 \u092e\u0947\u0902 \u092e\u0930\u094d\u092f\u093e\u0926\u093e, \u0936\u093e\u0932\u0940\u0928\u0924\u093e \u0914\u0930 \u0938\u092e\u094d\u092e\u093e\u0928 \u092d\u0940 \u0909\u0924\u0928\u093e \u0939\u0940 \u0906\u0935\u0936\u094d\u092f\u0915 \u0939\u0948",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "\"\u0908\u0936\u094d\u0935\u0930 \u0938\u092d\u0940 \u092c\u0947\u091f\u093f\u092f\u094b\u0902 \u0914\u0930 \u092c\u0947\u091f\u094b\u0902 \u0915\u094b \u0909\u0924\u094d\u0924\u092e \u0938\u0902\u0938\u094d\u0915\u093e\u0930, \u0935\u093f\u0935\u0947\u0915\u092a\u0942\u0930\u094d\u0923 \u0938\u094b\u091a \u0924\u0925\u093e \u0938\u092e\u094d\u092e\u093e\u0928\u091c\u0928\u0915 \u0905\u092d\u093f\u0935\u094d\u092f\u0915\u094d\u0924\u093f \u0915\u0940 \u092a\u094d\u0930\u0947\u0930\u0923\u093e \u0926\u0947\u0902\u0964\"",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "\"\u0915\u0930\u0923\u0940 \u0938\u0947\u0928\u093e \u0938\u0902\u0917\u0920\u0928 \u092e\u0902\u0924\u094d\u0930\u0940\"",
+            "grounded": false,
+            "source_modalities": []
+          }
+        ],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 21.23740979100694
+      }
+    }
+  },
+  {
+    "source_url": "https://www.instagram.com/reel/DaVcoN2u698/",
+    "reel_id": "f7594457-7218-4f16-81d9-aeeb39d26cac",
+    "conditions": {
+      "caption_only": {
+        "condition": "caption_only",
+        "claims": [],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 4.724541416973807
+      },
+      "audio": {
+        "condition": "audio",
+        "claims": [],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 5.277899042004719
+      },
+      "ocr": {
+        "condition": "ocr",
+        "claims": [],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 2.8852336660202127
+      },
+      "vision": {
+        "condition": "vision",
+        "claims": [],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 7.13306433300022
+      },
+      "audio+ocr": {
+        "condition": "audio+ocr",
+        "claims": [],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 5.032646583014866
+      },
+      "audio+vision": {
+        "condition": "audio+vision",
+        "claims": [],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 9.452143000002252
+      },
+      "ocr+vision": {
+        "condition": "ocr+vision",
+        "claims": [],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 2.669761416997062
+      },
+      "audio+ocr+vision": {
+        "condition": "audio+ocr+vision",
+        "claims": [],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 2.608804749994306
+      }
+    }
+  },
+  {
+    "source_url": "https://www.instagram.com/aamaadmiparty/reel/DYMK9oIpGzL/",
+    "reel_id": "8fe190ac-1fe7-4f59-b002-ee2ea32feb85",
+    "conditions": {
+      "caption_only": {
+        "condition": "caption_only",
+        "claims": [
+          {
+            "text": "girls don't need education and should stay at home",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "the world talks about empowering women through education",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "leaders like these want to drag society backwards",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "an Education Minister who discourages girls' education is not just unfit for the post, he is a threat to progress itself.",
+            "grounded": false,
+            "source_modalities": []
+          }
+        ],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 9.552179207996232
+      },
+      "audio": {
+        "condition": "audio",
+        "claims": [],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 4.036423417011974
+      },
+      "ocr": {
+        "condition": "ocr",
+        "claims": [
+          {
+            "text": "Girls do not need Education and should stay at home.",
+            "grounded": false,
+            "source_modalities": []
+          }
+        ],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 6.193289874994662
+      },
+      "vision": {
+        "condition": "vision",
+        "claims": [
+          {
+            "text": "Bihar\u2019s new Education Minister",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "a man who believes girls don\u2019t need education and should stay at home.",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "the world talks about empowering women through education",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "leaders like these want to drag society backwards.",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "An Education Minister who discourages girls\u2019 education is not just unfit for the post",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "he is a threat to progress itself.",
+            "grounded": false,
+            "source_modalities": []
+          }
+        ],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 13.771532000013394
+      },
+      "audio+ocr": {
+        "condition": "audio+ocr",
+        "claims": [],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 6.851003791991388
+      },
+      "audio+vision": {
+        "condition": "audio+vision",
+        "claims": [],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 3.673825040983502
+      },
+      "ocr+vision": {
+        "condition": "ocr+vision",
+        "claims": [],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 4.7961335420259275
+      },
+      "audio+ocr+vision": {
+        "condition": "audio+ocr+vision",
+        "claims": [],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 5.7657882920175325
+      }
+    }
+  },
+  {
+    "source_url": "https://www.instagram.com/reel/DbCJDp8SYkn/",
+    "reel_id": "25cb4a68-fb2d-460d-bcf5-c1c4d9b9e45b",
+    "conditions": {
+      "caption_only": {
+        "condition": "caption_only",
+        "claims": [],
+        "outcome_type": "no_input_content",
+        "error": "Reel has no transcript, OCR text, or caption to extract claims from."
+      },
+      "audio": {
+        "condition": "audio",
+        "claims": [],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 4.588544500002172
+      },
+      "ocr": {
+        "condition": "ocr",
+        "claims": [],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 5.837192583014257
+      },
+      "vision": {
+        "condition": "vision",
+        "claims": [],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 3.006362624990288
+      },
+      "audio+ocr": {
+        "condition": "audio+ocr",
+        "claims": [],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 3.827475541998865
+      },
+      "audio+vision": {
+        "condition": "audio+vision",
+        "claims": [],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 2.9805083330138586
+      },
+      "ocr+vision": {
+        "condition": "ocr+vision",
+        "claims": [],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 4.076679582998622
+      },
+      "audio+ocr+vision": {
+        "condition": "audio+ocr+vision",
+        "claims": [],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 4.308556000003591
+      }
+    }
+  },
+  {
+    "source_url": "https://www.instagram.com/babajanidurrani/p/Dbns78RDIXY/",
+    "reel_id": "608fd274-1b0f-42b7-a2fd-1afd9d57d82b",
+    "conditions": {
+      "caption_only": {
+        "condition": "caption_only",
+        "claims": [
+          {
+            "text": "\u0926\u0947\u0936\u093e\u0924\u0940\u0932 \u0935\u093f\u0926\u094d\u092f\u093e\u0930\u094d\u0925\u094d\u092f\u093e\u0902\u091a\u093e \u092c\u0941\u0932\u0902\u0926 \u0906\u0935\u093e\u091c \u092c\u0928\u0932\u0947\u0932\u093e \u0906\u092a\u0932\u094d\u092f\u093e \u092e\u0930\u093e\u0920\u0935\u093e\u0921\u094d\u092f\u093e\u091a\u093e \u0938\u0941\u092a\u0941\u0924\u094d\u0930 \u0905\u092d\u093f\u091c\u093f\u0924 \u0926\u093f\u092a\u0915\u0947",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "\u091b\u0924\u094d\u0930\u092a\u0924\u0940 \u0938\u0902\u092d\u093e\u091c\u0940\u0928\u0917\u0930 \u092f\u0947\u0925\u0940\u0932 \u0928\u093f\u0935\u093e\u0938\u0938\u094d\u0925\u093e\u0928\u0940 \u0938\u0926\u093f\u091a\u094d\u091b\u093e \u092d\u0947\u091f \u0918\u0947\u0924\u0932\u0940.",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "\u0935\u093f\u0926\u094d\u092f\u093e\u0930\u094d\u0925\u094d\u092f\u093e\u0902\u091a\u094d\u092f\u093e \u0939\u0915\u094d\u0915\u093e\u0938\u093e\u0920\u0940, \u0928\u094d\u092f\u093e\u092f\u093e\u0938\u093e\u0920\u0940 \u0906\u0923\u093f \u0924\u094d\u092f\u093e\u0902\u091a\u094d\u092f\u093e \u092a\u094d\u0930\u0936\u094d\u0928\u093e\u0902\u0928\u093e \u0935\u093e\u091a\u093e \u092b\u094b\u0921\u0923\u094d\u092f\u093e\u0938\u093e\u0920\u0940",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "\u0924\u094d\u092f\u093e\u0928\u0947 \u0909\u092d\u093e\u0930\u0932\u0947\u0932\u093e \u0938\u0902\u0918\u0930\u094d\u0937 \u0916\u0930\u094b\u0916\u0930\u091a \u0915\u094c\u0924\u0941\u0915\u093e\u0938\u094d\u092a\u0926 \u0906\u0939.",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "\u0905\u092d\u093f\u091c\u093f\u0924\u0932\u093e \u092a\u0941\u0922\u0940\u0932 \u0935\u093e\u091f\u091a\u093e\u0932\u0940\u0938\u093e\u0920\u0940 \u092e\u0928\u0903\u092a\u0942\u0930\u094d\u0935\u0915 \u0936\u0941\u092d\u0947\u091a\u094d\u091b\u093e!",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "\u0938\u092e\u093e\u091c\u0939\u093f\u0924 \u0906\u0923\u093f \u0935\u093f\u0926\u094d\u092f\u093e\u0930\u094d\u0925\u094d\u092f\u093e\u0902\u091a\u094d\u092f\u093e \u0928\u094d\u092f\u093e\u092f\u094d\u092f \u0939\u0915\u094d\u0915\u093e\u0902\u0938\u093e\u0920\u0940 \u0924\u094d\u092f\u093e\u091a\u093e \u0939\u093e \u0932\u0922\u093e \u0905\u0927\u093f\u0915 \u092c\u0933\u0915\u091f \u0939\u094b\u0924 \u0930\u093e\u0939\u094b, \u0906\u092e\u094d\u0939\u0940 \u0938\u094b\u092c\u0924 \u0906\u0939\u094b\u0924.",
+            "grounded": false,
+            "source_modalities": []
+          }
+        ],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 26.52527862502029
+      },
+      "audio": {
+        "condition": "audio",
+        "claims": [
+          {
+            "text": "\u0926\u0947\u0936\u093e\u0924\u0940\u0932 \u0935\u093f\u0926\u094d\u092f\u093e\u0930\u094d\u0925\u094d\u092f\u093e\u0902\u091a\u093e \u092c\u0941\u0932\u0902\u0926 \u0906\u0935\u093e\u091c \u092c\u0928\u0932\u0947\u0932\u093e \u0906\u092a\u0932\u094d\u092f\u093e \u092e\u0930\u093e\u0920\u0935\u093e\u0921\u094d\u092f\u093e\u091a\u093e \u0938\u0941\u092a\u0941\u0924\u094d\u0930 \u0905\u092d\u093f\u091c\u093f\u0924 \u0926\u093f\u092a\u0915\u0947",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "\u091b\u0924\u094d\u0930\u092a\u0924\u0940 \u00c7\u0902\u092d\u093e\u091c\u0940\u0928\u0917\u0930 \u092f\u0947\u0925\u0940\u0932 \u0928\u093f\u0935\u093e\u0938\u0938\u094d\u0925\u093e\u0928\u0940 \u0938\u0926\u093f\u091a\u094d\u091b\u093e \u092d\u0947\u091f \u0918\u0947\u0924\u0932\u0940.",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "\u0935\u093f\u0926\u094d\u092f\u093e\u0930\u094d\u0925\u094d\u092f\u093e\u0902\u091a\u094d\u092f\u093e \u0939\u0915\u094d\u0915\u093e\u0938\u093e\u0920\u0940",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "\u0928\u094d\u092f\u093e\u092f\u093e\u0938\u093e\u0920\u0940",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "\u0906\u0923\u093f \u0924\u094d\u092f\u093e\u0902\u091a\u094d\u092f\u093e \u092a\u094d\u0930\u0936\u094d\u0928\u093e\u0902\u0928\u093e \u0935\u093e\u091a\u093e \u092b\u094b\u0921\u0923\u094d\u092f\u093e\u0938\u093e\u0920\u0940",
+            "grounded": false,
+            "source_modalities": []
+          }
+        ],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 27.73527112501324
+      },
+      "ocr": {
+        "condition": "ocr",
+        "claims": [
+          {
+            "text": "\u0926\u0947\u0936\u093e\u0924\u0940\u0932 \u0935\u093f\u0926\u094d\u092f\u093e\u0930\u094d\u0925\u094d\u092f\u093e\u0902\u091a\u093e \u092c\u0941\u0932\u0902\u0926 \u0906\u0935\u093e\u091c \u092c\u0928\u0932\u0947\u0932\u093e \u0906\u092a\u0932\u094d\u092f\u093e \u092e\u0930\u093e\u0920\u0935\u093e\u0921\u094d\u092f\u093e\u091a\u093e \u0938\u0941\u092a\u0941\u0924\u094d\u0930 \u0905\u092d\u093f\u091c\u093f\u0924 \u0926\u093f\u092a\u0915\u0947",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "\u0935\u093f\u0926\u094d\u092f\u093e\u0930\u094d\u0925\u094d\u092f\u093e\u0902\u091a\u094d\u092f\u093e \u0939\u0915\u094d\u0915\u093e\u0938\u093e\u0920\u0940 \u0928\u094d\u092f\u093e\u092f\u093e\u0938\u093e\u0920\u0940 \u0906\u0923\u093f \u0924\u094d\u092f\u093e\u0902\u091a\u094d\u092f\u093e \u092a\u094d\u0930\u0936\u094d\u0928\u093e\u0902\u0928\u093e \u0935\u093e\u091a\u093e \u092b\u094b\u0921\u0923\u094d\u092f\u093e\u0938\u093e\u0920\u0940 \u0905\u092d\u093f\u091c\u093f\u0924\u0932\u093e \u0909\u092d\u093e\u0930\u0923\u094d\u092f\u093e\u0924 \u0906\u0932\u0947\u0932\u093e \u0938\u0902\u0918\u0930\u094d\u0937",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "\u0905\u092d\u093f\u091c\u093f\u0924\u0932\u093e \u092a\u0941\u0922\u0940\u0932 \u0935\u093e\u091f\u091a\u093e\u0932\u0940\u0938\u093e\u0920\u0940 \u092e\u0928\u0903\u092a\u0942\u0930\u094d\u0935\u0915 \u0936\u0941\u092d\u0947\u091a\u094d\u091b\u093e!",
+            "grounded": false,
+            "source_modalities": []
+          }
+        ],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 18.84445675002644
+      },
+      "vision": {
+        "condition": "vision",
+        "claims": [
+          {
+            "text": "5,154 likes",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "86 comments",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "\"\u0926\u0947\u0936\u093e\u0924\u0940\u0932 \u0935\u093f\u0926\u094d\u092f\u093e\u0930\u094d\u0925\u094d\u092f\u093e\u0902\u091a\u093e \u092c\u0941\u0932\u0902\u0926 \u0906\u0935\u093e\u091c \u092c\u0928\u0932\u0947\u0932\u093e \u0906\u092a\u0932\u094d\u092f\u093e \u092e\u0930\u093e\u0920\u0935\u093e\u0921\u094d\u092f\u093e\u091a\u093e \u0938\u0941\u092a\u0941\u0924\u094d\u0930 \u0905\u092d\u093f\u091c\u093f\u0924 \u0926\u093f\u092a\u0915\u0947\"",
+            "grounded": false,
+            "source_modalities": []
+          }
+        ],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 13.492398833011976
+      },
+      "audio+ocr": {
+        "condition": "audio+ocr",
+        "claims": [
+          {
+            "text": "\u0926\u0947\u0936\u093e\u0924\u0940\u0932 \u0935\u093f\u0926\u094d\u092f\u093e\u0930\u094d\u0925\u094d\u092f\u093e\u0902\u091a\u093e \u092c\u0941\u0932\u0902\u0926 \u0906\u0935\u093e\u091c \u092c\u0928\u0932\u0947\u0932\u093e \u0906\u092a\u0932\u094d\u092f\u093e \u092e\u0930\u093e\u0920\u0935\u093e\u0921\u094d\u092f\u093e\u091a\u093e \u0938\u0941\u092a\u0941\u0924\u094d\u0930 \u0905\u092d\u093f\u091c\u093f\u0924 \u0926\u093f\u092a\u0915\u0947",
+            "grounded": false,
+            "source_modalities": []
+          }
+        ],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 8.20980983300251
+      },
+      "audio+vision": {
+        "condition": "audio+vision",
+        "claims": [
+          {
+            "text": "5,154 likes",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "86 comments",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "\"\u0926\u0947\u0936\u093e\u0924\u0940\u0932 \u0935\u093f\u0926\u094d\u092f\u093e\u0930\u094d\u0925\u094d\u092f\u093e\u0902\u091a\u093e \u092c\u0941\u0932\u0902\u0926 \u0906\u0935\u093e\u091c \u092c\u0928\u0932\u0947\u0932\u093e \u0906\u092a\u0932\u094d\u092f\u093e \u092e\u0930\u093e\u0920\u0935\u093e\u0921\u094d\u092f\u093e\u091a\u093e \u0938\u0941\u092a\u0941\u0924\u094d\u0930 \u0905\u092d\u093f\u091c\u093f\u0924 \u0926\u093f\u092a\u0915\u0947\"",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "\"\u0928\u093f\u0935\u093e\u0938\u0938\u094d\u0925\u093e\u0928\u0940 \u0938\u0926\u093f\u091a\u094d\u091b\u093e \u092d\u0947\u091f \u0918\u0947\u0924\u0932\u0940\"",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "\"\u0935\u093f\u0926\u094d\u092f\u093e\u0930\u094d\u0925\u094d\u092f\u093e\u0902\u091a\u094d\u092f\u093e \u0939\u0915\u094d\u0915\u093e\u0938\u093e\u0920\u0940, \u0928\u094d\u092f\u093e\u092f\u093e\u0938\u093e\u0920\u0940 \u0906\u0923\u093f \u0924\u094d\u092f\u093e\u0902\u091a\u094d\u092f\u093e \u092a\u094d\u0930\u0936\u094d\u0928\u093e\u0902\u0928\u093e \u0935\u093e\u091a\u093e \u092b\u094b\u0921\u0923\u094d\u092f\u093e\u0938\u093e\u0920\u0940 \u0924\u094d\u092f\u093e\u0902\u0928\u0940 \u0909\u092d\u093e\u0930\u0932\u0947\u0932\u093e \u0938\u0902\u0918\u0930\u094d\u0937 \u0916\u0930\u094b\u0916\u0930\u091a \u0915\u094c\u0924\u0941\u0915\u093e\u0938\u094d\u092a\u0926 \u0906\u0939\u0947\"",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "\"\u0905\u0936\u093e \u091c\u093f\u0926\u094d\u0926\u0940, \u0905\u092d\u094d\u092f\u093e\u0938\u0942 \u0906\u0923\u093f \u0932\u0922\u093e\u090a \u0924\u0930\u0941\u0923\u093e\u091a\u093e \u092e\u0932\u093e \u092e\u0928\u093e\u092a\u093e\u0938\u0942\u0928 \u0905\u092d\u093f\u092e\u093e\u0928 \u0935\u093e\u091f\u0924\u094b\"",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "\"\u0905\u092d\u093f\u091c\u093f\u0924\u0932\u093e \u092a\u0941\u0922\u0940\u0932 \u0935\u093e\u091f\u091a\u093e\u0932\u0940\u0938\u093e\u0920\u0940 \u092e\u0928\u0903\u092a\u0942\u0930\u094d\u0935\u0915 \u0936\u0941\u092d\u0947\u091a\u094d\u091b\u093e! \u0938\u092e\u093e\u091c\u0939\u093f\u0924 \u0906\u0923\u093f \u0935\u093f\u0926\u094d\u092f\u093e\u0930\u094d\u0925\u094d\u092f\u093e\u0902\u091a\u094d\u092f\u093e \u0928\u094d\u092f\u093e\u092f\u094d\u092f \u0939\u0915\u094d\u0915\u093e\u0902\u0938\u093e\u0920\u0940 \u0924\u094d\u092f\u093e\u091a\u093e \u0939\u093e \u0932\u0922\u093e \u0905\u0927\u093f\u0915 \u092c\u0933\u0915\u091f \u0939\u094b\u0924 \u0930\u093e\u0939\u094b, \u0906\u092e\u094d\u0939\u0940 \u0938\u094b\u092c\u0924 \u0906\u0939\u094b\u0924.\"",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "\"Two men are standing in front of each other with their arms around one another\"",
+            "grounded": false,
+            "source_modalities": []
+          }
+        ],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 27.1878985830117
+      },
+      "ocr+vision": {
+        "condition": "ocr+vision",
+        "claims": [
+          {
+            "text": "5,154 likes",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "86 comments",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "\u0926\u0947\u0936\u093e\u0924\u0940\u0932 \u0935\u093f\u0926\u094d\u092f\u093e\u0930\u094d\u0925\u094d\u092f\u093e\u0902\u091a\u093e \u092c\u0941\u0932\u0902\u0926 \u0906\u0935\u093e\u091c \u092c\u0928\u0932\u0947\u0932\u093e \u0906\u092a\u0932\u094d\u092f\u093e \u092e\u0930\u093e\u0920\u0935\u093e\u0921\u094d\u092f\u093e\u091a\u093e \u0938\u0941\u092a\u0941\u0924\u094d\u0930 \u0905\u092d\u093f\u091c\u093f\u0924 \u0926\u093f\u092a\u0915\u0947",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "\u091b\u0924\u094d\u0930\u092a\u0924\u0940 \u0938\u0902\u092d\u093e\u091c\u0940\u0928\u0917\u0930 \u092f\u0947\u0925\u0940\u0932 \u0928\u093f\u0935\u093e\u0938\u0938\u094d\u0925\u093e\u0928\u0940 \u0938\u0926\u093f\u091a\u094d\u091b\u093e \u092d\u0947\u091f \u0918\u0947\u0924\u0932\u0940",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "\u0935\u093f\u0926\u094d\u092f\u093e\u0930\u094d\u0925\u094d\u092f\u093e\u0902\u091a\u094d\u092f\u093e \u0939\u0915\u094d\u0915\u093e\u0938\u093e\u0920\u0940, \u0928\u094d\u092f\u093e\u092f\u093e\u0938\u093e\u0920\u0940 \u0906\u0923\u093f \u0924\u094d\u092f\u093e\u0902\u091a\u094d\u092f\u093e \u092a\u094d\u0930\u0936\u094d\u0928\u093e\u0902\u0928\u093e \u0935\u093e\u091a\u093e \u092b\u094b\u0921\u0923\u094d\u092f\u093e\u0938\u093e\u0920\u0940",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "\u0924\u094d\u092f\u093e\u0928\u0947 \u0909\u092d\u093e\u0930\u0932\u0947\u0932\u093e \u0938\u0902\u0918\u0930\u094d\u0937 \u0916\u0930\u094b\u0916\u0930\u091a \u0915\u094c\u0924\u0941\u0915\u093e\u0938\u094d\u092a\u0926 \u0906\u0939\u0947. \u0905\u0936\u093e \u091c\u093f\u0926\u094d\u0926\u0940, \u0905\u092d\u094d\u092f\u093e\u0938\u0942 \u0906\u0923\u093f \u0932\u0922\u093e\u090a \u0924\u0930\u0941\u0923\u093e\u091a\u093e \u092e\u0932\u093e \u092e\u0928\u093e\u092a\u093e\u0938\u0942\u0928",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "\u092e\u0932\u093e \u092e\u0928\u092a\u093e\u0938\u0942\u0928 \u0905\u092d\u093f\u092e\u093e\u0928 \u0935\u093e\u091f\u0924\u094b.",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "\u0905\u092d\u093f\u091c\u093f\u0924\u0932\u093e \u092a\u0941\u0922\u0940\u0932 \u0935\u093e\u091f\u091a\u093e\u0932\u0940\u0938\u093e\u0920\u0940 \u092e\u0928\u0903\u092a\u0942\u0930\u094d\u0935\u0915 \u0936\u0941\u092d\u0947\u091a\u094d\u091b\u093e\u0964 ",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "\u0938\u092e\u093e\u091c\u0939\u093f\u0924 \u0906\u0923\u093f \u0935\u093f\u0926\u094d\u092f\u093e\u0930\u094d\u0925\u094d\u092f\u093e\u0902\u091a\u094d\u092f\u093e \u0928\u094d\u092f\u093e\u092f\u094d\u092f \u0939\u0915\u094d\u0915\u093e\u0902\u0938\u093e\u0920\u0940 \u0924\u094d\u092f\u093e\u091a\u093e \u0939\u093e \u0932\u0922\u093e \u0905\u0927\u093f\u0915 \u092c\u0933\u0915\u091f",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "\u0924\u094d\u092f\u093e\u091a\u093e \u0939\u093e \u0932\u0922\u093e \u0905\u0927\u093f\u0915 \u092c\u0933\u0915\u091f \u0939\u094b\u0924 \u0930\u093e\u0939\u094b, \u0906\u092e\u094d\u0939\u0940 \u0938\u094b\u092c\u0924 \u0906\u0939\u094b\u0924.",
+            "grounded": false,
+            "source_modalities": []
+          }
+        ],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 31.953698582976358
+      },
+      "audio+ocr+vision": {
+        "condition": "audio+ocr+vision",
+        "claims": [
+          {
+            "text": "5,154 likes",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "\u0926\u0947\u0936\u093e\u0924\u0940\u0932 \u0935\u093f\u0926\u094d\u092f\u093e\u0930\u094d\u0925\u094d\u092f\u093e\u0902\u091a\u093e \u092c\u0941\u0932\u0902\u0926 \u0906\u0935\u093e\u091c \u092c\u0928\u0932\u0947\u0932\u093e \u0906\u092a\u0932\u094d\u092f\u093e \u092e\u0930\u093e\u0920\u0935\u093e\u0921\u094d\u092f\u093e\u091a\u093e \u0938\u0941\u092a\u0941\u0924\u094d\u0930 \u0905\u092d\u093f\u091c\u093f\u0924 \u0926\u093f\u092a\u0915\u0947",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "\u0905\u092dij\u0940\u0924\u091a\u0940 \u0906\u091c \u091b\u0924\u094d\u0930\u092a\u0924\u0940 \u0938\u0902\u092d\u093e\u091c\u0940\u0928\u0917\u0930 \u092f\u0947\u0925\u0940\u0932 \u0928\u093f\u0935\u093e\u0938\u0938\u094d\u0925\u093e\u0928\u0940 \u0938\u0926\u093f\u091a\u094d\u091b\u093e \u092d\u0947\u091f \u0918\u0947\u0924\u0932\u0940.",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "\u0935\u093f\u0926\u094d\u092f\u093e\u0930\u094d\u0925\u094d\u092f\u093e\u0902\u091a\u094d\u092f\u093e \u0939\u0915\u094d\u0915\u093e\u0938\u093e\u0920\u0940, \u0928\u094d\u092f\u093e\u092f\u093e\u0938\u093e\u0920\u0940 \u0906\u0923\u093f \u0924\u094d\u092f\u093e\u0902\u091a\u094d\u092f\u093e \u092a\u094d\u0930\u0936\u094d\u0928\u093e\u0902\u0928\u093e \u0935\u093e\u091a\u093e \u092b\u094b\u0921\u0923\u094d\u092f\u093e\u0938\u093e\u0920\u0940",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "\u0924\u094d\u092f\u093e\u0902\u0928\u0940 \u0909\u092d\u093e\u0930\u0932\u0947\u0932\u093e \u0938\u0902\u0918\u0930\u094d\u0937 \u0916\u0930\u094b\u0916\u0930\u091a \u0915\u094c\u0924\u0941\u0915\u093e\u0938\u094d\u092a\u0926 \u0906\u0939\u0947.",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "\u0905\u0936\u093e \u091c\u093f\u0926\u094d\u0926\u0940, \u0905\u092d\u094d\u092f\u093e\u0938\u0942 \u0906\u0923\u093f \u0932\u0922\u093e\u090a \u0924\u0930\u0941\u0923\u093e\u091a\u093e \u092e\u0932\u093e \u092e\u0928\u093e\u092a\u093e\u0938\u0942\u0928 \u0905\u092d\u093f\u092e\u093e\u0928 \u0935\u093e\u091f\u0924\u094b.",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "\u0905\u092d\u093f\u091c\u093f\u0924\u0932\u093e \u092a\u0941\u0922\u0940\u0932 \u0935\u093e\u091f\u091a\u093e\u0932\u0940\u0938\u093e\u0920\u0940",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "\u092e\u0928\u0903\u092a\u0942\u0930\u094d\u0935\u0915 \u0936\u0941\u092d\u0947\u091a\u094d\u091b\u093e\u0964 \u0938\u092e\u093e\u091c\u0939\u093f\u0924 \u0906\u0923\u093f \u0935\u093f\u0926\u094d\u092f\u093e\u0930\u094d\u0925\u094d\u092f\u093e\u0902\u091a\u094d\u092f\u093e \u0928\u094d\u092f\u093e\u092f\u094d\u092f \u0939\u0915\u094d\u0915\u093e\u0902\u0938\u093e\u0920\u0940 \u0924\u094d\u092f\u093e\u091a\u093e",
+            "grounded": false,
+            "source_modalities": []
+          },
+          {
+            "text": "\u0924\u094d\u092f\u093e\u091a\u093e \u0939\u093e \u0932\u0922\u093e \u0905\u0927\u093f\u0915 \u092c\u0933\u0915\u091f \u0939\u094b\u0924 \u0930\u093e\u0939\u094b, \u0906\u092e\u094d\u0939\u0940 \u0938\u094b\u092c\u0924 \u0906\u0939\u094b\u0924.",
+            "grounded": false,
+            "source_modalities": []
+          }
+        ],
+        "outcome_type": "resolved",
+        "error": null,
+        "latency_seconds": 31.125426290993346
+      }
+    }
+  }
+]
