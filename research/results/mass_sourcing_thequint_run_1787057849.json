@@ -1,0 +1,11 @@
+{
+  "days_crawled": 2200,
+  "articles_seen": 116944,
+  "articles_with_instagram": 229,
+  "candidates_checked": 145,
+  "candidates_accepted": 0,
+  "candidates_rejected": 145,
+  "candidates_dedup_skipped": 181,
+  "start_time": 1787052036.297569,
+  "elapsed_seconds": 5813.048871994019
+}
