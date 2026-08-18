@@ -354,26 +354,28 @@ confirming in hard numbers what the earlier 8/8 qualitative evidence
 already suggested (Instagram is a comparatively small slice of where
 this specific misinformation pattern gets posted, next to X/Twitter).
 
-**Vishvas News (vishvasnews.com): first pass (`/viral/` only) fully
-exhausted, 0 promotions** — see the filter-gap finding above. **Now
-re-running with the broadened filter** (`/viral/` OR `fact-check`
-substring anywhere in the URL), in progress as of this writing. All 9
-candidates that reached `ELIGIBLE` under the narrow first-pass filter
-were rejected on manual/mechanical review (leaked article-title text in
-`ground_truth_label`, a stringified-list `ground_truth_claim`, captions
-making no claim at all matching the debunked one, or an unverifiable
-specific-event connection) — 0 net promotions from that pass, the
-starkest result yet for the structural yield ceiling described below.
-The broadened re-run's real yield is not yet known.
+**Vishvas News (vishvasnews.com): archive fully exhausted, both
+passes.** First pass (`/viral/` only): 0 promotions (all 9 `ELIGIBLE`
+candidates rejected on review). Broadened re-run (`/viral/` OR
+`fact-check` substring): 23,467 articles seen, 1,037 with an Instagram
+reference, 731 candidates checked, 4 reached `ELIGIBLE` — 3 rejected
+(malformed structured output: a raw JSON blob and a stringified list
+leaking into the claim field, and one joking/mockery post that didn't
+match the article's serious claim), **1 promoted** (item-0022, verified
+against the article's own exact quoted caption). Net result across both
+passes: **1 promotion from Vishvas's entire real archive** — the
+broadened filter did find real additional volume (731 vs the first
+pass's 951 minus dedup), just not a proportionally larger yield of
+genuine misinformation-source posts.
 
-**thequint.com (WebQoof vertical): archive fully exhausted.** First
-pass (1,095 days) then extended to 2,200 days (~6 years) after
-confirming the archive goes back that far — the extension found 0
-additional promotions (116,943 articles seen total, only 181 with an
-Instagram reference in the newly-added older window). **1 total
-promotion** (item-0021, an AI-generated "yogi lifting weights with his
-mind" video, verified against the article's own quoted caption text
-before promotion) — the second net-positive source after Alt News.
+**thequint.com (WebQoof vertical): archive fully exhausted, both
+editions.** English edition (1,095 then extended to 2,200 days): 1
+promotion (item-0021). Hindi edition (`/hindi/webqoof/`, added after
+finding the original filter missed it entirely): 116,944 articles seen,
+229 with an Instagram reference, 145 candidates checked, **0
+promotions**. Net result: **1 promotion from WebQoof's entire archive,
+both languages** — the Hindi edition added real coverage but, like
+Vishvas's broadened pass, not additional yield.
 
 **Factly (factly.in): deprioritized**, not run at scale, after a real
 negative test result (0 Instagram references in the first 1,000
