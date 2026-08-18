@@ -18,6 +18,7 @@ build/
 *.log
 *.blg
 research/dataset/.candidates_v2.lock
+research/dataset/*.lock
 .DS_Store
 .idea/
 .vscode/

@@ -83,6 +83,37 @@ _HEDGING_PHRASES = (
     "unclear whether", "hard to say", "not certain",
 )
 _MARKDOWN_LINK_PATTERN = re.compile(r"\[.*?\]\(https?://")
+# A stringified Python/JSON list ("[\"a\", \"b\"]") instead of a real claim
+# sentence -- found live (cand-vishvas-0533): llama3.2 sometimes dumps its
+# own internal list-of-fragments straight into ground_truth_claim.
+_LIST_LITERAL_PATTERN = re.compile(r"^\[.*\]$", re.DOTALL)
+# The judge's own schema restricts this field to one of these 8 values
+# (SourceJudgment.extracted_verdict_label in mass_source_candidates.py) --
+# found live that llama3.2 sometimes ignores that and writes something
+# else entirely: "Fact Check: झूठ" (cand-vishvas-0510, leaked article-title
+# text) or bare "Claim" (cand-thequint-0351, not a verdict at all).
+_VALID_LABELS = {
+    "false", "mostly_false", "misleading", "missing_context",
+    "true", "mostly_true", "unverified", "outdated",
+}
+# Vishvas/Factly/thequint write the reasoning INSIDE a boilerplate note
+# ("llama3.2 judge (confidence=X.XX): {reasoning}. NOT yet human/manual
+# -reviewed.") rather than as a bare string the way Alt News's separate
+# GROUND_TRUTH_VERIFIED note does. Found live (cand-thequint-0351): a
+# genuinely empty judgment.reasoning still produces a non-empty NOTE
+# (the boilerplate text alone), so checking `not reasoning.strip()`
+# against the raw note never fires for that pipeline shape -- this
+# pulls just the reasoning content out first so the emptiness check
+# actually has something meaningful to check.
+_BOILERPLATE_REASONING_PATTERN = re.compile(
+    r"llama3\.2 judge \(confidence=[\d.]+\):\s*(.*?)\s*\.?\s*NOT yet human/manual-reviewed\.?\s*$",
+    re.DOTALL,
+)
+
+
+def _extract_reasoning_text(raw_note: str) -> str:
+    m = _BOILERPLATE_REASONING_PATTERN.search(raw_note)
+    return m.group(1).strip() if m else raw_note.strip()
 
 
 def _find_flag_reason(c: dict) -> str | None:
@@ -103,7 +134,8 @@ def _find_flag_reason(c: dict) -> str | None:
     # GROUND_TRUTH_VERIFIED entry at all (the Vishvas/Factly shape).
     gtv_note = next((h["note"] for h in c.get("history", []) if h["status"] == "GROUND_TRUTH_VERIFIED" and h.get("note")), None)
     eligible_note = next((h["note"] for h in c.get("history", []) if h["status"] == "ELIGIBLE" and h.get("note")), None)
-    reasoning = gtv_note if gtv_note is not None else (eligible_note or "")
+    raw_note = gtv_note if gtv_note is not None else (eligible_note or "")
+    reasoning = _extract_reasoning_text(raw_note)
     reasoning_lower = reasoning.lower()
 
     hit_contradiction = [p for p in _SELF_CONTRADICTION_PHRASES if p in reasoning_lower]
@@ -122,8 +154,12 @@ def _find_flag_reason(c: dict) -> str | None:
     label = (c.get("ground_truth_label") or "").strip()
     if not claim or _MARKDOWN_LINK_PATTERN.search(claim):
         return "malformed ground_truth_claim (empty or contains a raw link instead of a claim sentence)"
+    if _LIST_LITERAL_PATTERN.match(claim):
+        return "malformed ground_truth_claim (a stringified list, not a claim sentence)"
     if not label:
         return "empty ground_truth_label"
+    if label.lower() not in _VALID_LABELS:
+        return f"ground_truth_label {label!r} is not one of the 8 valid verdict labels"
     if not reasoning.strip():
         return "empty reasoning (schema-valid but substantively empty -- cannot be verified without checking the real source directly)"
 
