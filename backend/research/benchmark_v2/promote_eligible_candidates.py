@@ -74,6 +74,7 @@ _SOURCE_FILE_BY_PREFIX = {
     "cand-vishvas-": _DATASET_DIR / "candidates_v2_mass_vishvas.jsonl",
     "cand-factly-": _DATASET_DIR / "candidates_v2_mass_factly.jsonl",
     "cand-thequint-": _DATASET_DIR / "candidates_v2_mass_thequint.jsonl",
+    "cand-factcrescendo-": _DATASET_DIR / "candidates_v2_mass_factcrescendo.jsonl",
 }
 
 

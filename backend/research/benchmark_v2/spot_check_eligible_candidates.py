@@ -56,6 +56,7 @@ _ALL_FILES = [
     (_REPO_ROOT / "research" / "dataset" / "candidates_v2_mass_vishvas.jsonl", False),
     (_REPO_ROOT / "research" / "dataset" / "candidates_v2_mass_factly.jsonl", False),
     (_REPO_ROOT / "research" / "dataset" / "candidates_v2_mass_thequint.jsonl", False),
+    (_REPO_ROOT / "research" / "dataset" / "candidates_v2_mass_factcrescendo.jsonl", False),
 ]
 
 # Literal phrases found live across several real cases, kept even though

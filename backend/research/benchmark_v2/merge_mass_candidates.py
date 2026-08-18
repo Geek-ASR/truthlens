@@ -26,6 +26,7 @@ _SOURCES = [
     _REPO_ROOT / "research" / "dataset" / "candidates_v2_mass_vishvas.jsonl",
     _REPO_ROOT / "research" / "dataset" / "candidates_v2_mass_factly.jsonl",
     _REPO_ROOT / "research" / "dataset" / "candidates_v2_mass_thequint.jsonl",
+    _REPO_ROOT / "research" / "dataset" / "candidates_v2_mass_factcrescendo.jsonl",
 ]
 
 
