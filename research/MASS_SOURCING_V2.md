@@ -344,29 +344,48 @@ confirming in hard numbers what the earlier 8/8 qualitative evidence
 already suggested (Instagram is a comparatively small slice of where
 this specific misinformation pattern gets posted, next to X/Twitter).
 
-**Vishvas News (vishvasnews.com, `/viral/` category): still running.**
-34 sitemap files, ~256 candidates checked so far (partial, mid-archive
-at sitemap file 15/34 as of this writing), 3 reached `ELIGIBLE` and all
-3 were rejected on manual review post-spot-check-fix (malformed
-`ground_truth_label` leaking article-title text, or an unverifiable
-specific-event connection) — 0 net new promotions from this source so
-far.
+**Vishvas News (vishvasnews.com, `/viral/` category): archive fully
+exhausted.** 34 sitemap files, 23,465 articles seen, 1,090 with an
+Instagram reference, 951 candidates checked (~6.2 hours unattended
+runtime). 9 candidates reached `ELIGIBLE` across the full run (some
+from before this session's compaction, some after) — **all 9 were
+rejected** on manual and/or mechanical review: leaked article-title
+text in `ground_truth_label`, a stringified-list `ground_truth_claim`,
+captions making no claim at all matching the debunked one, or an
+unverifiable specific-event connection. **0 net promotions from
+Vishvas's entire archive** — a starker result than Alt News's already
+-low 2-per-4,967, and the strongest single data point yet for the
+structural yield ceiling described below.
+
+**thequint.com (WebQoof vertical): in progress, ~93% through its
+first-pass 1,095-day window.** 1 candidate promoted so far (item-0021,
+an AI-generated "yogi lifting weights with his mind" video, verified
+against the article's own quoted caption text before promotion) — the
+first (and so far only) net-positive source after Alt News in this
+round of expansion.
 
 **Factly (factly.in): deprioritized**, not run at scale, after a real
 negative test result (0 Instagram references in the first 1,000
 articles checked).
 
-**Benchmark total: 20 items (9 v1 + 11 v2)**, unchanged since item-0020
-— this entire batch of further automated sourcing, run in direct
-response to the explicit 500-item target, has not yet produced a single
-additional promotable item once real rigor is applied. This is reported
-plainly rather than smoothed over: the honest conclusion is that
-Instagram-only sourcing, even fully automated against complete
-archives, is very unlikely to reach 500 items in any reasonable
-timeframe at the yield rate actually observed (~1 per 250 candidates
-from the highest-yield source found so far). See
-`research/RESEARCH_ROADMAP_V2.md` (or the next commit's update to it)
-for the resulting recommendation.
+**India Today Fact Check: checked, not built.** Real Instagram
+references confirmed, but no accessible historical archive (JS
+-hydrated pagination, no dated sitemap index, no fact-check RSS feed).
+
+**Benchmark total: 21 items (9 v1 + 12 v2)** — one net new item
+(item-0021) since this round of expansion began, despite two fully
+-exhausted major archives (Alt News: 4,967 articles → 2 items; Vishvas:
+23,465 articles → 0 items) and a third still in progress. This is
+reported plainly rather than smoothed over: the honest conclusion is
+that Instagram-only sourcing, even fully automated against complete
+archives from multiple independent fact-checkers, is very unlikely to
+reach 500 items in any reasonable timeframe. The real yield ceiling
+looks structural (how much of this specific misinformation pattern
+actually gets posted to Instagram vs. X/Twitter, already evidenced
+qualitatively earlier this session), not a tooling or effort gap — five
+sources checked, four archives crawled to completion or near
+-completion, real bugs found and fixed at every stage. See
+`research/RESEARCH_ROADMAP_V2.md` for the corresponding roadmap update.
 
 ## Raw data / generators
 
