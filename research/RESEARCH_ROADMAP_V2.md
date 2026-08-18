@@ -94,6 +94,24 @@ expected to be reached through this method alone; this is disclosed
 here rather than smoothed over, per this project's stated audit
 discipline.
 
+**2026-08-18 final addendum — sourcing effort concluded, project
+paused**: two more sources were added (Fact Crescendo, across all four
+of its live language subdomains) and two real filter-coverage bugs were
+found and fixed (Vishvas and WebQoof were both silently excluding a
+majority of their real content — see `research/MASS_SOURCING_V2.md`).
+Final tally across all six sources checked: roughly 3,600 real
+candidates judged, 4 promoted (items 19–22), a blended yield of
+**roughly 1 per 900 candidates** — worse than the mid-session ~1-per
+-250 estimate above, since two of the four contributing sources
+(Vishvas, WebQoof) yielded only 1 promotion each across their *entire*
+archives despite the filter fixes finding real additional volume.
+Benchmark stands at 22 items (9 v1 + 13 v2). This finding, plus a
+separate verification pass confirming the system's existing
+Instagram-publishing pipeline works and adding test coverage it lacked,
+are the last work done before this project was put on hold. See
+`research_paper/main.tex` (`sec:massSourcing`, `sec:publishing`,
+Conclusion) for the versions of these findings written for the paper.
+
 ---
 
 ## PHASE 2 — Claim extraction improvement

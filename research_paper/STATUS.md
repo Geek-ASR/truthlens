@@ -1,11 +1,44 @@
 # Paper status
 
-Last updated: 2026-08-18 (sixth/seventh update, same day; two further
-autonomous passes folded in on top of the foundation-phase program).
-See below for this pass's summary; prior updates preserved unedited
-underneath.
+Last updated: 2026-08-18 (eighth update, same day; a final
+benchmark-scaling and Instagram-publishing-verification session folded
+in, then the project paused). See below for this pass's summary; prior
+updates preserved unedited underneath.
 
-## Latest update (this pass, 2026-08-18)
+## Latest update (this pass, 2026-08-18) -- project paused
+
+Folded in the mass-sourcing/benchmark-scaling session
+(`research/MASS_SOURCING_V2.md`) and the Instagram-publishing pipeline
+verification, both run after the second autonomous pass above. New
+content: a `sec:publishing` subsection under Architecture (Stage 10 --
+human-approval-gated Meta Graph API publishing, present since the
+initial build but newly given 18 tests after a zero-coverage gap was
+found; not yet exercised against a live account); a `sec:massSourcing`
+subsection under Foundation-Phase (five independent fact-checker
+archives crawled via a new automated judge pipeline, two real filter
+-coverage bugs found and fixed, benchmark grown 15$\to$22, and the
+central disclosed result -- a blended yield of roughly one promotable
+item per 900 candidates checked, an order of magnitude below the prior
+$\sim$8\% estimate, reported as a structural finding about where this
+misinformation pattern is actually posted, not a tooling gap); a closing
+paragraph in the Conclusion and a corresponding Abstract addition,
+matching this paper's standing practice of never letting the abstract
+undersell what the body now supports; Future Work item 1 updated to
+reflect the re-measured binding constraint.
+
+**Disclosed limitation on this update specifically**: no LaTeX toolchain
+(`pdflatex`/`xelatex`/`lualatex`) was available in the environment this
+pass ran in, so unlike every prior update logged below, this one was
+**not** recompiled or visually verified page-by-page via `pdftoppm`.
+What was checked instead: brace balance across the full document (equal
+open/close counts), every new `\label{}` confirmed non-duplicate, and
+every `\ref{}` (new and pre-existing) confirmed to resolve to a real
+label -- catching the class of error most likely from hand-edits, but
+not a substitute for an actual compile. Recompiling and visually
+verifying the new pages is the first thing that should happen before
+this version is treated as final.
+
+## Prior update (seventh, 2026-08-18)
 
 Folded in everything from EXP-021 through EXP-029 (`backend` commits
 `a06cb9f` through `491d4b5`), across two further autonomous passes that

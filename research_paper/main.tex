@@ -105,7 +105,19 @@ neutralizing the pre-fix success), and found a genuinely new,
 reproducible verdict-stage failure -- reliability weighting under
 direct source contradiction -- that a targeted prompt fix measurably
 failed to resolve (0/14 real trials correct, before and after), reported
-honestly as unresolved rather than claimed fixed. Every number in this paper is reported with its exact sample size
+honestly as unresolved rather than claimed fixed. A final session
+(Section~\ref{sec:massSourcing}) replaced manual sourcing with automated,
+multi-source crawling infrastructure and grew the benchmark to 22 items,
+but its central, disclosed result is a structural negative one: a
+blended yield of roughly one promotable item per 900 real candidates
+checked, an order of magnitude below the original manual-sourcing
+estimate, reported as evidence about where this misinformation pattern
+is actually posted rather than a tooling gap. The same session added
+test coverage, previously absent, for the system's tenth pipeline stage
+-- human-approval-gated publishing to Instagram via the official Meta
+Graph API (Section~\ref{sec:publishing}) -- and development is paused at
+this point, with connecting a live account, and everything downstream of
+that, left as the concrete next step. Every number in this paper is reported with its exact sample size
 and, where a proportion, a Wilson confidence interval; where an experiment
 could not be run at a scientifically meaningful scale, or where our own
 methodology was found to be flawed, we say so rather than force or hide it.
@@ -621,6 +633,56 @@ auditable from already-validated per-claim verdicts
 evidence-grounding rule, are also produced and invalidated alongside the
 parent verdict on any validation failure; full rule table and field
 details: Appendix~\ref{sec:appendixarchitecture}.
+
+\subsection{Stage 10: human-approval-gated publishing}
+\label{sec:publishing}
+Stage 9's rendered carousel is not posted automatically. A tenth stage,
+outside the 9-stage accuracy pipeline Figure~\ref{fig:architecture}
+diagrams and outside every research question this paper evaluates,
+publishes an \texttt{approved} fact-check to a real Instagram account via
+the official Meta Graph API's Content Publishing endpoints -- no browser
+automation or unofficial API of any kind, matching this project's stated
+Terms-of-Service-compliance posture (\texttt{docs/API\_REQUIREMENTS.md}~\S7). The state machine
+(\texttt{researching}$\to$\texttt{ready\_for\_review}$\to$\texttt{approved}
+$\to$\texttt{published}) enforces a human decision at
+\texttt{ready\_for\_review}: nothing reaches Instagram without an explicit
+reviewer approval, and approval and publish are two separate API calls
+against two separate database rows (a \texttt{GeneratedPost} created at
+approval time, a \texttt{PublishingJob} created at publish time) rather
+than one combined action, specifically so a failed Graph API call cannot
+silently re-trigger a duplicate approval or a double post. The publish
+call itself is a fixed six-step sequence per Instagram's own documented
+protocol: create one media container per slide, poll each until
+Instagram's servers report \texttt{FINISHED}, create a carousel container
+referencing all four, poll it, then publish and retrieve the permalink --
+each step individually retried (three attempts, exponential backoff) but
+the overall sequence not idempotent, which is what the approval/publish
+split above is defending against. Cost is \$0 (Meta's standard platform
+terms; the observed constraint is a rate limit, not a price -- roughly 25
+\texttt{media\_publish} calls per 24 hours per account, against which this
+project's own configured cap of 12 posts/day leaves real but not
+lavish margin).
+
+This stage has existed since the project's initial build but, unlike
+every accuracy-pipeline stage above, had zero test coverage before this
+pass -- a real gap for the one piece of code with an external, real-world,
+hard-to-fully-undo side effect. 18 tests were added: the full six-step
+Graph API sequence against a mocked HTTP boundary (container creation,
+ready-polling including a timeout case, carousel creation, publish,
+permalink retrieval), both real error shapes the Graph API actually
+returns (an HTTP error status, and a \texttt{200} response carrying an
+\texttt{error} object), the 2--10 item carousel-size guard, and --
+against a real row graph, not mocks, for everything except the Graph API
+call itself -- the already-published refusal, the missing-access-token
+refusal, and that a Graph API failure marks the publishing job
+\texttt{failed} with a real stored error rather than leaving it stuck or
+incorrectly marking the fact-check published anyway. No test exercises a
+live Instagram account: doing so requires the operator to complete a
+one-time account-linking step (an Instagram Business account linked to a
+Facebook Page, added as a Tester on a Meta developer app -- free, but
+outside this codebase, documented in
+\texttt{docs/API\_REQUIREMENTS.md}~\S1) that had not been completed as of
+this writing (Section~\ref{sec:conclusion}).
 
 \section{Experimental Methodology}
 \label{sec:expmethodology}
@@ -1729,6 +1791,93 @@ completely unchanged (87.5\%/60.9\%), confirming the zero-regression
 prediction empirically rather than by assumption. Full detail:
 \texttt{research/CONTRADICTORY\_SOURCES\_V2.md}.
 
+\subsection{A benchmark-scaling session: automated multi-source sourcing, and a measured structural yield ceiling}
+\label{sec:massSourcing}
+Continued manual sourcing (the same method as
+Section~\ref{sec:foundationphase}, one article read and judged at a
+time) added three further items, 15$\to$18, before its own throughput
+-- roughly one usable item per 20--30 articles checked, consistent with
+the original $\sim$8\% hit-rate estimate (Section~\ref{sec:dataset}) --
+was judged too slow against an explicit, direct instruction to reach a
+several-hundred-item benchmark. In response, an automated pipeline
+replaced the human-in-the-loop read-and-judge step with a local
+llama3.2 judge call, keeping every other step (crawl, extract, verify
+retrievability, log) code rather than model: given a fact-check
+article's full text and a cited Instagram post's own real caption
+(fetched directly via \texttt{yt-dlp}, never inferred from the article),
+the judge decides whether the post's \emph{own} caption asserts the
+specific false claim, as opposed to the far more common case -- the
+central methodological lesson of this whole pass -- of a fact-checker
+citing an Instagram post as evidence of the \emph{true, original} event
+while the actual false claim was posted separately, often on X/Twitter
+and sometimes already deleted.
+
+Five independent fact-checker archives were crawled to exhaustion or a
+clear negative result: \texttt{altnews.in} (498 pages, 4{,}967
+articles, 515 candidates judged, 2 promoted); \texttt{vishvasnews.com}
+(two passes, the second after finding the first's URL filter silently
+excluded most of the site's real fact-check content -- see below; 951
+then 731 candidates judged, 1 promoted); \texttt{thequint.com}'s
+WebQoof vertical (English and, after an identical filter-gap finding,
+Hindi editions; 714 then 145 candidates judged, 1 promoted); and
+\texttt{factcrescendo.com} across its English, Tamil, Marathi, and
+Malayalam editions (533 candidates judged, 0 promoted).
+\texttt{factly.in} was sampled (1{,}000 articles) and dropped before
+any candidate-level judging -- zero Instagram references found, a
+disclosed negative result rather than a silent omission.
+\texttt{newschecker.in} was excluded entirely, unattempted: its
+\texttt{robots.txt} explicitly disallows this project's crawler
+user-agent, a publisher directive treated as final rather than
+something a generic user-agent could legitimately route around.
+
+Two of the four contributing sources were only found to be contributing
+sources after fixing a real tooling bug, not because the underlying
+content did not exist: Vishvas's crawler filtered on a
+\texttt{/viral/} URL path on the (reasonable but wrong) assumption that
+this was the site's fact-check category, when direct sampling of one
+sitemap file found 856 of 979 URLs contained the substring
+\texttt{fact-check} against only 356 under \texttt{/viral/} -- real
+fact-checks filed under \texttt{/politics/}, \texttt{/society/}, and
+other sections the original filter never saw. WebQoof's crawler
+similarly filtered on \texttt{/news/webqoof/} only, missing a
+separate, real \texttt{/hindi/webqoof/} edition entirely. Both were
+broadened and re-run; each found real additional volume (roughly
+double the candidate pool, in Vishvas's case) but not a
+proportionally larger count of genuine misinformation-source posts,
+strengthening rather than undermining the finding below. A separate,
+independently-caught tooling bug in the post-judgment consistency
+filter (\texttt{spot\_check\_eligible\_candidates.py}) had been
+silently checking a generic auto-accepted note instead of the judge's
+real stated reasoning for one source's output shape specifically,
+letting self-contradicting judgments (reasoning stating the caption
+does not assert the claim, while the structured label said it did)
+through undetected until manual review of newly-eligible candidates
+caught it; fixed, and confirmed to catch four further real cases
+immediately afterward.
+
+\textbf{The measured result, reported plainly}: across roughly 3{,}600
+real candidates judged over five contributing sources, 4 were promoted
+-- items 19--22, each individually verified against the source
+article's own text and the post's real caption before promotion, not
+accepted on the local judge's word alone. That is a blended yield on
+the order of one promotable item per 900 candidates checked, an order
+of magnitude worse than the $\sim$8\% figure the original, much
+smaller manual-sourcing pass had suggested, and consistent with, not
+contradicting, an earlier disclosed finding in this same research
+program (Section~\ref{sec:multimodalanalysis}) that most of this
+dataset's real false claims live outside the specific Instagram post
+being fact-checked. At this measured rate, a several-hundred-item
+target is not reachable through deeper automated crawling of the same
+source type in any bounded timeframe -- a structural property of where
+this specific misinformation pattern actually gets posted, not a
+tooling or effort gap: five sources were checked, two archives fully
+exhausted on a second, broadened pass, and every judge-output anomaly
+found was traced to a specific, fixed cause rather than shrugged off as
+noise. The dataset stands at 22 items (\texttt{dev}: 9,
+\texttt{validation}: 13) as of this writing. Full detail, including
+every individual promoted/rejected candidate's disclosed reasoning:
+\texttt{research/MASS\_SOURCING\_V2.md}.
+
 \section{A Taxonomy of Failure Modes Found in Live Testing}
 \label{sec:failuremodes}
 
@@ -1935,10 +2084,19 @@ tuned against knowing the right answer. We would rather report a real
 
 \begin{enumerate}
 \item \textbf{Scale the held-out benchmark past $n=9$} -- \emph{partially
-  addressed}: grew to 15 (Section~\ref{sec:foundationphase}), still
-  short of the 20--30 target and the $\sim$40--60 needed for real
-  McNemar power; the $\sim$8\% Tier-1 sourcing hit rate remains the
-  binding constraint on how fast this can scale further.
+  addressed, and the binding constraint re-measured}: grew to 15
+  (Section~\ref{sec:foundationphase}), then to 22 via automated,
+  multi-source sourcing infrastructure (Section~\ref{sec:massSourcing}),
+  still short of the 20--30 target and the $\sim$40--60 needed for real
+  McNemar power. The original $\sim$8\% Tier-1 sourcing hit rate, cited
+  here in every prior version of this item as the binding constraint,
+  is now known to have been optimistic relative to the automated
+  pipeline's real, larger-scale, stricter-bar measurement: roughly one
+  promotable item per 900 candidates checked across five sources.
+  Closing this gap needs a different source class (this dataset's
+  Instagram-specific pattern is structurally scarce, not
+  under-searched), not faster or deeper crawling of the same kind of
+  source.
 \item \textbf{Diagnose and close claim-extraction coverage failures on
   degraded audio.} Still open -- EXP-016
   (Section~\ref{sec:foundationmultimodal}) re-confirmed rather than
@@ -2037,6 +2195,7 @@ tuned against knowing the right answer. We would rather report a real
 \end{enumerate}
 
 \section{Conclusion}
+\label{sec:conclusion}
 
 This paper reports the first evaluation of TruthLens against independent,
 held-out ground truth, and we lead with the least flattering result it
@@ -2134,6 +2293,52 @@ than contradicting this paper's central finding that architectural
 defenses (deterministic checks, Gemini escalation, and now a validator
 functioning as a measured, not merely claimed, security backstop) carry
 more of this system's real reliability burden than prompt design alone.
+
+A final benchmark-scaling session (Section~\ref{sec:massSourcing}) grew
+the dataset 15$\to$22 by building automated, multi-source sourcing
+infrastructure rather than continuing to scale a manual process whose
+own throughput had already been measured too slow for the several
+-hundred-item target it was built toward. The infrastructure itself
+worked -- five independent fact-checker archives crawled, two real
+tooling bugs found and fixed after direct evidence they were silently
+excluding a majority of one source's real content, and every one of
+four promoted items individually re-verified against its source article
+and the post's own real caption before promotion, not accepted on the
+local judge's word alone -- but the honest result it produced is a
+negative one for the several-hundred-item target specifically: a
+blended yield of roughly one promotable item per 900 real candidates
+checked, an order of magnitude below the rate the original, smaller
+manual pass had suggested. Reported as a structural finding, not a
+tooling failure, because deeper automated crawling of the same source
+type could not have closed that gap -- consistent with, and now
+measured at far higher volume than, this paper's own earlier finding
+(Section~\ref{sec:multimodalanalysis}) that most of this dataset's
+actual false claims live outside the specific post being fact-checked.
+The same session separately verified, rather than newly built, this
+system's tenth pipeline stage (Section~\ref{sec:publishing}): human
+-approval-gated publishing to a real Instagram account via the official
+Meta Graph API, present since this project's initial build but carrying
+zero test coverage until now. 18 tests were added against that gap; no
+test, and no run of any kind, has yet exercised a live account, since
+doing so needs an operator-side account-linking step outside this
+codebase that had not been completed as of this writing.
+
+Work on this program is paused at this point. What is left open, stated
+as concretely as everything reported above: the dataset, at 22 items,
+remains short of the $\sim$40--60 needed for real McNemar power
+(Section~\ref{sec:futurework}), and this session's own measurement is
+now the load-bearing evidence for why closing that gap needs a
+different source class, not more of the same one; RQ5 and RQ6 remain
+deferred for the same pre-registered reason as before; the claim
+-extraction coverage gap, the cross-post attribution problem, and the
+verdict-stage reliability-under-contradiction finding are each
+diagnosed but not resolved; and the publishing pipeline's real-account
+connection, and everything downstream of it (a first live post, its own
+review-queue usage in practice, and any resulting engagement or
+correction workflow), is unattempted. None of these are hidden or
+understated in the sections above; collected here only so a resumption
+of this work starts from an accurate list rather than a reconstruction
+of one.
 
 \appendix
 

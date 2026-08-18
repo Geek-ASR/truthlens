@@ -66,13 +66,15 @@ sharing a common judge/extraction core:
    treated as fully exhausted.
 
 5. **`backend/research/benchmark_v2/mass_source_factcrescendo.py`**
-   (english.factcrescendo.com): sitemap-indexed (4 post-sitemap files,
-   ~3,644 articles, 2022-01–2026-08). Every post on this site is
-   already a fact-check, so no URL-substring filter is applied — unlike
-   Vishvas/Factly's mixed content. Sampled 15 articles first: 1/15
-   referenced Instagram (~7%). English subdomain only — Fact Crescendo
-   also runs Hindi/Tamil/Kannada/Telugu/Marathi/Bengali/Malayalam
-   editions on separate subdomains, not yet built.
+   (factcrescendo.com): sitemap-indexed, looped across all four
+   confirmed-live language subdomains (english: 4 post-sitemap files;
+   tamil: 5; marathi: 3; malayalam: 5 — ~15,500 articles total,
+   2022-01–2026-08). Every post on this site is already a fact-check,
+   so no URL-substring filter is applied — unlike Vishvas/Factly's
+   mixed content. Sampled 15 English articles first: 1/15 referenced
+   Instagram (~7%). Hindi/Kannada/Telugu/Bengali editions checked and
+   found to not resolve as live subdomains (DNS failure) — not a gap,
+   confirmed absent.
 
 **Explicitly not built**: `newschecker.in`. Its `robots.txt` names
 `ClaudeBot`/`Claude-Web`/`anthropic-ai` in an explicit `Disallow`. That
@@ -385,26 +387,43 @@ articles checked).
 references confirmed, but no accessible historical archive (JS
 -hydrated pagination, no dated sitemap index, no fact-check RSS feed).
 
-**Fact Crescendo (english.factcrescendo.com): just launched**, real
-results not yet known. Added after WebQoof's archive was confirmed
-exhausted, to keep an active source running rather than leaving CPU
-idle.
+**Fact Crescendo (english/tamil/marathi/malayalam.factcrescendo.com):
+archive fully exhausted, all four editions.** 17 sitemap files,
+15,494 articles seen, 507 with an Instagram reference, 533 candidates
+checked. **0 promotions** — the one candidate that reached `ELIGIBLE`
+(a Nepal/Kapuche Lake avalanche video) was a judge error caught on
+manual review: the judge got the claim direction backwards, flagging
+the post that was the article's own cited TRUE original as if it were
+the misinformation.
 
-**Benchmark total: 21 items (9 v1 + 12 v2)** — one net new item
-(item-0021) since this round of expansion began, despite Alt News,
-Vishvas's first pass, and WebQoof's full archive (now extended to 6
-years) all being fully exhausted. This is reported plainly rather than
-smoothed over: the honest conclusion is that Instagram-only sourcing,
-even fully automated against complete archives from multiple
-independent fact-checkers, is very unlikely to reach 500 items in any
-reasonable timeframe. The real yield ceiling looks structural (how much
-of this specific misinformation pattern actually gets posted to
-Instagram vs. X/Twitter, already evidenced qualitatively earlier this
-session), not a tooling or effort gap — six sources checked, real bugs
-found and fixed at every stage, including one (Vishvas's filter gap)
-that may meaningfully change the picture once its broadened re-run
-completes. See `research/RESEARCH_ROADMAP_V2.md` for the corresponding
-roadmap update.
+**Final benchmark total: 22 items (9 v1 + 13 v2).** Six independent
+sources checked this round (Alt News, Vishvas, WebQoof, Factly, India
+Today, Fact Crescendo); five crawled to real completion, one (India
+Today) found to have no accessible archive. Combined: roughly 3,600
+real candidates judged by the local LLM across all sources, 4 promoted
+(items 19–22) — a blended yield on the order of **1 promotable item
+per ~900 candidates checked**, an order of magnitude below even this
+project's own earlier ~8% estimate. This is reported plainly rather
+than smoothed over: Instagram-only sourcing, even fully automated
+against complete archives from six independent fact-checkers in four
+languages, cannot reach 500 items in any reasonable timeframe. The real
+yield ceiling looks structural (how much of this specific
+misinformation pattern actually gets posted to Instagram vs.
+X/Twitter, already evidenced qualitatively earlier this session and
+now confirmed quantitatively at far higher volume), not a tooling or
+effort gap — every filter-coverage gap found (Vishvas, WebQoof) was
+fixed and re-run, and both broadened passes found real additional
+volume without a proportionally larger yield of genuine
+misinformation-source posts. See `research/RESEARCH_ROADMAP_V2.md` for
+the corresponding roadmap update, and `research_paper/main.tex`
+(`sec:massSourcing`) for this finding's place in the paper.
+
+**Project status: paused as of this writing.** This mass-sourcing
+effort and a separate verification pass on the Instagram
+human-approval-gated publishing pipeline (already built, newly given
+test coverage, not yet connected to a live account) were the last work
+done before development was put on hold. See the paper's Conclusion
+(`sec:conclusion`) for the consolidated list of what remains open.
 
 ## Raw data / generators
 
