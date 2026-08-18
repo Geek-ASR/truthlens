@@ -70,6 +70,19 @@ is a clear publisher directive; using a generic browser User-Agent to
 route around it would be circumventing it, not a gray area. Dropped
 entirely, not worked around.
 
+**Also checked, also not built**: `indiatoday.in/fact-check`. `robots.txt`
+is fully open (no AI-crawler block), and 5/5 sampled articles reference
+Instagram — the content is there. But no accessible historical archive
+was found: its listing page is JS-hydrated the same way WebQoof's is
+(`?page=2` returns byte-identical links to page 1), its `sitemap.xml` is
+a small ~400-URL static section index (not a dated article archive —
+only 1 `fact-check` URL in it), and it has no fact-check-specific RSS
+feed among its 18 section feeds. Without a crawlable path to anything
+beyond the ~18 most-recently-published articles, a pipeline here
+couldn't add meaningful volume in a single pass — a real negative
+result on accessibility, not on content relevance, recorded here rather
+than silently dropped.
+
 ### Pipeline stages
 
 1. **CRAWL**: raw HTML page/sitemap fetch (`httpx`, not `WebFetch` —
