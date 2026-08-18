@@ -231,6 +231,27 @@ async def _judge(provider: OllamaProvider, article_text: str, caption: str) -> S
         return None
 
 
+def _next_candidate_n() -> int:
+    """Derived from the highest existing cand-mass-NNNN id, not hardcoded
+    to 1 -- found live: restarting this script after a crash with
+    existing cand-mass-0001..0055 records still in candidates_v2.jsonl
+    (from before the crash) immediately collided on 'cand-mass-0001
+    already exists' and crashed again, since a hardcoded start ignores
+    whatever this same pipeline already created in a prior run. Mirrors
+    promote_eligible_candidates.py's own _next_item_ids() pattern."""
+    from research.benchmark_v2.candidate_tracker import _load_all as _load_all_candidates
+
+    max_n = 0
+    for c in _load_all_candidates():
+        cid = c.get("candidate_id", "")
+        if cid.startswith("cand-mass-"):
+            try:
+                max_n = max(max_n, int(cid.rsplit("-", 1)[-1]))
+            except ValueError:
+                continue
+    return max_n + 1
+
+
 async def main() -> None:
     provider = OllamaProvider()
     existing_urls = _load_existing_urls()
@@ -238,7 +259,7 @@ async def main() -> None:
     stats = {"pages_crawled": 0, "articles_seen": 0, "articles_with_instagram": 0,
               "candidates_checked": 0, "candidates_accepted": 0, "candidates_rejected": 0,
               "candidates_dedup_skipped": 0, "start_time": time.time()}
-    next_candidate_n = 1
+    next_candidate_n = _next_candidate_n()
 
     for archive in _ARCHIVES:
         print(f"\n=== Archive: {archive['name']} ===", file=sys.stderr)

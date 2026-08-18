@@ -140,7 +140,16 @@ async def main() -> None:
     stats = {"sitemaps_crawled": 0, "articles_seen": 0, "articles_with_instagram": 0,
               "candidates_checked": 0, "candidates_accepted": 0, "candidates_rejected": 0,
               "candidates_dedup_skipped": 0, "start_time": time.time()}
-    next_n = len(_load_all()) + 1
+    # max existing id + 1, not len(...) + 1 -- same fix as the sibling
+    # altnews.in and vishvasnews.com pipelines, proactively applied here too.
+    next_n = 1
+    for rec in _load_all():
+        cid = rec.get("candidate_id", "")
+        if cid.startswith("cand-factly-"):
+            try:
+                next_n = max(next_n, int(cid.rsplit("-", 1)[-1]) + 1)
+            except ValueError:
+                continue
 
     print("Fetching sitemap index...", file=sys.stderr)
     index_html = httpx.get(_SITEMAP_INDEX, timeout=30, follow_redirects=True, headers={"User-Agent": _USER_AGENT}).text
