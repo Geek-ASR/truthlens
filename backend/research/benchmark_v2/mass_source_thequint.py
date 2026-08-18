@@ -13,13 +13,24 @@ client-side via an API call this pipeline doesn't have). The only real
 archive access is thequint.com's DAILY sitemap files
 (sitemap-daily-YYYY-MM-DD.xml), one HTTP request per calendar day, each
 listing that day's ~10-140 published URLs across ALL sections (not just
-WebQoof) -- filtered here on the same "/news/webqoof/" URL substring
-Vishvas's pipeline uses "/viral/" for. Confirmed live via spot sampling
-(10 dates spread over ~2 months, plus yearly spot checks back to 2019)
-that WebQoof-tagged content averages ~2.6 articles/day and is present
-consistently back to at least 2020 (2019 sample showed 0, but on a
-single day -- not treated as a hard cutoff, just why _DAYS_BACK below
-isn't pushed further back yet).
+WebQoof). Confirmed live via spot sampling (10 dates spread over ~2
+months, plus yearly spot checks back to 2019) that WebQoof-tagged
+content averages ~2.6 articles/day and is present consistently back to
+at least 2020 (2019 sample showed 0, but on a single day -- not treated
+as a hard cutoff, just why _DAYS_BACK below isn't pushed further back
+yet).
+
+2026-08-18: the first two full runs (1,095 then 2,200 days) filtered on
+"/news/webqoof/" only. While investigating whether Vishvas's own
+filter-gap fix (see mass_source_vishvasnews.py) might have a parallel
+here, sampling several daily sitemaps directly found a SEPARATE Hindi
+-language WebQoof edition at "/hindi/webqoof/" -- a real, distinct URL
+path, not just a translated version reachable from the same English
+URL. One sample day had 3 Hindi-edition fact-checks against 2 English
+-edition ones, i.e. the original filter was missing more content than
+it caught. Broadened to match "/webqoof/" anywhere in the URL (both
+editions, and any future language edition automatically) rather than
+"/news/webqoof/" specifically.
 
 Same JUDGE step as mass_source_candidates.py (imported, not
 duplicated): local llama3.2 only. Writes to its own separate file
@@ -185,8 +196,8 @@ async def main() -> None:
 
         for article_url in article_urls:
             stats["articles_seen"] += 1
-            if article_url in checked_articles or "/news/webqoof/" not in article_url:
-                continue
+            if article_url in checked_articles or "/webqoof/" not in article_url:
+                continue  # matches /news/webqoof/ (English) and /hindi/webqoof/ (see module docstring)
             checked_articles.add(article_url)
 
             try:
