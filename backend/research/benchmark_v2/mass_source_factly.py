@@ -34,6 +34,7 @@ from pathlib import Path
 
 import httpx
 import trafilatura
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))  # backend/
 
@@ -108,14 +109,23 @@ def _update(cid: str, status: str, note: str = "", rejection_reason: str | None 
     _save_all(candidates)
 
 
+@retry(
+    reraise=True, stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=15),
+    retry=retry_if_exception_type(httpx.HTTPError),
+)
+def _fetch_with_retry(url: str, timeout: float = 30) -> str:
+    with httpx.Client(timeout=timeout, follow_redirects=True, headers={"User-Agent": _USER_AGENT}) as client:
+        resp = client.get(url)
+        resp.raise_for_status()
+        return resp.text
+
+
 def _fetch_sitemap_urls(sitemap_url: str) -> list[str]:
     try:
-        with httpx.Client(timeout=30, follow_redirects=True, headers={"User-Agent": _USER_AGENT}) as client:
-            resp = client.get(sitemap_url)
-            resp.raise_for_status()
+        html = _fetch_with_retry(sitemap_url)
     except httpx.HTTPError:
         return []
-    return re.findall(r"<loc>([^<]+)</loc>", resp.text)
+    return re.findall(r"<loc>([^<]+)</loc>", html)
 
 
 def _load_checked() -> set[str]:
@@ -152,7 +162,7 @@ async def main() -> None:
                 continue
 
     print("Fetching sitemap index...", file=sys.stderr)
-    index_html = httpx.get(_SITEMAP_INDEX, timeout=30, follow_redirects=True, headers={"User-Agent": _USER_AGENT}).text
+    index_html = _fetch_with_retry(_SITEMAP_INDEX)
     sitemap_urls = re.findall(r"<loc>([^<]+)</loc>", index_html)[:_MAX_SITEMAPS]
     print(f"{len(sitemap_urls)} sitemap file(s) found", file=sys.stderr)
 

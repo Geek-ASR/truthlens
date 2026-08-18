@@ -44,6 +44,7 @@ from pathlib import Path
 import httpx
 import trafilatura
 from pydantic import BaseModel, Field
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 _YT_DLP_BIN = str(Path(sys.prefix) / "bin" / "yt-dlp")
 
@@ -114,12 +115,38 @@ assertion the article is fact-checking -- not when the post merely shows related
 tagged/mentioned, or is cited as a comparison/rebuttal."""
 
 
-def _crawl_archive_page(url: str) -> list[tuple[str, str]]:
+class _PageFetchFailed(Exception):
+    """Distinguishes a transient network failure (retry/skip this page,
+    the archive is NOT necessarily exhausted) from a real, successful
+    200-response-with-zero-matches page (the actual, intended signal
+    that this archive category has been fully paginated). Found live:
+    the original version of this function had no error handling at all
+    around the page fetch, so a single mid-run SSL handshake timeout
+    (httpx.ConnectTimeout) -- an expected, ordinary event over a
+    multi-hour crawl, not a bug in itself -- crashed the entire 498-page
+    run outright. Conflating "fetch failed" with "page is empty" would
+    have been a second, subtler bug: it would silently truncate the
+    crawl at whatever page a transient failure happened to occur on,
+    since the caller's own loop already treats an empty page list as
+    "reached the end of this archive, stop"."""
+
+
+@retry(
+    reraise=True, stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=15),
+    retry=retry_if_exception_type(httpx.HTTPError),
+)
+def _fetch_page_html(url: str) -> str:
     with httpx.Client(timeout=20, follow_redirects=True, headers={"User-Agent": _USER_AGENT}) as client:
         response = client.get(url)
-        if response.status_code != 200:
-            return []
-        html = response.text
+        response.raise_for_status()
+        return response.text
+
+
+def _crawl_archive_page(url: str) -> list[tuple[str, str]]:
+    try:
+        html = _fetch_page_html(url)
+    except httpx.HTTPError as exc:
+        raise _PageFetchFailed(f"{url}: {exc}") from exc
     matches = re.findall(r'<a[^>]+href="(https://www\.(?:altnews|boomlive)\.in/[a-z0-9/-]+/?)"[^>]*>([^<]{15,150})</a>', html)
     seen, out = set(), []
     for article_url, title in matches:
@@ -265,10 +292,18 @@ async def main() -> None:
         print(f"\n=== Archive: {archive['name']} ===", file=sys.stderr)
         for page in range(1, _MAX_PAGES_PER_ARCHIVE + 1):
             url = archive["url_template"].format(page=page)
-            articles = _crawl_archive_page(url)
+            try:
+                articles = _crawl_archive_page(url)
+            except _PageFetchFailed as exc:
+                # A real network failure (already retried 3x) -- NOT the
+                # same thing as reaching the end of the archive. Skip this
+                # one page and keep going, rather than either crashing the
+                # whole multi-hour run or silently truncating it here.
+                print(f"  page {page}: fetch failed after retries ({exc}), skipping this page", file=sys.stderr)
+                continue
             stats["pages_crawled"] += 1
             if not articles:
-                print(f"  page {page}: empty, stopping this archive", file=sys.stderr)
+                print(f"  page {page}: empty (real 200 response, zero articles), stopping this archive", file=sys.stderr)
                 break
             print(f"  page {page}: {len(articles)} article(s)", file=sys.stderr)
 
