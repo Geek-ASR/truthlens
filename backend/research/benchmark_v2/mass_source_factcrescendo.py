@@ -1,27 +1,31 @@
-"""Fifth mass-sourcing pipeline, for english.factcrescendo.com's
-sitemap-indexed archive. Added after Vishvas's `/viral/`-only filter
+"""Fifth mass-sourcing pipeline, for factcrescendo.com's
+sitemap-indexed archives. Added after Vishvas's `/viral/`-only filter
 was found to be missing most of its real content (see mass_source_
 vishvasnews.py's docstring) -- this site has no such subcategory
 structure at all, every post IS a fact-check, so no URL-substring
 filter is needed or applied; every sitemap URL is in scope.
 
 `robots.txt` is fully open (`Disallow:` with nothing after it -- no
-Claude/AI-crawler block, unlike newschecker.in). Sampled 15 articles
-spread across the archive before building this: only 1/15 (~7%)
-referenced Instagram -- lower density than WebQoof or Alt News, closer
-to Vishvas's ~4.6% -- but real, and this pipeline is cheap to run
-alongside the other two already in progress.
+Claude/AI-crawler block, unlike newschecker.in). Sampled 15 English
+-subdomain articles before building this: only 1/15 (~7%) referenced
+Instagram -- lower density than WebQoof or Alt News, closer to
+Vishvas's ~4.6% -- but real.
 
-Sitemap index (4 post-sitemap files, ~3,644 articles total spanning
-2022-01 to 2026-08 -- confirmed live, smaller than Alt News/Vishvas)
+Fact Crescendo publishes each language as a genuinely SEPARATE
+subdomain (not a sub-path the way thequint.com's Hindi WebQoof edition
+turned out to be -- see mass_source_thequint.py's own filter-gap fix).
+Initially built for english.factcrescendo.com only; checked the other
+advertised editions (Hindi/Tamil/Kannada/Telugu/Marathi/Bengali/
+Malayalam) and found only tamil/marathi/malayalam actually resolve as
+live subdomains today (hindi/kannada/telugu/bengali give DNS failures
+-- likely retired, merged into another property, or never launched).
+The three real ones have substantial archives of their own (Tamil: 5
+post-sitemaps, Marathi: 3, Malayalam: 5 -- comparable combined scale to
+the English edition's 4), so extended this pipeline to loop over all
+four confirmed-live subdomains rather than staying English-only.
+
+Sitemap index per subdomain (Yoast-style post-sitemap.xml/2/3/...)
 rather than a daily-sitemap or page-based archive.
-
-This is the ENGLISH subdomain only. Fact Crescendo also publishes
-Hindi/Tamil/Kannada/Telugu/Marathi/Bengali/Malayalam editions on
-separate subdomains, each with its own sitemap -- not built here (kept
-to one language pass first, matching the project's stated preference
-for real, checked results over speculative breadth); a natural next
-step if this pipeline's real yield justifies it.
 
 Same JUDGE step as the other pipelines (imported, not duplicated):
 local llama3.2 only.
@@ -59,8 +63,14 @@ _RESULTS_DIR = _REPO_ROOT / "research" / "results"
 _CANDIDATES_PATH = _REPO_ROOT / "research" / "dataset" / "candidates_v2_mass_factcrescendo.jsonl"
 _STATE_PATH = _REPO_ROOT / "research" / "dataset" / "mass_sourcing_factcrescendo_checked_articles.json"
 
-_SITEMAP_INDEX = "https://english.factcrescendo.com/sitemap_index.xml"
-_POST_SITEMAP_PREFIX = "https://english.factcrescendo.com/post-sitemap"
+# (subdomain, language code) -- hindi/kannada/telugu/bengali checked
+# live and found not to resolve (DNS failure), not included.
+_SUBDOMAINS = [
+    ("english", "en"),
+    ("tamil", "ta"),
+    ("marathi", "mr"),
+    ("malayalam", "ml"),
+]
 
 
 @dataclass
@@ -165,97 +175,104 @@ async def main() -> None:
             except ValueError:
                 continue
 
-    print("Fetching sitemap index...", file=sys.stderr)
-    index_html = _fetch_with_retry(_SITEMAP_INDEX)
-    all_sitemap_urls = re.findall(r"<loc>([^<]+)</loc>", index_html)
-    sitemap_urls = [u for u in all_sitemap_urls if u.startswith(_POST_SITEMAP_PREFIX)]
-    print(f"{len(sitemap_urls)} post-sitemap file(s) found", file=sys.stderr)
+    for subdomain, lang_code in _SUBDOMAINS:
+        sitemap_index = f"https://{subdomain}.factcrescendo.com/sitemap_index.xml"
+        post_sitemap_prefix = f"https://{subdomain}.factcrescendo.com/post-sitemap"
+        print(f"=== {subdomain}.factcrescendo.com ===", file=sys.stderr)
+        try:
+            index_html = _fetch_with_retry(sitemap_index)
+        except httpx.HTTPError as exc:
+            print(f"  skipping {subdomain}: sitemap index fetch failed ({exc})", file=sys.stderr)
+            continue
+        all_sitemap_urls = re.findall(r"<loc>([^<]+)</loc>", index_html)
+        sitemap_urls = [u for u in all_sitemap_urls if u.startswith(post_sitemap_prefix)]
+        print(f"  {len(sitemap_urls)} post-sitemap file(s) found", file=sys.stderr)
 
-    for sitemap_url in sitemap_urls:
-        article_urls = _fetch_sitemap_urls(sitemap_url)
-        stats["sitemaps_crawled"] += 1
-        print(f"  {sitemap_url}: {len(article_urls)} URL(s)", file=sys.stderr)
+        for sitemap_url in sitemap_urls:
+            article_urls = _fetch_sitemap_urls(sitemap_url)
+            stats["sitemaps_crawled"] += 1
+            print(f"  {sitemap_url}: {len(article_urls)} URL(s)", file=sys.stderr)
 
-        for article_url in article_urls:
-            stats["articles_seen"] += 1
-            # No URL-substring filter needed -- every post on this site
-            # is a fact-check (unlike Vishvas/Factly's mixed content).
-            if article_url in checked_articles or "/20" not in article_url:
-                continue  # skips non-article sitemap entries like /archive/
-            checked_articles.add(article_url)
+            for article_url in article_urls:
+                stats["articles_seen"] += 1
+                # No URL-substring filter needed -- every post on this site
+                # is a fact-check (unlike Vishvas/Factly's mixed content).
+                if article_url in checked_articles or "/20" not in article_url:
+                    continue  # skips non-article sitemap entries like /archive/
+                checked_articles.add(article_url)
 
-            try:
-                with httpx.Client(timeout=20, follow_redirects=True, headers={"User-Agent": _USER_AGENT}) as client:
-                    resp = client.get(article_url)
-                    resp.raise_for_status()
-                    article_html = resp.text
-            except httpx.HTTPError:
-                continue
-
-            instagram_urls = extract_instagram_urls(article_html)
-            if not instagram_urls:
-                continue
-            stats["articles_with_instagram"] += 1
-            article_text = trafilatura.extract(article_html, include_comments=False, include_tables=False) or article_url
-
-            for ig_url in instagram_urls:
-                if ig_url.rstrip("/") in existing_urls:
-                    stats["candidates_dedup_skipped"] += 1
-                    continue
-                existing_urls.add(ig_url.rstrip("/"))
-
-                post_id = _post_id_from_url(ig_url)
-                caption, uploader, retrievable = _fetch_caption_and_uploader(post_id)
-                stats["candidates_checked"] += 1
-
-                cid = f"cand-factcrescendo-{next_n:04d}"
-                next_n += 1
-                _add(SimpleCandidate(candidate_id=cid, factcheck_article=article_url, social_url=ig_url, media_url=ig_url))
-                _update(cid, "SOCIAL_REFERENCE_FOUND", note="Recovered via mass_source_factcrescendo.py sitemap crawl.")
-
-                if not retrievable:
-                    _update(cid, "REJECTED", note="Not retrievable via yt-dlp.", rejection_reason="Media not retrievable.")
-                    stats["candidates_rejected"] += 1
-                    continue
-                _update(cid, "MEDIA_RETRIEVABLE", note=f"uploader={uploader}, has_caption={bool(caption)}")
-
-                if _is_known_factchecker_account(uploader):
-                    _update(cid, "REJECTED", note=f"Uploaded by the fact-checker's own account ({uploader}).",
-                            rejection_reason=f"Posted by {uploader}, a known fact-checker account -- their own "
-                                              f"repost/documentation of the claim, not the real misinformation spreader.")
-                    stats["candidates_rejected"] += 1
+                try:
+                    with httpx.Client(timeout=20, follow_redirects=True, headers={"User-Agent": _USER_AGENT}) as client:
+                        resp = client.get(article_url)
+                        resp.raise_for_status()
+                        article_html = resp.text
+                except httpx.HTTPError:
                     continue
 
-                if not caption:
-                    _update(cid, "REJECTED", note="No caption available to judge.",
-                            rejection_reason="Retrievable but no caption text.")
-                    stats["candidates_rejected"] += 1
+                instagram_urls = extract_instagram_urls(article_html)
+                if not instagram_urls:
                     continue
+                stats["articles_with_instagram"] += 1
+                article_text = trafilatura.extract(article_html, include_comments=False, include_tables=False) or article_url
 
-                judgment = await _judge(provider, article_text, caption)
-                if judgment is None:
-                    _update(cid, "REJECTED", note="Judge call failed.", rejection_reason="Local LLM judgment call failed.")
-                    stats["candidates_rejected"] += 1
-                    continue
+                for ig_url in instagram_urls:
+                    if ig_url.rstrip("/") in existing_urls:
+                        stats["candidates_dedup_skipped"] += 1
+                        continue
+                    existing_urls.add(ig_url.rstrip("/"))
 
-                if judgment.is_own_post_the_misinformation and judgment.confidence >= 0.7:
-                    _update(cid, "ELIGIBLE",
-                            note=f"llama3.2 judge (confidence={judgment.confidence:.2f}): {judgment.reasoning}. "
-                                 "NOT yet human/manual-reviewed.",
-                            ground_truth_claim=judgment.extracted_claim, ground_truth_label=judgment.extracted_verdict_label,
-                            claim_type="provenance", language="en")
-                    stats["candidates_accepted"] += 1
-                    print(f"    [{cid}] {ig_url} -> ACCEPTED (confidence={judgment.confidence:.2f}): {judgment.extracted_claim[:80]}", file=sys.stderr)
-                else:
-                    _update(cid, "REJECTED", note=f"llama3.2 judge: {judgment.reasoning}",
-                            rejection_reason=f"Judged not the source (confidence={judgment.confidence:.2f}): {judgment.reasoning}")
-                    stats["candidates_rejected"] += 1
+                    post_id = _post_id_from_url(ig_url)
+                    caption, uploader, retrievable = _fetch_caption_and_uploader(post_id)
+                    stats["candidates_checked"] += 1
 
-            if stats["candidates_checked"] % 5 == 0 and stats["candidates_checked"] > 0:
-                _save_checked(checked_articles)
+                    cid = f"cand-factcrescendo-{next_n:04d}"
+                    next_n += 1
+                    _add(SimpleCandidate(candidate_id=cid, factcheck_article=article_url, social_url=ig_url, media_url=ig_url))
+                    _update(cid, "SOCIAL_REFERENCE_FOUND", note=f"Recovered via mass_source_factcrescendo.py sitemap crawl ({subdomain}).")
 
-        _save_checked(checked_articles)
-        print(f"  progress: {stats['candidates_accepted']} accepted / {stats['candidates_checked']} checked so far", file=sys.stderr)
+                    if not retrievable:
+                        _update(cid, "REJECTED", note="Not retrievable via yt-dlp.", rejection_reason="Media not retrievable.")
+                        stats["candidates_rejected"] += 1
+                        continue
+                    _update(cid, "MEDIA_RETRIEVABLE", note=f"uploader={uploader}, has_caption={bool(caption)}")
+
+                    if _is_known_factchecker_account(uploader):
+                        _update(cid, "REJECTED", note=f"Uploaded by the fact-checker's own account ({uploader}).",
+                                rejection_reason=f"Posted by {uploader}, a known fact-checker account -- their own "
+                                                  f"repost/documentation of the claim, not the real misinformation spreader.")
+                        stats["candidates_rejected"] += 1
+                        continue
+
+                    if not caption:
+                        _update(cid, "REJECTED", note="No caption available to judge.",
+                                rejection_reason="Retrievable but no caption text.")
+                        stats["candidates_rejected"] += 1
+                        continue
+
+                    judgment = await _judge(provider, article_text, caption)
+                    if judgment is None:
+                        _update(cid, "REJECTED", note="Judge call failed.", rejection_reason="Local LLM judgment call failed.")
+                        stats["candidates_rejected"] += 1
+                        continue
+
+                    if judgment.is_own_post_the_misinformation and judgment.confidence >= 0.7:
+                        _update(cid, "ELIGIBLE",
+                                note=f"llama3.2 judge (confidence={judgment.confidence:.2f}): {judgment.reasoning}. "
+                                     "NOT yet human/manual-reviewed.",
+                                ground_truth_claim=judgment.extracted_claim, ground_truth_label=judgment.extracted_verdict_label,
+                                claim_type="provenance", language=lang_code)
+                        stats["candidates_accepted"] += 1
+                        print(f"    [{cid}] {ig_url} -> ACCEPTED (confidence={judgment.confidence:.2f}): {judgment.extracted_claim[:80]}", file=sys.stderr)
+                    else:
+                        _update(cid, "REJECTED", note=f"llama3.2 judge: {judgment.reasoning}",
+                                rejection_reason=f"Judged not the source (confidence={judgment.confidence:.2f}): {judgment.reasoning}")
+                        stats["candidates_rejected"] += 1
+
+                if stats["candidates_checked"] % 5 == 0 and stats["candidates_checked"] > 0:
+                    _save_checked(checked_articles)
+
+            _save_checked(checked_articles)
+            print(f"  progress: {stats['candidates_accepted']} accepted / {stats['candidates_checked']} checked so far", file=sys.stderr)
 
     stats["elapsed_seconds"] = time.time() - stats["start_time"]
     _RESULTS_DIR.mkdir(parents=True, exist_ok=True)
