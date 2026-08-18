@@ -67,6 +67,33 @@ reached, or three consecutive sourcing passes each add fewer than 3 new
 usable items (diminishing-returns signal, matching the discipline
 already used once for the original 9-item set).
 
+**2026-08-18 update — target revised upward, hit rate confirmed even
+lower than predicted**: a direct instruction superseded the 60-item
+target with a 500-item target, explicitly local-models-only (no
+Gemini), automated (see `research/MASS_SOURCING_V2.md`). Built four
+parallel crawl pipelines (Alt News, Vishvas News, Factly, thequint.com
+WebQoof) against full historical archives, not just a sample. Real
+result: Alt News's **entire** 498-page/4,967-article archive, applied
+with real judge + manual-review rigor, produced only 2 promotable
+items — roughly 1 per 250 candidates checked, well below even this
+phase's own pessimistic ~8% prediction (that 8% figure was measured
+against "any usable fact-check candidate"; the automated pipeline's bar
+is stricter — specifically requiring the Instagram post's OWN caption
+to assert the claim, not just be cited as evidence, AND still be
+retrievable via `yt-dlp`). At the confirmed yield rate, 500 items would
+require checking on the order of 100,000+ candidates from
+Instagram-specific sources — not achievable through deeper crawling of
+the same source type in any bounded timeframe. This matches, in hard
+numbers, the qualitative 8/8 finding from earlier in this session that
+X/Twitter, not Instagram, is where most of this misinformation pattern
+actually gets posted (a scope-relaxation option that was explicitly
+declined when offered — Instagram-only sourcing continues by direct
+instruction, slow pace accepted). Sourcing continues via the fourth
+source (WebQoof) and any further sources found, but 500 items is not
+expected to be reached through this method alone; this is disclosed
+here rather than smoothed over, per this project's stated audit
+discipline.
+
 ---
 
 ## PHASE 2 — Claim extraction improvement
