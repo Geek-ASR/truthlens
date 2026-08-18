@@ -42,6 +42,7 @@ from app.services.ai.ollama_provider import OllamaProvider  # noqa: E402
 from research.benchmark_v2.extract_instagram_embed import extract_instagram_urls  # noqa: E402
 from research.benchmark_v2.mass_source_candidates import (  # noqa: E402
     _fetch_caption_and_uploader,
+    _is_known_factchecker_account,
     _judge,
     _load_existing_urls,
     _post_id_from_url,
@@ -211,6 +212,13 @@ async def main() -> None:
                     stats["candidates_rejected"] += 1
                     continue
                 _update(cid, "MEDIA_RETRIEVABLE", note=f"uploader={uploader}, has_caption={bool(caption)}")
+
+                if _is_known_factchecker_account(uploader):
+                    _update(cid, "REJECTED", note=f"Uploaded by the fact-checker's own account ({uploader}).",
+                            rejection_reason=f"Posted by {uploader}, a known fact-checker account -- their own "
+                                              f"repost/documentation of the claim, not the real misinformation spreader.")
+                    stats["candidates_rejected"] += 1
+                    continue
 
                 if not caption:
                     _update(cid, "REJECTED", note="No caption available to judge.",

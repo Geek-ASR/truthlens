@@ -206,6 +206,31 @@ def _post_id_from_url(url: str) -> str:
     return match.group(1) if match else url
 
 
+# Found live (research/MASS_SOURCING_V2.md): 30 of ~97 candidates checked
+# by the Vishvas News pipeline (31%) were uploaded by the fact-checker's
+# OWN Instagram account -- documenting/screenshotting the claim as part
+# of their own reporting, not the real misinformation spreader. These
+# are never a valid ingestion target for this dataset (the whole point
+# is capturing genuine, wild misinformation, not a fact-checker's own
+# repost of it) and burn a real yt-dlp + LLM judge call each before
+# being rejected anyway, sometimes with a judge explanation that doesn't
+# actually name the real disqualifying reason (uploader identity, which
+# the judge prompt never asks about). Skipped deterministically, before
+# the judge call, for both compute savings and to remove a source of
+# judge confusion.
+_KNOWN_FACTCHECKER_ACCOUNT_SUBSTRINGS = (
+    "vishvas news", "alt news", "altnews", "boom live", "boomlive",
+    "factly", "newschecker", "the quint", "webqoof", "india today fact check",
+)
+
+
+def _is_known_factchecker_account(uploader: str | None) -> bool:
+    if not uploader:
+        return False
+    uploader_lower = uploader.lower()
+    return any(name in uploader_lower for name in _KNOWN_FACTCHECKER_ACCOUNT_SUBSTRINGS)
+
+
 def _fetch_caption_and_uploader(post_id: str) -> tuple[str | None, str | None, bool]:
     """Returns (caption, uploader, retrievable). Never raises -- a real
     fetch failure is a real, reportable outcome, not a crash."""
@@ -355,6 +380,15 @@ async def main() -> None:
                         print(f"    [{cid}] {ig_url} -> not retrievable", file=sys.stderr)
                         continue
                     update_status(cid, "MEDIA_RETRIEVABLE", note=f"uploader={uploader}, has_caption={bool(caption)}")
+
+                    if _is_known_factchecker_account(uploader):
+                        update_status(cid, "REJECTED", note=f"Uploaded by the fact-checker's own account ({uploader}).",
+                                       rejection_reason=f"Posted by {uploader}, a known fact-checker account -- "
+                                                         f"this is the fact-checker's own repost/documentation of the claim, "
+                                                         f"not the real misinformation spreader. Never a valid ingestion target.")
+                        stats["candidates_rejected"] += 1
+                        print(f"    [{cid}] {ig_url} -> rejected (fact-checker's own account: {uploader})", file=sys.stderr)
+                        continue
 
                     if not caption:
                         update_status(cid, "REJECTED", note="No caption available to judge.",
