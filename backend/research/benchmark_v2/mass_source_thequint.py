@@ -61,11 +61,14 @@ _RESULTS_DIR = _REPO_ROOT / "research" / "results"
 _CANDIDATES_PATH = _REPO_ROOT / "research" / "dataset" / "candidates_v2_mass_thequint.jsonl"
 _STATE_PATH = _REPO_ROOT / "research" / "dataset" / "mass_sourcing_thequint_checked_articles.json"
 
-# ~3 years, chosen as a first pass -- WebQoof content was confirmed live
-# back to at least 2020 (5+ years), so there is real room to extend this
-# later. One HTTP request per day (not per article), so 1095 requests is
-# already a substantial crawl before a single article is even fetched.
-_DAYS_BACK = 1095
+# First pass was 1,095 days (~3 years); that run completed 2026-08-18
+# (28,523 articles seen, 1 promoted item) with checked_articles already
+# covering every day in that window, so extending this constant and
+# re-running only fetches the NEWLY in-scope older days -- nothing
+# already processed gets re-walked. Extended to ~6 years, matching the
+# archive depth confirmed live via spot sampling (WebQoof content
+# present back to at least 2020).
+_DAYS_BACK = 2200
 
 
 @dataclass

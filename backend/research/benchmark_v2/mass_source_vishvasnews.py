@@ -16,6 +16,26 @@ Same JUDGE step as mass_source_candidates.py (imported, not
 duplicated): local llama3.2 only, deciding whether a cited Instagram
 post's own caption is itself the misinformation, not merely evidence.
 
+2026-08-18: the first full run of this pipeline filtered on `/viral/`
+in the URL only, and finished its entire 34-sitemap archive with 0 net
+promotions. Before concluding Vishvas was simply a low-yield source
+the way its 0-promotion result suggested, checked what the `/viral/`
+filter was actually excluding: sampling one sitemap file directly
+showed 979 URLs, 356 under `/viral/`, but **856 containing the literal
+substring `fact-check` in the URL** -- 533 of those under OTHER
+categories entirely (`politics/fact-check-...`,
+`society/fact-check-...`, `world/fact-check-...`, `health/fact-check-
+...`), articles that are just as much real fact-checks as the `/viral/`
+ones, simply filed under a different section. The original filter was
+silently skipping the majority of Vishvas's actual fact-check content,
+not just narrowing to a curated subcategory the way Alt News's
+`viral-videos` vs. broader `type/fact-check/` distinction did earlier
+this session. Broadened to match either `/viral/` or the `fact-check`
+substring -- no state migration needed, since the old filter's
+`continue` fired before `checked_articles.add()`, so non-`/viral/` URLs
+were never marked checked and this broadened pass picks them up fresh
+on a full re-run of the same 34 sitemaps.
+
 Run: cd backend && ./.venv/bin/python -m research.benchmark_v2.mass_source_vishvasnews
 """
 import asyncio
@@ -179,8 +199,9 @@ async def main() -> None:
 
         for article_url in article_urls:
             stats["articles_seen"] += 1
-            if article_url in checked_articles or "/viral/" not in article_url:
-                continue  # only the viral/misinformation category is in scope
+            is_in_scope = "/viral/" in article_url or "fact-check" in article_url.lower()
+            if article_url in checked_articles or not is_in_scope:
+                continue  # real fact-check content, not just the /viral/ category (see module docstring)
             checked_articles.add(article_url)
 
             try:
