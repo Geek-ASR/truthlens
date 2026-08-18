@@ -13,14 +13,39 @@ themselves are allowed to change status, that's the whole point of the
 tracker, but candidate_id is stable once assigned and history isn't
 silently discarded: every status transition is appended to the
 candidate's own `history` list, not overwritten).
-"""
+
+Cross-process locking (research/RESEARCH_ROADMAP_V2.md-adjacent mass
+-sourcing work): found live that running a second script's read-modify
+-write against this same file while a mass-sourcing pipeline was still
+concurrently add_candidate()/update_status()-ing against it lost a
+write outright, crashing the pipeline with a "candidate_id not found"
+error on its very next call. add_candidate()/update_status() now hold
+an exclusive advisory lock (fcntl.flock, blocking) across their entire
+load-modify-save cycle, not just around the individual read or write --
+locking only load() or only save() independently would not have
+prevented this exact lost-update pattern (two processes both loading
+before either saves)."""
+import fcntl
 import json
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _CANDIDATES_PATH = _REPO_ROOT / "research" / "dataset" / "candidates_v2.jsonl"
+_LOCK_PATH = _REPO_ROOT / "research" / "dataset" / ".candidates_v2.lock"
+
+
+@contextmanager
+def _locked():
+    _LOCK_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with open(_LOCK_PATH, "w") as lock_file:
+        fcntl.flock(lock_file, fcntl.LOCK_EX)  # blocks until held exclusively
+        try:
+            yield
+        finally:
+            fcntl.flock(lock_file, fcntl.LOCK_UN)
 
 ELIGIBILITY_STATES = (
     "DISCOVERED",
@@ -88,31 +113,54 @@ def _save_all(candidates: list[dict]) -> None:
 
 
 def add_candidate(candidate: Candidate) -> Candidate:
-    candidates = _load_all()
-    if any(c["candidate_id"] == candidate.candidate_id for c in candidates):
-        raise ValueError(f"candidate_id {candidate.candidate_id!r} already exists")
-    candidate.history.append(
-        {"status": candidate.eligibility_status, "at": datetime.now(timezone.utc).isoformat(), "note": "created"}
-    )
-    candidates.append(candidate.to_dict())
-    _save_all(candidates)
+    with _locked():
+        candidates = _load_all()
+        if any(c["candidate_id"] == candidate.candidate_id for c in candidates):
+            raise ValueError(f"candidate_id {candidate.candidate_id!r} already exists")
+        candidate.history.append(
+            {"status": candidate.eligibility_status, "at": datetime.now(timezone.utc).isoformat(), "note": "created"}
+        )
+        candidates.append(candidate.to_dict())
+        _save_all(candidates)
     return candidate
 
 
 def update_status(candidate_id: str, new_status: str, *, note: str = "", rejection_reason: str | None = None) -> dict:
     if new_status not in ELIGIBILITY_STATES:
         raise ValueError(f"{new_status!r} is not a valid eligibility state: {ELIGIBILITY_STATES}")
-    candidates = _load_all()
-    for c in candidates:
-        if c["candidate_id"] == candidate_id:
-            c["eligibility_status"] = new_status
-            if rejection_reason is not None:
-                c["rejection_reason"] = rejection_reason
-            c.setdefault("history", []).append(
-                {"status": new_status, "at": datetime.now(timezone.utc).isoformat(), "note": note}
-            )
-            _save_all(candidates)
-            return c
+    with _locked():
+        candidates = _load_all()
+        for c in candidates:
+            if c["candidate_id"] == candidate_id:
+                c["eligibility_status"] = new_status
+                if rejection_reason is not None:
+                    c["rejection_reason"] = rejection_reason
+                c.setdefault("history", []).append(
+                    {"status": new_status, "at": datetime.now(timezone.utc).isoformat(), "note": note}
+                )
+                _save_all(candidates)
+                return c
+    raise ValueError(f"candidate_id {candidate_id!r} not found")
+
+
+def set_promoted_item_id(candidate_id: str, item_id: str) -> dict:
+    """Locked, freshly-reloaded single-field update -- used by
+    promote_eligible_candidates.py, whose real ingestion work per
+    candidate can take minutes. That script must NOT hold one
+    in-memory snapshot of the whole file across that whole duration
+    and save it at the end (found live: this silently wiped out
+    several real candidates a concurrently-running mass-sourcing
+    pipeline had added in the meantime, crashing it with a
+    "candidate_id not found" error on its very next write). Each
+    candidate's promotion is instead its own short, locked,
+    load-fresh-modify-save cycle."""
+    with _locked():
+        candidates = _load_all()
+        for c in candidates:
+            if c["candidate_id"] == candidate_id:
+                c["promoted_item_id"] = item_id
+                _save_all(candidates)
+                return c
     raise ValueError(f"candidate_id {candidate_id!r} not found")
 
 

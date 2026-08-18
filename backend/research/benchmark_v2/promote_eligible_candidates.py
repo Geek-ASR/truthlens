@@ -46,7 +46,7 @@ from app.db.session import AsyncSessionLocal  # noqa: E402
 from app.pipeline import ingestion, ocr, transcription, vision_context  # noqa: E402
 from app.schemas.reel import ReelCreate  # noqa: E402
 from app.services.storage.s3 import get_storage_client  # noqa: E402
-from research.benchmark_v2.candidate_tracker import _load_all, _save_all  # noqa: E402
+from research.benchmark_v2.candidate_tracker import _load_all, set_promoted_item_id  # noqa: E402
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _ITEMS_V1_PATH = _REPO_ROOT / "research" / "dataset" / "items.jsonl"
@@ -157,13 +157,14 @@ async def promote() -> list[dict]:
                 "candidate_id": candidate["candidate_id"],  # traceability back to the sourcing record, not part of v1's schema
             }
             promoted_items.append(v2_item)
-            candidate["promoted_item_id"] = item_id
-
-    if promoted_items:
-        with open(_ITEMS_V2_PATH, "a") as f:
-            for item in promoted_items:
-                f.write(json.dumps(item) + "\n")
-        _save_all(candidates)
+            # Written immediately (not batched into one save at the end) --
+            # this is a short, freshly-reloaded, locked update per
+            # candidate, safe against a concurrently-running mass-sourcing
+            # pipeline adding new candidates during this loop's real,
+            # multi-minute-per-item ingestion work.
+            with open(_ITEMS_V2_PATH, "a") as f:
+                f.write(json.dumps(v2_item) + "\n")
+            set_promoted_item_id(candidate["candidate_id"], item_id)
 
     return promoted_items
 

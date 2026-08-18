@@ -17,6 +17,7 @@ dist/
 build/
 *.log
 *.blg
+research/dataset/.candidates_v2.lock
 .DS_Store
 .idea/
 .vscode/

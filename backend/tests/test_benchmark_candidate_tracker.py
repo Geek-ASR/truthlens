@@ -1,6 +1,8 @@
 """research/BENCHMARK_COLLECTION_GUIDE.md tooling. Uses tmp_path for
 storage so these tests never touch the real
 research/dataset/candidates_v2.jsonl file."""
+import multiprocessing
+
 import pytest
 
 from research.benchmark_v2 import candidate_tracker as tracker
@@ -9,6 +11,7 @@ from research.benchmark_v2 import candidate_tracker as tracker
 @pytest.fixture(autouse=True)
 def _isolated_candidates_file(tmp_path, monkeypatch):
     monkeypatch.setattr(tracker, "_CANDIDATES_PATH", tmp_path / "candidates_v2.jsonl")
+    monkeypatch.setattr(tracker, "_LOCK_PATH", tmp_path / ".candidates_v2.lock")
     yield
 
 
@@ -74,3 +77,43 @@ def test_composition_of_eligible_only_counts_eligible_candidates():
     composition = tracker.composition_of_eligible()
     assert composition["ground_truth_label"] == {"TRUE": 1}
     assert composition["claim_type"] == {"statistic": 1}
+
+
+def _worker_add_many(candidates_path, lock_path, prefix, n):
+    """Module-level (not a local closure) so multiprocessing can pickle
+    and run it in a genuinely separate process -- a real regression test
+    for the exact live crash this locking fix was built for: two
+    separate processes doing add_candidate()/update_status() against the
+    same file concurrently lost a write outright, crashing a
+    multi-hour mass-sourcing pipeline with a "candidate_id not found"
+    error on its very next call."""
+    import research.benchmark_v2.candidate_tracker as t
+    t._CANDIDATES_PATH = candidates_path
+    t._LOCK_PATH = lock_path
+    for i in range(n):
+        t.add_candidate(t.Candidate(candidate_id=f"cand-{prefix}-{i}", factchecker="test"))
+
+
+def test_concurrent_writes_from_separate_processes_lose_nothing(tmp_path):
+    # Uses real, separate OS processes (not threads/asyncio tasks within
+    # one process) -- the actual shape of the live crash this test
+    # guards against: a mass-sourcing pipeline process and a second,
+    # independently-invoked script (spot-check/promotion) both writing
+    # to the same candidates_v2.jsonl at the same time.
+    candidates_path = tmp_path / "candidates_v2.jsonl"
+    lock_path = tmp_path / ".candidates_v2.lock"
+    ctx = multiprocessing.get_context("spawn")
+    n_per_process = 15
+    processes = [
+        ctx.Process(target=_worker_add_many, args=(candidates_path, lock_path, "A", n_per_process)),
+        ctx.Process(target=_worker_add_many, args=(candidates_path, lock_path, "B", n_per_process)),
+    ]
+    for p in processes:
+        p.start()
+    for p in processes:
+        p.join(timeout=30)
+        assert p.exitcode == 0
+
+    with open(candidates_path) as f:
+        ids = [line for line in f if line.strip()]
+    assert len(ids) == 2 * n_per_process
