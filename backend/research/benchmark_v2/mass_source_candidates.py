@@ -43,7 +43,7 @@ from pathlib import Path
 
 import httpx
 import trafilatura
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 _YT_DLP_BIN = str(Path(sys.prefix) / "bin" / "yt-dlp")
@@ -98,6 +98,20 @@ class SourceJudgment(BaseModel):
     )
     confidence: float = Field(ge=0.0, le=1.0, description="Confidence the post IS the misinformation source.")
     reasoning: str = Field(description="One or two sentences justifying the judgment, citing specific text from the caption or article.")
+
+    @field_validator("confidence", mode="before")
+    @classmethod
+    def _clamp_confidence(cls, v: float) -> float:
+        # Found live in the Vishvas run: llama3.2 occasionally emits -1 or
+        # -1.0 for confidence (seemingly its own out-of-band "not
+        # applicable" sentinel, always paired with
+        # is_own_post_the_misinformation=False in every case checked) --
+        # raising here just burns 3 retries and then the whole judge call
+        # per candidate, wasting time without ever changing the outcome
+        # (a clamped 0.0 confidence still fails the >=0.7 ELIGIBLE bar the
+        # same as the raise would have). Clamping preserves the eventual
+        # REJECTED outcome while skipping the wasted retries.
+        return max(0.0, min(1.0, v))
 
 
 _JUDGE_SYSTEM_PROMPT = """You are helping build a fact-checking research benchmark. You will be given \

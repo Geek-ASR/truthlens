@@ -187,6 +187,69 @@ land on. Proactively applied the same retry treatment to the sibling
 scripts' sitemap-index and sitemap-file fetches before they hit the
 same wall.
 
+## Two more real bugs — not crashes, but real quality issues
+
+### 4. Fact-checker's-own-account reposts wasting judge calls
+
+Spot-checking a rejected Vishvas candidate whose reasoning said the
+caption was "identical to the false assertion" — yet got rejected
+anyway — traced to the post's `uploader` field being `Vishvas News`
+itself: the fact-checker's own repost/documentation of the claim, not
+the real misinformation spreader. Checking how common this is: **30 of
+~97 candidates checked by the Vishvas pipeline (31%) were the
+fact-checker's own account.** Close to a third of all real `yt-dlp` +
+LLM judge calls were being spent on structurally-disqualified
+candidates before even reaching the judge. Fixed with a deterministic,
+case-insensitive uploader check
+(`_is_known_factchecker_account()`) that skips straight to `REJECTED`
+before the judge call, wired into all three pipelines.
+
+### 5. The spot-check filter's own reasoning lookup was silently broken
+
+The most serious of the non-crash bugs. `spot_check_eligible_candidates.py`
+looked for the judge's reasoning in either a `GROUND_TRUTH_VERIFIED` or
+an `ELIGIBLE` status-history note, taking whichever appeared **last**.
+The Alt News pipeline writes the real reasoning to `GROUND_TRUTH_VERIFIED`,
+then a *separate*, later `ELIGIBLE` note with a generic
+"auto-accepted, not yet reviewed" filler message — so for every single
+Alt News candidate, the filter was checking the generic filler text,
+which can never contain a self-contradiction phrase, instead of the
+real reasoning. The filter had been silently non-functional for the
+one pipeline (Alt News) producing the most candidates.
+
+Found by manually reading candidates the filter had let through after
+the Alt News archive finished: `cand-mass-0319`/`0320` (both genuinely
+sweet, unrelated father-daughter posts — a First Communion celebration,
+an affectionate note to a father — that the judge matched to an
+"underage marriage" claim with no textual basis at all), and
+`cand-mass-0321`/`0344`, whose own reasoning *explicitly* stated things
+like *"does not contain the false claim being debunked; it merely
+shows related real footage and is tagged/mentioned"* — literally the
+judge prompt's own stated exclusion criterion — while still being
+marked `is_own_post_the_misinformation=True`.
+
+**Fixed** two ways: (1) the lookup now prefers `GROUND_TRUTH_VERIFIED`
+outright when present, falling back to `ELIGIBLE` only for pipelines
+that never write a separate verified-note (Vishvas/Factly's shape); (2)
+the keyword list was replaced with a mix of literal phrases plus a
+regex (`(does not|doesn't|did not|didn't)\s+\w+(\s+\w+){0,4}\s+(claim|
+assertion|misinformation|false)`) that generalizes the whole family of
+"does not [verb] the [claim/assertion]" phrasings the fixed keyword
+list kept missing one variant at a time. All 4 real cases found this
+way, plus 3 further Vishvas candidates with malformed
+`ground_truth_label` fields (literally the string `"Fact Check"` —
+leaked article-title text, not a real verdict) or an unverifiable claim
+-to-content link, manually downgraded to `UNRESOLVED` rather than
+promoted.
+
+**Net effect on this batch**: of 8 candidates that reached `ELIGIBLE`
+after the Alt News archive fully completed and Vishvas made further
+progress, 7 were real judge errors or malformed output caught by
+manual review plus the fixed filter, and 0 were promoted this round.
+Sobering, and reported honestly rather than smoothed over — this is
+exactly why the pipeline's own design never auto-promotes on the
+judge's word alone.
+
 ## A separate, non-crash mistake: disclosed in full
 
 While diagnosing crash #1, an unnecessary `git checkout --
@@ -208,18 +271,71 @@ back-reference and fixed. item-0020's own back-reference
 record itself was lost, not just its marker, but item-0020's real data
 was already safely copied into `items_v2.jsonl`.
 
+### 6. `confidence=-1` from llama3.2 burning retries for no benefit
+
+Live in the Vishvas run: `judge call failed: ... confidence Input
+should be greater than or equal to 0 [input_value=-1.0]` — llama3.2
+occasionally emits `-1` or `-1.0` for `confidence`, seemingly its own
+out-of-band "not applicable" sentinel. Checked: in every occurrence
+found, it was paired with `is_own_post_the_misinformation=False`
+elsewhere in the same response shape, i.e. a case that was always
+going to end up `REJECTED` regardless. The strict `ge=0.0` field bound
+meant Pydantic raised, tenacity burned 3 retries, and the whole judge
+call still ended in the same `REJECTED` outcome, just slower — 7 of
+~256 candidates checked in the Vishvas run so far (2.7%) hit this.
+Fixed with a `field_validator("confidence", mode="before")` that
+clamps to `[0.0, 1.0]` instead of raising — a clamped `0.0` still fails
+the `>=0.7` `ELIGIBLE` bar the same way the exception would have, so
+this is a pure efficiency fix, not a behavior change. Applied in
+`mass_source_candidates.py`, inherited automatically by the Vishvas/
+Factly pipelines since they import `SourceJudgment` via `_judge()`
+rather than redefining it. The already-running Vishvas process (started
+before this fix) won't pick it up until its next restart — Python
+doesn't hot-reload — left running rather than interrupted, since the
+efficiency loss is small and restarting would cost more time
+re-walking already-checked sitemaps than it would save.
+
 ## Results so far (running total, updated as the pipelines progress)
 
-As of this writing: Alt News archive ~180 candidates checked (1
-eligible after spot-check, most rejected as "cited as evidence, not
-the misinformation source" per the pipeline's core distinction);
-Vishvas News ~95 checked (0 eligible so far — lower yield than Alt
-News on this sample, not yet well understood, possibly a real
-difference in `/viral/` category composition vs. Alt News's broader
-`type/fact-check`). Benchmark grew from 15 to 20 items across this
-session's combined manual + automated sourcing work. Both pipelines
-continue running unattended; see `experiments/registry.jsonl` and
-git history for the up-to-date item count and promotion record.
+**Alt News (altnews.in/type/fact-check/): archive fully exhausted.**
+498 pages, 4,967 articles crawled, 225 with an Instagram reference, 515
+candidates checked across all runs combined. After rigorous manual
+review (catching the spot-check bug above), only **2 candidates from
+this entire archive** were ever promoted to real benchmark items
+(item-0019, item-0020) — everything else was correctly rejected as
+"cited as evidence, not the misinformation source," a known-factchecker
+repost, not retrievable, or (this session's final batch) a judge error
+caught by manual review. This is the single most important honest
+result of this effort: even a fully-automated crawl of a major fact
+-checker's **entire** historical archive, applied with real rigor,
+yields on the order of 1 promotable item per ~250 candidates checked —
+confirming in hard numbers what the earlier 8/8 qualitative evidence
+already suggested (Instagram is a comparatively small slice of where
+this specific misinformation pattern gets posted, next to X/Twitter).
+
+**Vishvas News (vishvasnews.com, `/viral/` category): still running.**
+34 sitemap files, ~256 candidates checked so far (partial, mid-archive
+at sitemap file 15/34 as of this writing), 3 reached `ELIGIBLE` and all
+3 were rejected on manual review post-spot-check-fix (malformed
+`ground_truth_label` leaking article-title text, or an unverifiable
+specific-event connection) — 0 net new promotions from this source so
+far.
+
+**Factly (factly.in): deprioritized**, not run at scale, after a real
+negative test result (0 Instagram references in the first 1,000
+articles checked).
+
+**Benchmark total: 20 items (9 v1 + 11 v2)**, unchanged since item-0020
+— this entire batch of further automated sourcing, run in direct
+response to the explicit 500-item target, has not yet produced a single
+additional promotable item once real rigor is applied. This is reported
+plainly rather than smoothed over: the honest conclusion is that
+Instagram-only sourcing, even fully automated against complete
+archives, is very unlikely to reach 500 items in any reasonable
+timeframe at the yield rate actually observed (~1 per 250 candidates
+from the highest-yield source found so far). See
+`research/RESEARCH_ROADMAP_V2.md` (or the next commit's update to it)
+for the resulting recommendation.
 
 ## Raw data / generators
 

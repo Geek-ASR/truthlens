@@ -57,11 +57,25 @@ _ALL_FILES = [
     (_REPO_ROOT / "research" / "dataset" / "candidates_v2_mass_factly.jsonl", False),
 ]
 
+# Literal phrases found live across several real cases, kept even though
+# the regex below now generalizes most of them, since a plain substring
+# match is cheap insurance against the regex missing an unanticipated
+# phrasing.
 _SELF_CONTRADICTION_PHRASES = (
-    "unrelated", "does not directly address", "does not address", "does not refute",
-    "does not relate", "no direct connection", "not directly related", "not related to",
-    "does not make", "does not assert", "does not claim", "seems unrelated",
-    "not the misinformation", "does not appear to", "cannot be considered",
+    "unrelated", "no direct connection", "not directly related", "not related to",
+    "seems unrelated", "not the misinformation", "cannot be considered",
+    "merely shows", "merely mentions", "tagged/mentioned", "tagged and mentioned",
+    "innocent", "unrelated to", "nothing to do with",
+)
+# Generalizes "does not/didn't {address|refute|make|assert|claim|contain|
+# support} ... {claim|assertion|misinformation|false ...}" in one pattern
+# instead of enumerating every verb -- found live that a fixed phrase
+# list kept missing real cases ("does not contain the false claim",
+# "does not appear to directly refute or support the claim") one at a
+# time across three separate live-found bugs before this regex replaced
+# most of the list.
+_SELF_CONTRADICTION_REGEX = re.compile(
+    r"(does not|doesn't|did not|didn't)\s+\w+(\s+\w+){0,4}\s+(claim|assertion|misinformation|false)"
 )
 _HEDGING_PHRASES = (
     "no clear evidence", "might have been", "could just be", "not necessarily",
@@ -71,15 +85,33 @@ _MARKDOWN_LINK_PATTERN = re.compile(r"\[.*?\]\(https?://")
 
 
 def _find_flag_reason(c: dict) -> str | None:
-    reasoning = ""
-    for h in c.get("history", []):
-        if h["status"] in ("GROUND_TRUTH_VERIFIED", "ELIGIBLE") and h.get("note"):
-            reasoning = h["note"]
+    # Real bug found live: the Alt News pipeline writes the judge's real
+    # reasoning to a GROUND_TRUTH_VERIFIED note, then a SEPARATE later
+    # ELIGIBLE note with a generic "auto-accepted" filler message (the
+    # Vishvas/Factly pipelines instead put the reasoning directly in a
+    # single ELIGIBLE note, no separate GROUND_TRUTH_VERIFIED step).
+    # Taking only the LAST matching history entry silently discarded the
+    # real reasoning for every Alt News candidate, replacing it with
+    # filler text that could never contain any of the flag phrases below
+    # -- this let at least 3 real bad candidates through undetected
+    # (cand-mass-0319/0320/0321, each a case the self-contradiction check
+    # below should have caught). GROUND_TRUTH_VERIFIED, when present, IS
+    # the real judge reasoning -- prefer it outright rather than falling
+    # back to or blending in the generic ELIGIBLE note that always
+    # follows it. Only use the ELIGIBLE note when there's no separate
+    # GROUND_TRUTH_VERIFIED entry at all (the Vishvas/Factly shape).
+    gtv_note = next((h["note"] for h in c.get("history", []) if h["status"] == "GROUND_TRUTH_VERIFIED" and h.get("note")), None)
+    eligible_note = next((h["note"] for h in c.get("history", []) if h["status"] == "ELIGIBLE" and h.get("note")), None)
+    reasoning = gtv_note if gtv_note is not None else (eligible_note or "")
     reasoning_lower = reasoning.lower()
 
     hit_contradiction = [p for p in _SELF_CONTRADICTION_PHRASES if p in reasoning_lower]
     if hit_contradiction:
         return f"self-contradicting reasoning {hit_contradiction}"
+
+    regex_match = _SELF_CONTRADICTION_REGEX.search(reasoning_lower)
+    if regex_match:
+        return f"self-contradicting reasoning (pattern match: {regex_match.group(0)!r})"
 
     hit_hedging = [p for p in _HEDGING_PHRASES if p in reasoning_lower]
     if hit_hedging:
