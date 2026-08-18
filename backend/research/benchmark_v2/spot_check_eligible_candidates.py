@@ -1,6 +1,6 @@
 """Deterministic consistency filter applied to every ELIGIBLE,
 un-promoted candidate from ANY mass-sourcing pipeline (altnews.in,
-vishvasnews.com, factly.in) before promotion.
+vishvasnews.com, factly.in, thequint.com) before promotion.
 
 Two real failure classes found live, both now checked:
 
@@ -55,6 +55,7 @@ _ALL_FILES = [
     (_MAIN_CANDIDATES_PATH, True),
     (_REPO_ROOT / "research" / "dataset" / "candidates_v2_mass_vishvas.jsonl", False),
     (_REPO_ROOT / "research" / "dataset" / "candidates_v2_mass_factly.jsonl", False),
+    (_REPO_ROOT / "research" / "dataset" / "candidates_v2_mass_thequint.jsonl", False),
 ]
 
 # Literal phrases found live across several real cases, kept even though

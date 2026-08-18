@@ -27,7 +27,7 @@ that doesn't require real judgment.
 
 ## Architecture
 
-Three parallel, independent pipelines, one per fact-checker archive,
+Four parallel, independent pipelines, one per fact-checker archive,
 sharing a common judge/extraction core:
 
 1. **`backend/research/benchmark_v2/mass_source_candidates.py`**
@@ -45,6 +45,24 @@ sharing a common judge/extraction core:
    testing**: 0 Instagram references found across its first 1,000
    fact-check articles — a real, disclosed negative result, not
    pursued further at full scale.
+
+4. **`backend/research/benchmark_v2/mass_source_thequint.py`**
+   (thequint.com's WebQoof vertical): added after the honest yield
+   finding below (Alt News's entire archive → only 2 promotable items)
+   made clear reaching anywhere near a several-hundred-item target
+   needs independent sources, not just deeper crawling of the same
+   two or three. WebQoof's listing page is JS-hydrated (confirmed
+   live: `/news/webqoof?page=2` returns byte-identical links to page
+   1 — pagination happens client-side, not something this pipeline
+   can reach), so this crawls thequint.com's daily sitemap files
+   (`sitemap-daily-YYYY-MM-DD.xml`, one HTTP request per calendar day)
+   instead, filtered to the `/news/webqoof/` URL substring. Confirmed
+   live via spot sampling that WebQoof content averages ~2.6
+   articles/day and is present consistently back to at least 2020.
+   First pass capped at the most recent 1,095 days (~3 years) —
+   already a substantial crawl (1,095 sitemap-index requests before a
+   single article is fetched) — extendable further given the archive
+   goes back at least 5 years.
 
 **Explicitly not built**: `newschecker.in`. Its `robots.txt` names
 `ClaudeBot`/`Claude-Web`/`anthropic-ai` in an explicit `Disallow`. That
@@ -341,9 +359,11 @@ for the resulting recommendation.
 
 `backend/research/benchmark_v2/mass_source_candidates.py`,
 `mass_source_vishvasnews.py`, `mass_source_factly.py`,
-`spot_check_eligible_candidates.py`, `merge_mass_candidates.py`.
-Live logs: `research/results/mass_sourcing_live.log`,
-`mass_sourcing_vishvas_live.log`. Candidate records:
-`research/dataset/candidates_v2.jsonl` (Alt News, shared/locked file),
-`candidates_v2_mass_vishvas.jsonl`, `candidates_v2_mass_factly.jsonl`
+`mass_source_thequint.py`, `spot_check_eligible_candidates.py`,
+`merge_mass_candidates.py`. Live logs:
+`research/results/mass_sourcing_live.log`,
+`mass_sourcing_vishvas_live.log`, `mass_sourcing_thequint_live.log`.
+Candidate records: `research/dataset/candidates_v2.jsonl` (Alt News,
+shared/locked file), `candidates_v2_mass_vishvas.jsonl`,
+`candidates_v2_mass_factly.jsonl`, `candidates_v2_mass_thequint.jsonl`
 (separate files, avoiding the cross-process race crash #1 found).

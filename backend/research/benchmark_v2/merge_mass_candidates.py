@@ -20,6 +20,8 @@ _REPO_ROOT = Path(__file__).resolve().parents[3]
 _MAIN_PATH = _REPO_ROOT / "research" / "dataset" / "candidates_v2.jsonl"
 _SOURCES = [
     _REPO_ROOT / "research" / "dataset" / "candidates_v2_mass_vishvas.jsonl",
+    _REPO_ROOT / "research" / "dataset" / "candidates_v2_mass_factly.jsonl",
+    _REPO_ROOT / "research" / "dataset" / "candidates_v2_mass_thequint.jsonl",
 ]
 
 
