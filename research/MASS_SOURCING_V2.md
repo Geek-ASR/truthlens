@@ -27,7 +27,7 @@ that doesn't require real judgment.
 
 ## Architecture
 
-Four parallel, independent pipelines, one per fact-checker archive,
+Five parallel, independent pipelines, one per fact-checker archive,
 sharing a common judge/extraction core:
 
 1. **`backend/research/benchmark_v2/mass_source_candidates.py`**
@@ -59,10 +59,20 @@ sharing a common judge/extraction core:
    instead, filtered to the `/news/webqoof/` URL substring. Confirmed
    live via spot sampling that WebQoof content averages ~2.6
    articles/day and is present consistently back to at least 2020.
-   First pass capped at the most recent 1,095 days (~3 years) —
-   already a substantial crawl (1,095 sitemap-index requests before a
-   single article is fetched) — extendable further given the archive
-   goes back at least 5 years.
+   First pass capped at the most recent 1,095 days (~3 years),
+   extended to 2,200 days (~6 years) after the first pass finished —
+   the extended window found 0 additional promotions (116,943 articles
+   seen, only 181 with an Instagram reference), so this archive is now
+   treated as fully exhausted.
+
+5. **`backend/research/benchmark_v2/mass_source_factcrescendo.py`**
+   (english.factcrescendo.com): sitemap-indexed (4 post-sitemap files,
+   ~3,644 articles, 2022-01–2026-08). Every post on this site is
+   already a fact-check, so no URL-substring filter is applied — unlike
+   Vishvas/Factly's mixed content. Sampled 15 articles first: 1/15
+   referenced Instagram (~7%). English subdomain only — Fact Crescendo
+   also runs Hindi/Tamil/Kannada/Telugu/Marathi/Bengali/Malayalam
+   editions on separate subdomains, not yet built.
 
 **Explicitly not built**: `newschecker.in`. Its `robots.txt` names
 `ClaudeBot`/`Claude-Web`/`anthropic-ai` in an explicit `Disallow`. That
@@ -344,25 +354,26 @@ confirming in hard numbers what the earlier 8/8 qualitative evidence
 already suggested (Instagram is a comparatively small slice of where
 this specific misinformation pattern gets posted, next to X/Twitter).
 
-**Vishvas News (vishvasnews.com, `/viral/` category): archive fully
-exhausted.** 34 sitemap files, 23,465 articles seen, 1,090 with an
-Instagram reference, 951 candidates checked (~6.2 hours unattended
-runtime). 9 candidates reached `ELIGIBLE` across the full run (some
-from before this session's compaction, some after) — **all 9 were
-rejected** on manual and/or mechanical review: leaked article-title
-text in `ground_truth_label`, a stringified-list `ground_truth_claim`,
-captions making no claim at all matching the debunked one, or an
-unverifiable specific-event connection. **0 net promotions from
-Vishvas's entire archive** — a starker result than Alt News's already
--low 2-per-4,967, and the strongest single data point yet for the
-structural yield ceiling described below.
+**Vishvas News (vishvasnews.com): first pass (`/viral/` only) fully
+exhausted, 0 promotions** — see the filter-gap finding above. **Now
+re-running with the broadened filter** (`/viral/` OR `fact-check`
+substring anywhere in the URL), in progress as of this writing. All 9
+candidates that reached `ELIGIBLE` under the narrow first-pass filter
+were rejected on manual/mechanical review (leaked article-title text in
+`ground_truth_label`, a stringified-list `ground_truth_claim`, captions
+making no claim at all matching the debunked one, or an unverifiable
+specific-event connection) — 0 net promotions from that pass, the
+starkest result yet for the structural yield ceiling described below.
+The broadened re-run's real yield is not yet known.
 
-**thequint.com (WebQoof vertical): in progress, ~93% through its
-first-pass 1,095-day window.** 1 candidate promoted so far (item-0021,
-an AI-generated "yogi lifting weights with his mind" video, verified
-against the article's own quoted caption text before promotion) — the
-first (and so far only) net-positive source after Alt News in this
-round of expansion.
+**thequint.com (WebQoof vertical): archive fully exhausted.** First
+pass (1,095 days) then extended to 2,200 days (~6 years) after
+confirming the archive goes back that far — the extension found 0
+additional promotions (116,943 articles seen total, only 181 with an
+Instagram reference in the newly-added older window). **1 total
+promotion** (item-0021, an AI-generated "yogi lifting weights with his
+mind" video, verified against the article's own quoted caption text
+before promotion) — the second net-positive source after Alt News.
 
 **Factly (factly.in): deprioritized**, not run at scale, after a real
 negative test result (0 Instagram references in the first 1,000
@@ -372,30 +383,37 @@ articles checked).
 references confirmed, but no accessible historical archive (JS
 -hydrated pagination, no dated sitemap index, no fact-check RSS feed).
 
+**Fact Crescendo (english.factcrescendo.com): just launched**, real
+results not yet known. Added after WebQoof's archive was confirmed
+exhausted, to keep an active source running rather than leaving CPU
+idle.
+
 **Benchmark total: 21 items (9 v1 + 12 v2)** — one net new item
-(item-0021) since this round of expansion began, despite two fully
--exhausted major archives (Alt News: 4,967 articles → 2 items; Vishvas:
-23,465 articles → 0 items) and a third still in progress. This is
-reported plainly rather than smoothed over: the honest conclusion is
-that Instagram-only sourcing, even fully automated against complete
-archives from multiple independent fact-checkers, is very unlikely to
-reach 500 items in any reasonable timeframe. The real yield ceiling
-looks structural (how much of this specific misinformation pattern
-actually gets posted to Instagram vs. X/Twitter, already evidenced
-qualitatively earlier this session), not a tooling or effort gap — five
-sources checked, four archives crawled to completion or near
--completion, real bugs found and fixed at every stage. See
-`research/RESEARCH_ROADMAP_V2.md` for the corresponding roadmap update.
+(item-0021) since this round of expansion began, despite Alt News,
+Vishvas's first pass, and WebQoof's full archive (now extended to 6
+years) all being fully exhausted. This is reported plainly rather than
+smoothed over: the honest conclusion is that Instagram-only sourcing,
+even fully automated against complete archives from multiple
+independent fact-checkers, is very unlikely to reach 500 items in any
+reasonable timeframe. The real yield ceiling looks structural (how much
+of this specific misinformation pattern actually gets posted to
+Instagram vs. X/Twitter, already evidenced qualitatively earlier this
+session), not a tooling or effort gap — six sources checked, real bugs
+found and fixed at every stage, including one (Vishvas's filter gap)
+that may meaningfully change the picture once its broadened re-run
+completes. See `research/RESEARCH_ROADMAP_V2.md` for the corresponding
+roadmap update.
 
 ## Raw data / generators
 
 `backend/research/benchmark_v2/mass_source_candidates.py`,
 `mass_source_vishvasnews.py`, `mass_source_factly.py`,
-`mass_source_thequint.py`, `spot_check_eligible_candidates.py`,
-`merge_mass_candidates.py`. Live logs:
-`research/results/mass_sourcing_live.log`,
-`mass_sourcing_vishvas_live.log`, `mass_sourcing_thequint_live.log`.
-Candidate records: `research/dataset/candidates_v2.jsonl` (Alt News,
-shared/locked file), `candidates_v2_mass_vishvas.jsonl`,
-`candidates_v2_mass_factly.jsonl`, `candidates_v2_mass_thequint.jsonl`
+`mass_source_thequint.py`, `mass_source_factcrescendo.py`,
+`spot_check_eligible_candidates.py`, `merge_mass_candidates.py`. Live
+logs: `research/results/mass_sourcing_live.log`,
+`mass_sourcing_vishvas_live.log`, `mass_sourcing_thequint_live.log`,
+`mass_sourcing_factcrescendo_live.log`. Candidate records:
+`research/dataset/candidates_v2.jsonl` (Alt News, shared/locked file),
+`candidates_v2_mass_vishvas.jsonl`, `candidates_v2_mass_factly.jsonl`,
+`candidates_v2_mass_thequint.jsonl`, `candidates_v2_mass_factcrescendo.jsonl`
 (separate files, avoiding the cross-process race crash #1 found).
