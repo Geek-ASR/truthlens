@@ -33,8 +33,10 @@ existing pattern for v1.
 Run: cd backend && ./.venv/bin/python -m research.benchmark_v2.promote_eligible_candidates
 """
 import asyncio
+import fcntl
 import json
 import sys
+from contextlib import contextmanager
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))  # backend/
@@ -51,8 +53,56 @@ from research.benchmark_v2.candidate_tracker import _load_all, set_promoted_item
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _ITEMS_V1_PATH = _REPO_ROOT / "research" / "dataset" / "items.jsonl"
 _ITEMS_V2_PATH = _REPO_ROOT / "research" / "dataset" / "items_v2.jsonl"
+_DATASET_DIR = _REPO_ROOT / "research" / "dataset"
 
 _TARGET_SPLIT = BenchmarkSplit.validation
+
+# set_promoted_item_id() only ever touches candidates_v2.jsonl (the
+# shared, merged file candidate_tracker.py owns). Candidates sourced
+# from the Vishvas/Factly/thequint pipelines also exist as a SEPARATE,
+# still-unmarked copy in their own per-pipeline file (merge_mass_
+# candidates.py copies, it doesn't move) -- found live: cand-thequint
+# -0182, already promoted to item-0021 via the main file, still showed
+# up as "ELIGIBLE, un-promoted" in spot_check_eligible_candidates.py
+# because its origin file, candidates_v2_mass_thequint.jsonl, never got
+# the promoted_item_id marker. Not a duplicate-promotion risk today
+# (promote() and merge_mass_candidates.py both only ever read the main
+# file), but it wastes real review time re-flagging an already-settled
+# candidate on every future spot-check pass -- fixed by writing the
+# marker back to whichever per-pipeline file the ID actually came from.
+_SOURCE_FILE_BY_PREFIX = {
+    "cand-vishvas-": _DATASET_DIR / "candidates_v2_mass_vishvas.jsonl",
+    "cand-factly-": _DATASET_DIR / "candidates_v2_mass_factly.jsonl",
+    "cand-thequint-": _DATASET_DIR / "candidates_v2_mass_thequint.jsonl",
+}
+
+
+@contextmanager
+def _locked_file(lock_path: Path):
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(lock_path, "w") as lock_file:
+        fcntl.flock(lock_file, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(lock_file, fcntl.LOCK_UN)
+
+
+def _propagate_promotion_to_source_file(candidate_id: str, item_id: str) -> None:
+    source_path = next(
+        (path for prefix, path in _SOURCE_FILE_BY_PREFIX.items() if candidate_id.startswith(prefix)), None,
+    )
+    if source_path is None or not source_path.exists():
+        return  # cand-mass-* candidates already live directly in the main, locked file
+    with _locked_file(source_path.with_suffix(".lock")):
+        with open(source_path) as f:
+            records = [json.loads(line) for line in f if line.strip()]
+        for rec in records:
+            if rec["candidate_id"] == candidate_id:
+                rec["promoted_item_id"] = item_id
+        with open(source_path, "w") as f:
+            for rec in records:
+                f.write(json.dumps(rec) + "\n")
 
 
 async def _ingest(db, source_url: str):
@@ -165,6 +215,7 @@ async def promote() -> list[dict]:
             with open(_ITEMS_V2_PATH, "a") as f:
                 f.write(json.dumps(v2_item) + "\n")
             set_promoted_item_id(candidate["candidate_id"], item_id)
+            _propagate_promotion_to_source_file(candidate["candidate_id"], item_id)
 
     return promoted_items
 
