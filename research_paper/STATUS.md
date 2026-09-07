@@ -1,11 +1,45 @@
 # Paper status
 
-Last updated: 2026-08-18 (eighth update, same day; a final
-benchmark-scaling and Instagram-publishing-verification session folded
-in, then the project paused). See below for this pass's summary; prior
+Last updated: 2026-09-07 (ninth update: the deferred recompile from the
+eighth update, now done). See below for this pass's summary; prior
 updates preserved unedited underneath.
 
-## Latest update (this pass, 2026-08-18) -- project paused
+## Latest update (this pass, 2026-09-07) -- recompile only
+
+Closes the one open item the eighth update (below) left behind: that
+pass edited `main.tex` (the `sec:publishing` and `sec:massSourcing`
+subsections, plus Abstract/Conclusion/Future-Work additions) but had no
+LaTeX toolchain available, so it was never compiled or visually
+verified. `tectonic` 0.17.0 was available this pass. Recompiled with it,
+same engine as every prior compiled update:
+
+- **Clean compile.** BibTeX ran clean (`main.blg`: `Done.`, no
+  warnings). No undefined references, no undefined citations, no
+  multiply-defined labels, no "rerun to get cross-references right"
+  (`rerunfilecheck` confirms `main.out` stable). Only the pre-existing
+  `TU/ptm` font-shape substitution warnings and two-column
+  hbox/vbox-badness line-breaking warnings that every prior compile of
+  this document also emitted -- none new.
+- **Page count 28 -> 30**, matching the eighth update's own note that
+  the two new subsections plus abstract/conclusion additions grew the
+  paper. `main.pdf` regenerated (this is the only file changed).
+- **Visually verified** via `pdftoppm` (110 dpi PNGs): page 1
+  (Abstract, both new sentences present and set correctly), page 6
+  (new "E. Stage 10: human-approval-gated publishing" subsection,
+  renders fully, two-column layout intact), page 18 (mass-sourcing
+  result paragraph + start of the failure-mode taxonomy, now "24
+  entries"), page 21 (Conclusion + Future Work items 13-16 with updated
+  status text), page 30 (end of Appendix + References, 13 refs, document
+  terminates cleanly). No overflow, no missing glyphs, no `??`.
+- **Not changed:** the `[Affiliation placeholder -- TODO]` on page 1 is
+  the same deliberate placeholder logged in prior updates -- left as-is,
+  not this pass's call to fill in.
+
+`main.tex` itself was not edited this pass -- content is exactly as the
+eighth update left it; this pass only produced the compiled artifact it
+was missing.
+
+## Prior update (eighth, 2026-08-18) -- project paused
 
 Folded in the mass-sourcing/benchmark-scaling session
 (`research/MASS_SOURCING_V2.md`) and the Instagram-publishing pipeline

@@ -42,8 +42,9 @@ step is finishing that account connection.
   `validation` split).
 - **The research paper** (`research_paper/main.tex`, ~3,090 lines):
   real experimental results against the frozen 9-item comparison, a
-  foundation-phase extension program, and this session's mass-sourcing
-  and publishing-pipeline work. `research_paper/main.pdf` is **stale**
+  foundation-phase extension program, and the mass-sourcing and
+  publishing-pipeline work. `research_paper/main.pdf` is **current as of
+  2026-09-07** (30 pages, recompiled with `tectonic`, matches `main.tex`)
   — see item 2 below.
 - **304 backend tests**, all passing as of the last commit
   (`cd backend && ./.venv/bin/python -m pytest -q`).
@@ -80,18 +81,19 @@ Once connected: run one real fact-check through
 and confirm the permalink comes back correctly before treating this
 pipeline as production-ready.
 
-### 2. Recompile the research paper
+### 2. Recompile the research paper — DONE (2026-09-07)
 
-`research_paper/main.tex` was extended this session (two new
-subsections, an updated Abstract/Conclusion/Future Work item) but
-**no LaTeX toolchain was available** in the environment that did it —
-the edit was checked for brace balance, duplicate labels, and
-unresolved cross-references only, not an actual compile. Run
-`pdflatex`/`xelatex` (whatever `research_paper/main.log` shows was used
-last), fix anything that doesn't compile clean, and visually check the
-new pages (`pdftoppm` or just opening the PDF) before treating
-`main.pdf` as current. Full detail on exactly what changed and this
-gap: `research_paper/STATUS.md` (top entry).
+`research_paper/main.tex` was extended in the 2026-08-18 session (two
+new subsections, an updated Abstract/Conclusion/Future Work item) with
+**no LaTeX toolchain available** in that environment, so it was never
+compiled. Recompiled 2026-09-07 with `tectonic` 0.17.0 (the engine used
+for every prior compiled version): clean compile — no undefined
+references/citations, no duplicate labels, BibTeX clean — 28→30 pages,
+`main.pdf` regenerated and visually spot-checked page-by-page via
+`pdftoppm` (Abstract, the new publishing + mass-sourcing pages,
+Conclusion/Future Work, References). `main.tex` was not touched. Full
+detail: `research_paper/STATUS.md` (top entry, ninth update). Nothing
+outstanding here unless `main.tex` is edited again.
 
 ### 3. A decision on benchmark scaling
 
