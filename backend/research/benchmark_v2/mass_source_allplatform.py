@@ -98,6 +98,11 @@ _NEVER_THE_SOURCE_HANDLES = {
     "altnewsvideos", "altnews", "boomlive", "boomlive_in", "vishvasnews",
     "factlyindia", "newschecker", "thequint", "webqoof",
     "factcrescendo", "afpfactcheck", "prfchecker",
+    # US / international fact-checkers (added with the non-Indian archives)
+    "politifact", "snopes", "snopescom", "leadstories", "leadstoriescom",
+    "factcheckdotorg", "factcheck_org", "checkyourfact", "fullfact",
+    "reutersfacts", "reuters", "apnews", "apfactcheck", "usatoday",
+    "washingtonpost", "cnn", "leadstoriesfeed", "misbar", "logically",
 }
 
 
@@ -252,7 +257,13 @@ False, even though the post is clearly relevant to the story.
 
 Only set is_own_post_the_misinformation=True when the caption/text itself makes the specific false \
 assertion the article is fact-checking -- not when the post merely shows related real footage, is \
-tagged/mentioned, or is cited as a comparison or rebuttal."""
+tagged/mentioned, or is cited as a comparison or rebuttal.
+
+The article and/or the post caption may be in Hindi, Tamil, Marathi, Malayalam, Bengali, or another \
+language, not just English. Judge on MEANING, not language: a Hindi caption that asserts the false \
+claim counts exactly the same as an English one. If the caption is in a script/language you cannot \
+read well enough to be sure it makes the claim, set is_own_post_the_misinformation=False and say so \
+in reasoning -- do not guess."""
 
 
 _LABEL_CANON = {"FALSE", "MOSTLY_FALSE", "MISLEADING", "MISSING_CONTEXT",
@@ -527,11 +538,101 @@ def crawl_factly():
                 yield u, "factly.in"
 
 
+# --- Non-Indian English fact-checkers (authorized 2026-09-07, "Both A and B").
+# Broadens the benchmark from Indian-only to political misinformation generally
+# -- the paper's framing/dataset card need a matching rewrite once these land.
+# NOT included: snopes.com (robots.txt explicitly Disallow: / for ClaudeBot --
+# same publisher-directive call as newschecker.in in MASS_SOURCING_V2.md);
+# factcheck.afp.com (hard 403 on any non-allowlisted UA).
+
+def crawl_leadstories():
+    """leadstories.com/sitemap.txt -- flat URL list, ~10k /hoax-alert/ posts
+    (US viral social misinformation, heavily Facebook/X). Follows
+    sitemap-N.txt continuations if present."""
+    n = 0
+    while True:
+        sm_url = "https://leadstories.com/sitemap.txt" if n == 0 else f"https://leadstories.com/sitemap-{n}.txt"
+        try:
+            body = _get(sm_url)
+        except httpx.HTTPError:
+            return
+        lines = [ln.strip() for ln in body.splitlines() if ln.strip().startswith("http")]
+        if not lines:
+            return
+        # sitemap.txt is oldest-first; 2020-2021 hoax posts are almost all
+        # deleted now. Walk it newest-first so live, retrievable posts
+        # (far higher yield) come first.
+        for u in reversed(lines):
+            if "/hoax-alert/" in u and u.endswith(".html"):
+                yield u, "leadstories.com"
+        n += 1
+        if n > 20:
+            return
+
+
+def crawl_politifact():
+    """politifact.com/factchecks/list/?page=N -- 20 links/page,
+    /factchecks/YYYY/mon/DD/slug/. Stops when a page adds no new URLs
+    (its pagination silently repeats page 1 past the real end)."""
+    seen: set[str] = set()
+    for page in range(1, 1200):
+        try:
+            html = _get(f"https://www.politifact.com/factchecks/list/?page={page}")
+        except httpx.HTTPError:
+            continue
+        links = set(re.findall(r'/factchecks/20[0-9]{2}/[a-z]{3}/[0-9]{1,2}/[a-z0-9-]+/', html))
+        fresh = links - seen
+        if not fresh:
+            return
+        seen |= fresh
+        for path in sorted(fresh):
+            yield f"https://www.politifact.com{path}", "politifact.com"
+
+
+def crawl_checkyourfact():
+    """checkyourfact.com/page/N/ -- articles are hosted on dailycaller.com
+    (/YYYY/MM/DD/fact-check-slug). Stops when a page adds nothing new."""
+    seen: set[str] = set()
+    for page in range(1, 800):
+        try:
+            html = _get(f"https://checkyourfact.com/page/{page}/")
+        except httpx.HTTPError:
+            continue
+        links = set(re.findall(r'https://dailycaller\.com/20[0-9]{2}/[0-9]{2}/[0-9]{2}/fact-check-[a-z0-9-]+', html))
+        fresh = links - seen
+        if not fresh:
+            return
+        seen |= fresh
+        for u in sorted(fresh):
+            yield u, "checkyourfact.com"
+
+
+def crawl_fullfact():
+    """fullfact.org/sitemap.xml -- individual fact-checks live under topic
+    paths and end '-fact-checked/' or are under /online/ /health/ /economy/
+    /europe/ /crime/ etc. Filter to the article-shaped ones."""
+    try:
+        body = _get("https://fullfact.org/sitemap.xml")
+    except httpx.HTTPError:
+        return
+    for u in _locs(body):
+        low = u.lower()
+        if u.rstrip("/").count("/") >= 4 and (
+            low.endswith("-fact-checked/") or "/online/" in low or "/health/" in low
+            or "/economy/" in low or "/europe/" in low or "/crime/" in low or "/law/" in low
+        ):
+            yield u, "fullfact.org"
+
+
 _ARCHIVES = {
     "altnews": crawl_altnews,
     "vishvas": crawl_vishvas,
     "thequint": crawl_thequint,
     "factcrescendo": crawl_factcrescendo,
+    "leadstories": crawl_leadstories,
+    "politifact": crawl_politifact,
+    "checkyourfact": crawl_checkyourfact,
+    "fullfact": crawl_fullfact,
     "factly": crawl_factly,
 }
 
