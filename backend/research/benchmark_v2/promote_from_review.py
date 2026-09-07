@@ -76,22 +76,29 @@ def _mark_candidate(cid: str, **fields) -> None:
             return
 
 
-async def _ingest(db, url: str, platform: Platform):
+async def _ingest(db, url: str, platform: Platform, skip_vision: bool = False):
     storage = get_storage_client()
     reel = await ingestion.ingest_reel(db, ReelCreate(source_url=url, platform=platform, auto_fetch=True), None, None)
     await db.commit()
     await db.refresh(reel)
+    # vision_context (llava-phi3) is ~10 min/item on an 8 GB M1 and, on
+    # low-res X/FB keyframes, produces near-useless output anyway. With
+    # --skip-vision it is left for backfill_vision.py; visual_information_
+    # available is then written as None (honestly "not yet analysed"),
+    # never guessed.
     if reel.media_storage_key and reel.media_type == MediaType.video:
         vb = storage.get_bytes(reel.media_storage_key)
         audio_path, frames = ingestion.extract_media_artifacts(vb)
         await transcription.transcribe_reel(db, reel, audio_path)
         await ocr.ocr_reel(db, reel, frames)
-        await vision_context.analyze_vision_context(db, reel, frames)
+        if not skip_vision:
+            await vision_context.analyze_vision_context(db, reel, frames)
     elif reel.media_storage_key and reel.media_type == MediaType.photo:
         pb = storage.get_bytes(reel.media_storage_key)
         frames = ingestion.extract_photo_artifact(pb)
         await ocr.ocr_reel(db, reel, frames)
-        await vision_context.analyze_vision_context(db, reel, frames)
+        if not skip_vision:
+            await vision_context.analyze_vision_context(db, reel, frames)
     await db.commit()
     await db.refresh(reel)
     return reel
@@ -100,6 +107,7 @@ async def _ingest(db, url: str, platform: Platform):
 async def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--skip-vision", action="store_true", help="skip llava vision_context (~10min/item); backfill later")
     args = ap.parse_args()
 
     if not _REVIEW.exists():
@@ -147,7 +155,7 @@ async def main() -> None:
             plat = _PLATFORM.get(r["platform"], Platform.other)
             print(f"=== {item_id} ({r['candidate_id']}, {r['platform']}): ingesting {r['social_url']} ===", file=sys.stderr)
             try:
-                reel = await _ingest(db, r["social_url"], plat)
+                reel = await _ingest(db, r["social_url"], plat, skip_vision=args.skip_vision)
             except Exception as exc:  # noqa: BLE001
                 print(f"  INGESTION FAILED: {exc}", file=sys.stderr)
                 await db.rollback()
@@ -168,7 +176,7 @@ async def main() -> None:
                 "language": r.get("language") or None,
                 "audio_available": bool(reel.transcript), "ocr_available": bool(reel.ocr_text),
                 "caption_available": bool(reel.caption_text),
-                "visual_information_available": reel.vision_context is not None,
+                "visual_information_available": (None if args.skip_vision else reel.vision_context is not None),
                 "cross_post_possible": True, "cross_post_verified": None, "difficulty": None,
                 "development_split": True, "candidate_id": r["candidate_id"],
                 "annotation_status": "reviewed", "labeler": r.get("reviewer", "human-review"),
