@@ -224,16 +224,14 @@ def _canonical_url(url: str, platform: str) -> str | None:
 # --------------------------------------------------------------------------
 
 class SocialSourceJudgment(BaseModel):
-    is_own_post_the_misinformation: bool = Field(
-        description="True ONLY if THIS social media post's own caption/text itself asserts the "
-        "false claim the article is debunking -- not merely referenced as evidence, comparison, "
-        "context, or the true original."
+    classification: str = Field(
+        description="Exactly one of: MISINFORMATION_SOURCE, TRUE_ORIGINAL_OR_EVIDENCE, UNCLEAR"
     )
     extracted_claim: str = Field(description="The specific false claim being fact-checked, in one sentence.")
     extracted_verdict_label: str = Field(
         description="One of: FALSE, MOSTLY_FALSE, MISLEADING, MISSING_CONTEXT, TRUE, MOSTLY_TRUE, UNVERIFIED, OUTDATED"
     )
-    confidence: float = Field(ge=0.0, le=1.0, description="Confidence the post IS the misinformation source.")
+    confidence: float = Field(ge=0.0, le=1.0, description="Confidence in the classification above.")
     reasoning: str = Field(description="One or two sentences citing specific text from the caption or article.")
 
     @field_validator("confidence", mode="before")
@@ -244,26 +242,42 @@ class SocialSourceJudgment(BaseModel):
         except (TypeError, ValueError):
             return 0.0
 
+    @property
+    def is_own_post_the_misinformation(self) -> bool:
+        return self.classification.strip().upper().replace("-", "_").startswith("MISINFORMATION")
+
+
+# Strong affirmative phrasings: if the model classified a post as
+# TRUE_ORIGINAL_OR_EVIDENCE but its OWN reasoning says the caption makes
+# the claim, that is the documented llama3.2 label/reasoning
+# self-contradiction -- re-ask once rather than silently rejecting a real
+# misinformation-source post (found live on leadstories: TonyGunk123,
+# Arashi_Flame -- reasoning "the caption asserts the specific claim ...",
+# classification still negative).
+_AFFIRMATIVE_REASONING = re.compile(
+    r"(caption|post|tweet|text|it)\s+(asserts?|makes?|states?|claims?|repeats?|pushes?|spreads?|"
+    r"is identical|contains? the (false )?claim)\b|identical in wording|is the misinformation"
+)
+
 
 _JUDGE_SYSTEM_PROMPT = """You are helping build a fact-checking research benchmark. You will be given \
-the full text of a professional fact-check article, and the actual caption/text of a specific \
+the full text of a professional fact-check article and the actual caption/text of ONE specific \
 social media post (Instagram, X/Twitter, Facebook, YouTube, or TikTok) that the article references.
 
-Your ONLY job: decide whether THIS post's own caption/text is itself the misinformation being \
-debunked -- i.e. does the post's own text assert the false claim? Many fact-check articles cite a \
-post as evidence of the TRUE, accurate original event, while the actual false claim was posted \
-separately by a different account. In that common case, is_own_post_the_misinformation must be \
-False, even though the post is clearly relevant to the story.
+Classify THIS post as exactly one of:
 
-Only set is_own_post_the_misinformation=True when the caption/text itself makes the specific false \
-assertion the article is fact-checking -- not when the post merely shows related real footage, is \
-tagged/mentioned, or is cited as a comparison or rebuttal.
+- MISINFORMATION_SOURCE: the post's own caption/text itself makes the false claim the article \
+  debunks. This is the case we are collecting. It still counts if other accounts posted the same \
+  claim -- if THIS caption states the debunked claim, choose this.
+- TRUE_ORIGINAL_OR_EVIDENCE: the post is the real/accurate footage or the true original that the \
+  article cites AS EVIDENCE against the claim, or the post is cited only for context, comparison, \
+  or as a rebuttal -- its own caption does NOT assert the false claim.
+- UNCLEAR: the caption is missing, or is in a script/language you cannot read well enough to be \
+  sure, or is genuinely ambiguous. Do not guess -- choose UNCLEAR.
 
-The article and/or the post caption may be in Hindi, Tamil, Marathi, Malayalam, Bengali, or another \
-language, not just English. Judge on MEANING, not language: a Hindi caption that asserts the false \
-claim counts exactly the same as an English one. If the caption is in a script/language you cannot \
-read well enough to be sure it makes the claim, set is_own_post_the_misinformation=False and say so \
-in reasoning -- do not guess."""
+Judge on MEANING, in any language (Hindi, Tamil, Marathi, Malayalam, Bengali, English, ...): a \
+Hindi caption that states the false claim is MISINFORMATION_SOURCE exactly like an English one. \
+Base the decision only on THIS post's own caption/text, not on what other posts said."""
 
 
 _LABEL_CANON = {"FALSE", "MOSTLY_FALSE", "MISLEADING", "MISSING_CONTEXT",
@@ -308,9 +322,26 @@ async def _judge(provider: OllamaProvider, article_text: str, caption: str, plat
             stage="mass_sourcing_allplatform", max_tokens=512,
         )
         judgment = result.parsed
-        if judgment.is_own_post_the_misinformation and not judgment.reasoning.strip():
+
+        # Re-ask once if (a) it says MISINFORMATION_SOURCE with empty
+        # reasoning (schema-valid but substantively empty), or (b) it says
+        # NOT the source but its own reasoning plainly says the caption
+        # makes the claim -- the documented llama3.2 label/reasoning
+        # contradiction, which was silently discarding real hits.
+        contradiction = (
+            not judgment.is_own_post_the_misinformation
+            and _AFFIRMATIVE_REASONING.search(judgment.reasoning.lower())
+            and "does not" not in judgment.reasoning.lower()
+            and "not the misinformation" not in judgment.reasoning.lower()
+        )
+        empty_hit = judgment.is_own_post_the_misinformation and not judgment.reasoning.strip()
+        if contradiction or empty_hit:
+            reask = user_content + (
+                "\n\nReconsider carefully: does THIS post's OWN caption/text state the debunked "
+                "claim? If yes, classification must be MISINFORMATION_SOURCE. Answer again."
+            )
             retry_result = await provider.structured_call(
-                model=_MODEL, system_prompt=_JUDGE_SYSTEM_PROMPT, user_content=user_content,
+                model=_MODEL, system_prompt=_JUDGE_SYSTEM_PROMPT, user_content=reask,
                 output_schema=SocialSourceJudgment, prompt_version="mass_sourcing_allplatform_judge.v1",
                 stage="mass_sourcing_allplatform", max_tokens=512,
             )
