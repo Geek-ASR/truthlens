@@ -110,7 +110,7 @@ async def main() -> None:
 
     # defers
     for r in rows:
-        if r.get("decision") == "defer" and r["candidate_id"] not in already:
+        if r.get("decision") in ("defer","reject") and r["candidate_id"] not in already:
             if not args.dry_run:
                 _mark_candidate(r["candidate_id"], review_status="deferred_crosspost",
                                 review_note=r.get("review_notes", ""))
