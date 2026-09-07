@@ -117,8 +117,18 @@ def _spot_check_flag(rec: dict) -> str | None:
         return "malformed ground_truth_claim (empty or a raw link, not a claim sentence)"
     if _LIST_LITERAL_PATTERN.match(claim):
         return "malformed ground_truth_claim (a stringified list, not a claim sentence)"
-    if len(claim) < 15:
-        return f"implausibly short ground_truth_claim ({claim!r})"
+    if len(claim) < 25 or len(claim.split()) < 5:
+        return f"claim too short / fragmentary ({claim!r})"
+    if claim.startswith("[") or claim.startswith("("):
+        return f"claim wrapped in brackets -- article text, not a clean claim ({claim[:60]!r})"
+    _LEAK = ("that's not true", "is also baseless", "the claim that", "yes, that's",
+             "a youtube video published", "article published", "as per the article",
+             "according to the article", "the fact-check")
+    cl = claim.lower()
+    if any(cl.startswith(p) or f" {p}" in cl[:40] for p in _LEAK):
+        return f"claim looks like leaked article/verdict text, not the claim itself ({claim[:70]!r})"
+    if claim[0].islower():
+        return f"claim starts mid-sentence (fragment) ({claim[:60]!r})"
     if label not in {"FALSE", "MOSTLY_FALSE", "MISLEADING", "MISSING_CONTEXT",
                      "TRUE", "MOSTLY_TRUE", "UNVERIFIED", "OUTDATED"}:
         return f"non-standard ground_truth_label ({label!r})"

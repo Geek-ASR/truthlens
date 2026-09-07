@@ -227,7 +227,11 @@ class SocialSourceJudgment(BaseModel):
     classification: str = Field(
         description="Exactly one of: MISINFORMATION_SOURCE, TRUE_ORIGINAL_OR_EVIDENCE, UNCLEAR"
     )
-    extracted_claim: str = Field(description="The specific false claim being fact-checked, in one sentence.")
+    extracted_claim: str = Field(
+        description="The specific claim the article debunks, as ONE standalone factual assertion in "
+        "English -- e.g. 'A video shows X happening in place Y' or 'Person Z said W'. NOT the raw "
+        "post caption, NOT article commentary, NOT a sentence fragment. Full sentence, 8-30 words."
+    )
     extracted_verdict_label: str = Field(
         description="One of: FALSE, MOSTLY_FALSE, MISLEADING, MISSING_CONTEXT, TRUE, MOSTLY_TRUE, UNVERIFIED, OUTDATED"
     )
