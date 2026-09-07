@@ -119,16 +119,25 @@ def _spot_check_flag(rec: dict) -> str | None:
         return "malformed ground_truth_claim (a stringified list, not a claim sentence)"
     if len(claim) < 25 or len(claim.split()) < 5:
         return f"claim too short / fragmentary ({claim!r})"
+    if len(claim.split()) > 22:
+        return f"claim too long -- likely raw caption or article paragraph ({len(claim.split())}w)"
     if claim.startswith("[") or claim.startswith("("):
         return f"claim wrapped in brackets -- article text, not a clean claim ({claim[:60]!r})"
     _LEAK = ("that's not true", "is also baseless", "the claim that", "yes, that's",
              "a youtube video published", "article published", "as per the article",
-             "according to the article", "the fact-check")
+             "according to the article", "the fact-check", "this claim was", "this claim is",
+             "the claim is", "the post claims", "the video shows a", "was amplified by",
+             "was shared by", "several bjp", "right-wing influencers")
     cl = claim.lower()
-    if any(cl.startswith(p) or f" {p}" in cl[:40] for p in _LEAK):
+    if any(cl.startswith(p) or f" {p}" in cl[:45] for p in _LEAK):
         return f"claim looks like leaked article/verdict text, not the claim itself ({claim[:70]!r})"
     if claim[0].islower():
         return f"claim starts mid-sentence (fragment) ({claim[:60]!r})"
+    # A real professional debunk almost always reaches a verdict. UNVERIFIED
+    # here means the sourcing judge failed to extract one -- not that the
+    # fact-checker was uncertain. Don't promote it with a fabricated label.
+    if label == "UNVERIFIED":
+        return "ground_truth_label fell through to UNVERIFIED -- needs the real verdict from the fact-check article"
     if label not in {"FALSE", "MOSTLY_FALSE", "MISLEADING", "MISSING_CONTEXT",
                      "TRUE", "MOSTLY_TRUE", "UNVERIFIED", "OUTDATED"}:
         return f"non-standard ground_truth_label ({label!r})"
@@ -222,6 +231,14 @@ async def main() -> None:
                   f"{(r['ground_truth_claim'] or '')[:90]}")
         print(f"\n(dry run) {len(survivors)} would be promoted.")
         return
+
+    # YouTube full-video download 403s ~100% for guest yt-dlp right now --
+    # don't burn ingestion attempts on it. Left ELIGIBLE for a later
+    # cookie-authenticated pass, not promoted here.
+    yt = [c for (_p, c) in survivors if c["platform"] == "youtube"]
+    if yt:
+        print(f"  skipping {len(yt)} youtube candidate(s) -- download 403s without auth", file=sys.stderr)
+    survivors = [(p, c) for (p, c) in survivors if c["platform"] != "youtube"]
 
     # --- pass 2: real ingestion + append to items_v2.jsonl ---
     item_ids = _next_item_ids(len(survivors))
