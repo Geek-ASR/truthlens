@@ -40,87 +40,75 @@ Email: adityarekhe1030@gmail.com}
 \maketitle
 
 \begin{abstract}
-Short-form video is now a primary vector for political misinformation, yet
-most automated fact-checking systems are evaluated on whether they reach a
-correct final label, not on whether the evidence chain that produced it is
-real, and few are evaluated against independent, held-out ground truth at
-all. We present TruthLens, a verification-gated pipeline for short-form
-political video (Instagram Reels) that decomposes a post into atomic claims,
-researches each against the open web, and subjects every LLM-generated
-verdict to a deterministic, non-LLM validator before publication --
-checking citation existence, source-fetch existence, numeric grounding, and,
-newly, label/reasoning consistency. We evaluate TruthLens on a held-out
-benchmark of 9 real Instagram posts independently fact-checked by
-professional Indian fact-checking organizations (BOOM Live, Alt News,
-Factly), disjoint from all development data, against three baselines that
-hold the underlying model and search infrastructure constant (LLM-only;
-single-shot search+LLM; search+RAG+LLM). \textbf{A skeptical post-hoc audit
-of our own experimental design found that these baselines had, in every
-run across this project, been given a clean, human-written claim summary
-rather than the claim TruthLens's own extraction stage actually
-produced -- an undisclosed confound that inflated baseline performance
-relative to our own system, contradicting our own stated methodology. We
-report this bug and its fix with the same prominence as any other
-finding.} Corrected -- baselines re-run per real extracted claim,
-aggregated with the identical deterministic rule TruthLens itself uses --
-full TruthLens (33.3\%, 2/6) beats two of the three baselines outright
-(0.0\% each) and trails the third by 16.7 points (down from a 33.4-point
-gap before the fix), on the paired six-item subset where every
-configuration produced a verdict. We further show that two general,
-ground-truth-independent validator fixes measurably improve validator
-recall (16.7\%$\to$40\%, on the same 9 cases, 100\% precision throughout)
-without moving reel-level accuracy at all -- concrete evidence that
-verdict-label accuracy and what we formally define as \emph{support
-validity} (whether a verdict's citations, sources, numbers, and
-label/reasoning consistency hold up against its own evidence matrix) are
-separable, independently-moving properties, which we argue is closer to
-this architecture's actual value proposition than a label-accuracy contest
-against simpler baselines. A separate counterfactual claim-decomposition
-reanalysis ($n=4$) isolates deterministic aggregation as a real contributor
-(50.0\% vs.\ 25.0\% accuracy) once claim extraction has more than one claim
-to work with. We report the evidence-quality picture behind these results
-(a primary-source domain-restriction fix moving source-tier classification
-into government/legal tiers from $\sim$11\% to 95\% of retrieved sources; a
-distinct, still-open gap between finding topically-relevant primary sources
-(68.75\%) and extracting usable evidence from them (18.75\%); a bug found
-and fixed mid-evaluation in which 47.1\% of real evidence rows carried an
-empty explanation field), a multimodal claim-coverage experiment in which
-OCR-derived evidence recovered a claim audio transcription missed entirely,
-and honestly scoped non-results for political-bias and
-confidence-calibration questions that this dataset's size cannot yet
-support. A subsequent foundation-phase program (Section~\ref{sec:foundationphase})
-grew the benchmark to 15 items, added two new deterministic validator
-checks (temporal and entity consistency) that measurably improved the
-adversarial-benchmark precision/recall (81.8\%/50.0\%$\to$87.5\%/60.9\%)
-with zero new false positives, and, across four independent experiments
-each targeting a different pipeline stage, found the same underlying
-pattern: raw local-model output on real content is substantively empty
-or unusable a large fraction of the time, and this system's existing
-Gemini-escalation defenses are doing more real work than a pipeline-level
-pass/fail reading would suggest. A further pass live-tested a
-prompt-injection defense with no prior coverage (1/5 attempts succeeded
-against the small local model pre-fix, 0/5 after a structural fix and a
-hardened prompt, with the downstream validator independently
-neutralizing the pre-fix success), and found a genuinely new,
-reproducible verdict-stage failure -- reliability weighting under
-direct source contradiction -- that a targeted prompt fix measurably
-failed to resolve (0/14 real trials correct, before and after), reported
-honestly as unresolved rather than claimed fixed. A final session
-(Section~\ref{sec:massSourcing}) replaced manual sourcing with automated,
-multi-source crawling infrastructure and grew the benchmark to 22 items,
-but its central, disclosed result is a structural negative one: a
-blended yield of roughly one promotable item per 900 real candidates
-checked, an order of magnitude below the original manual-sourcing
-estimate, reported as evidence about where this misinformation pattern
-is actually posted rather than a tooling gap. The same session added
-test coverage, previously absent, for the system's tenth pipeline stage
--- human-approval-gated publishing to Instagram via the official Meta
-Graph API (Section~\ref{sec:publishing}) -- and development is paused at
-this point, with connecting a live account, and everything downstream of
-that, left as the concrete next step. Every number in this paper is reported with its exact sample size
-and, where a proportion, a Wilson confidence interval; where an experiment
-could not be run at a scientifically meaningful scale, or where our own
-methodology was found to be flawed, we say so rather than force or hide it.
+Short-form political video and image posts are now a primary vector for
+misinformation, yet most automated fact-checking systems are evaluated on
+whether they reach a correct final label, not on whether the evidence chain
+that produced it is real, and few are evaluated against independent,
+held-out ground truth at all. We present TruthLens, a verification-gated
+pipeline that decomposes a post into atomic claims, researches each against
+the open web, and subjects every LLM-generated verdict to a deterministic,
+non-LLM validator before publication -- checking citation existence,
+source-fetch existence, numeric grounding, and label/reasoning consistency.
+This paper makes three contributions. \textbf{(1)~A methodological
+correction, reported with the same prominence as any positive result.}
+A skeptical post-hoc audit of our own experimental design found that, in
+every run across this project, the baselines had been given a clean,
+human-written claim summary rather than the claim TruthLens's own
+extraction stage produced -- an undisclosed confound that inflated
+baseline performance relative to our own system. Corrected, with claim
+extraction held constant across all configurations, full TruthLens
+(33.3\%, 2/6) beats two of three baselines outright (0.0\% each) and
+trails the third by 16.7 points, down from a 33.4-point gap, on the
+paired six-item subset where every configuration produced a verdict.
+\textbf{(2)~A construct and an evaluation of it.} We formally define
+\emph{support validity} -- whether a verdict's citations, sources,
+numbers, and label/reasoning consistency hold up against its own evidence
+matrix -- and show that two ground-truth-independent validator fixes
+raise validator recall ($16.7\%\to40\%$, 100\% precision throughout)
+without moving reel-level accuracy at all: evidence that label accuracy
+and support validity are separable, independently-moving properties, and
+the more informative axis for an architecture whose premise is
+evidence-before-verdict. A claim-decomposition counterfactual ($n=4$)
+separately isolates deterministic aggregation as a real contributor
+(50.0\% vs.\ 25.0\% accuracy) once claim extraction has more than one
+claim to work with. \textbf{(3)~A held-out evaluation benchmark.} A
+measured structural finding -- that sourcing this misinformation pattern
+from Instagram alone yields roughly one usable item per 900 candidates
+screened, because the pattern predominantly recirculates on
+X/Twitter -- led us to relax the platform constraint and build
+\textsc{TruthLens-202}, a 202-item held-out benchmark of real short-form
+political posts (X, Instagram, Facebook), each anchored to an independent
+professional fact-check via a verbatim evidence quote under a review-gated
+annotation protocol, with 206 documented same-media cross-post
+relationships. We report its full composition, including three
+domain-driven skews (83\% \texttt{FALSE}, 80\% X-sourced, 80\%
+provenance-type claims) and a source concentration ($\sim$88\% Alt News),
+and are explicit that \emph{no reel-level accuracy on
+\textsc{TruthLens-202} is reported here} -- running the full pipeline over
+it, and a second independent annotator pass, are the immediate next steps.
+Alongside these we report the evidence-quality picture behind the frozen
+results (a primary-source domain-restriction fix moving source-tier
+classification from $\sim$11\% to 95\% of retrieved sources; a still-open
+gap between finding topically-relevant primary sources (68.75\%) and
+extracting usable evidence from them (18.75\%); a bug found mid-evaluation
+in which 47.1\% of evidence rows carried an empty explanation field), a
+multimodal claim-coverage experiment in which OCR-derived evidence
+recovered a claim audio transcription missed entirely, a live-tested
+prompt-injection defense ($1/5$ pre-fix, $0/5$ post-fix, with the
+downstream validator independently neutralizing the pre-fix success), a
+newly-found and honestly-unresolved verdict-stage failure
+(reliability weighting under direct source contradiction; $0/14$ trials
+before and after a targeted fix), and honestly-scoped non-results for
+political-bias and calibration questions this data's size cannot yet
+support. A 24-entry taxonomy of failure modes surfaced by running the
+complete system against real content -- over a third found during the
+evaluation program itself, all but three with a deterministic check and a
+regression test built from the case that surfaced it -- is as practically
+useful a contribution as any single number above. Every number is
+reported with its exact sample size and, where a proportion, a Wilson
+confidence interval; where an experiment could not be run at a
+scientifically meaningful scale, or where our own methodology was found to
+be flawed, we say so rather than force or hide it.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -164,13 +152,22 @@ fails.
 
 This paper reports the first evaluation of TruthLens against independent,
 held-out ground truth, rather than development-time telemetry alone. We
-curated a 9-item benchmark of real Instagram posts, each independently
-fact-checked by a professional Indian fact-checking organization (BOOM
-Live, Alt News, Factly), disjoint from every post used during development
-(Section~\ref{sec:dataset}), and compared TruthLens against three
-baselines that hold the underlying model and search infrastructure
-constant, isolating what TruthLens's multi-stage architecture adds beyond
-raw search access (Section~\ref{sec:expmethodology}). We report every
+curated a frozen 9-item comparison set of real Instagram posts, each
+independently fact-checked by a professional Indian fact-checking
+organization (BOOM Live, Alt News, Factly), disjoint from every post
+used during development (Section~\ref{sec:dataset}), and compared
+TruthLens against three baselines that hold the underlying model and
+search infrastructure constant, isolating what TruthLens's multi-stage
+architecture adds beyond raw search access
+(Section~\ref{sec:expmethodology}). Separately, and after that frozen
+comparison, we release \textsc{TruthLens-202}: a 202-item held-out
+corpus of real short-form political posts across X, Instagram and
+Facebook, built once a measured structural finding showed
+Instagram-only sourcing to be capped at roughly one usable item per 900
+candidates screened. \textsc{TruthLens-202} is presented as an
+evaluation artifact with its construction and limitations documented in
+full (Section~\ref{sec:truthlens202}); it has not yet been run through
+the pipeline, and no accuracy on it is reported here. We report every
 result this comparison produced, including one that is not flattering
 but not about TruthLens: a subsequent, skeptical audit of our own
 experimental design found that the baselines had been given a cleaner
@@ -422,6 +419,15 @@ experiments in Sections~\ref{sec:results}--\ref{sec:bce} actually support:
   (Section~\ref{sec:failuremodes}), each found by running the complete
   system against real content end-to-end and fixed with a deterministic
   check and a regression test built from the case that surfaced it.
+\item \textbf{\textsc{TruthLens-202}}: a 202-item held-out benchmark of
+  real short-form political posts (X, Instagram, Facebook), each anchored
+  to an independent professional fact-check via a verbatim evidence quote
+  under a review-gated protocol, with 206 documented same-media
+  cross-post relationships (Section~\ref{sec:truthlens202}). Its full
+  composition and limitations -- a single LLM-assisted reviewer,
+  $\sim$88\% single-source ground truth, and three domain-driven skews --
+  are reported; end-to-end evaluation on it is explicitly left as future
+  work, so it is a contributed artifact, not a contributed result.
 \end{enumerate}
 
 TruthLens does not claim to have invented retrieval-augmented LLM
@@ -742,6 +748,7 @@ explicitly, not asserted. Two tagged freezes (dataset before Baselines
 logged, never silently applied.
 
 \subsection{Honest scope reductions}
+\label{sec:honestscope}
 Stated rather than hidden: \textbf{9 items, not 50--100} (a pilot found
 $\sim$8\% hit rate for a usable Tier-1 candidate; 20--30 items would need
 250--375 more articles checked, Section~\ref{sec:dataset}).
@@ -756,6 +763,18 @@ test only, reported as uncertainty descriptions, not significance claims.
 
 \section{Dataset and Annotation}
 \label{sec:dataset}
+
+This work uses two disjoint held-out sets. The \textbf{9-item comparison
+set} (Sections~\ref{sec:dataset}.B--F) is the frozen \texttt{dev} split
+against which every controlled result in Section~\ref{sec:results} and the
+foundation-phase experiments (Section~\ref{sec:foundationphase}) are
+computed; it is small by deliberate, disclosed choice
+(Section~\ref{sec:honestscope}) and is never re-touched.
+\textbf{\textsc{TruthLens-202}} (Section~\ref{sec:truthlens202}) is a
+separate, larger \texttt{validation} split, built after the frozen
+comparison, that the platform-scope and sourcing findings of this program
+made feasible; it is a corpus for future end-to-end evaluation, and no
+reel-level accuracy on it is reported in this paper.
 
 \subsection{Ground-truth tiers}
 \textbf{Tier 1 (used for every item in this evaluation):} the claim in the
@@ -839,6 +858,164 @@ actor, alongside 6 single-item actors), but none form a controlled
 topic/structure/difficulty match against another actor, which is why RQ5
 (Section~\ref{sec:bce}) is deferred rather than attempted at
 $n=1$-per-comparison.
+
+\subsection{\textsc{TruthLens-202}: a larger held-out benchmark}
+\label{sec:truthlens202}
+
+The 9-item comparison set above is frozen and never expanded. Separately,
+this program built a larger held-out corpus, \textsc{TruthLens-202}, for
+future end-to-end evaluation. It comprises 202 real short-form political
+posts: the 9 comparison items form its \texttt{dev} split, and 193 newly
+collected items form a \texttt{validation} split that no result in this
+paper touches. We describe how it was built, its composition, and its
+limitations in full, because the way an evaluation set is constructed is
+itself a claim that should be checkable.
+
+\subsubsection{Why the platform scope was relaxed}
+The five earlier sourcing passes (Sections~\ref{sec:dataset},
+\ref{sec:foundationphase}, \ref{sec:massSourcing}) restricted candidates
+to Instagram. Section~\ref{sec:massSourcing} measured the cost of that
+restriction directly: across roughly 3{,}600 candidates screened over
+five Indian fact-checker archives, the blended yield of a usable
+Instagram-native misinformation-source post was on the order of one per
+900, an order of magnitude below the original manual-sourcing estimate.
+That finding, first observed qualitatively in
+Section~\ref{sec:multimodalanalysis} (most of this pattern's false claims
+are attached on X/Twitter, not Instagram) and then confirmed
+quantitatively at volume, is what motivated relaxing the constraint: not
+a preference for scale over rigor, but a measured structural property of
+where this misinformation actually recirculates. \textsc{TruthLens-202}'s
+\texttt{validation} split therefore admits posts from any platform whose
+media is retrievable through an official/sanctioned path (X/Twitter,
+Facebook, Instagram, and in principle YouTube and TikTok), while holding
+every other bar constant: a real professional fact-check must establish
+the claim and verdict, the post must still be live and retrievable, and
+the post's own text must itself assert the false claim rather than merely
+being cited as evidence or the true original.
+
+\subsubsection{Sourcing pipeline}
+An automated pipeline crawls the same fact-checker archives plus, newly,
+Lead Stories, Full Fact and Check Your Fact; extracts every embedded
+social-media URL (widget-permalink and plain-link forms across all five
+platforms); verifies retrievability with \texttt{yt-dlp} and pulls the
+post's own caption and uploader directly from platform metadata, never
+inferred from the article; deterministically skips the fact-checker's own
+account and a fixed list of official government/platform fact-check
+handles; and passes each survivor to a local \texttt{llama3.2}
+structured call that decides, given the fact-check article text and the
+post's real caption, whether the post's own text asserts the debunked
+claim. 11{,}544 candidates across seven archives were screened this way.
+The judge is a screening filter only: its output is never ground truth.
+
+\subsubsection{Review-gated annotation protocol}
+Every candidate the screen accepts is then adjudicated by a single
+reviewer who reads the professional fact-check article in full and
+records four fields: (i)~a standalone one-sentence statement of the
+debunked claim, in English; (ii)~a verdict mapped to the paper's
+label taxonomy; (iii)~a verbatim quote or close paraphrase from the
+article that establishes that verdict -- the ground truth is anchored to
+this quote, not to the reviewer's or the screen's judgment; and
+(iv)~claim type, language, and political actor. A candidate is
+\emph{deferred} rather than promoted when it is a cross-post of an
+already-promoted item (kept as a documented relationship, not discarded),
+when the specific post's own text cannot be retrieved to confirm what it
+asserts, or when the fact-check article is a report on real incidents
+rather than a debunk. A candidate is \emph{rejected} when the screening
+judge misfired on an official, news-agency, or rebuttal account. The
+reviewer's decision log holds 372 adjudicated candidates: 166 marked
+\emph{promote} (of which 165 completed end-to-end ingestion into the
+\texttt{validation} split), 148 \emph{deferred}, and 58 \emph{rejected}.
+Counting earlier passes as well, 206 candidates carry a
+\texttt{deferred\_crosspost} marker recording that they duplicate a
+promoted item's underlying media under a different account. Twenty-eight
+further \texttt{validation} items predate this protocol (a pre-protocol
+automated batch): 9 are flagged
+\texttt{annotation\_status=needs\_review} and 19 carry no review status,
+all pending the same adjudication. This gives $165+28=193$
+\texttt{validation} items.
+
+\subsubsection{Composition}
+Table~\ref{tab:tl202} gives the full distribution of all 202 items.
+Three skews are structural to this domain, not sourcing artifacts, and
+any evaluation on this set must account for them:
+\textbf{(1)~label}: 83\% \texttt{FALSE}, because professional
+fact-checkers publish far more debunks than confirmations -- balanced
+accuracy or per-class $F_1$, not raw accuracy, is the appropriate
+end-to-end metric (an always-\texttt{FALSE} predictor scores 83\%);
+\textbf{(2)~platform}: 80\% of items are from X/Twitter, the measured
+locus of this pattern and also where \texttt{yt-dlp} retrieval succeeds
+most reliably without authentication; \textbf{(3)~claim type}: 80\% are
+\texttt{provenance}-type (authentic footage recirculated with a false
+date, place, or context), the dominant 2024--2025 Indian pattern.
+A fourth, non-structural concentration is disclosed as a limitation
+below: $\sim$88\% of the \texttt{validation} split's ground truth comes
+from a single organization, Alt News.
+
+\begin{table}[!t]
+\caption{\textsc{TruthLens-202} composition (202 items: 9 \texttt{dev} + 193 \texttt{validation})}
+\label{tab:tl202}
+\centering
+\footnotesize
+\begin{tabular}{@{}ll@{}}
+\toprule
+Dimension & Distribution \\
+\midrule
+Ground-truth label & \texttt{FALSE} 167 (82.7\%), \texttt{MISLEADING} 30, \texttt{TRUE} 5 \\
+Source platform & X/Twitter 161 (79.7\%), Instagram 25, Facebook 16 \\
+Language & English 146, Hindi 52, Bengali 3, Arabic 1 \\
+Claim type & \texttt{provenance} 161 (79.7\%), \texttt{event} 12, \\
+ & \texttt{misleading\_context} 12, \texttt{quote} 11, other 6 \\
+Media & video 200, photo 2 \\
+Fact-checker & Alt News 170, Lead Stories 14, BOOM 4, \\
+ (\texttt{validation}) & Check Your Fact 2, others 3 \\
+Modality present & caption 192/193, audio 163/193, OCR 91/193 \\
+ (\texttt{validation}) & (visual-context analysis deferred on 115) \\
+Cross-post links & 206 documented same-media relationships \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Leakage and split discipline}
+The 9 \texttt{dev} items and the 193 \texttt{validation} items are
+disjoint by construction and by content hash. Within the corpus, an
+automated check flags any \texttt{factcheck\_url} or
+\texttt{media\_content\_hash} that appears in more than one split (none
+do), and the 206 cross-post markers make same-underlying-media
+relationships explicit rather than leaving near-duplicate posts to be
+treated as independent examples. No prompt, threshold, or model choice
+in this paper was tuned on \textsc{TruthLens-202}; it did not exist when
+the frozen comparison was run.
+
+\subsubsection{Limitations, stated plainly}
+\textbf{(1)~Not yet evaluated.} No item in the \texttt{validation} split
+has been run through the full TruthLens pipeline; this paper reports the
+corpus, not a result on it. \textbf{(2)~Single, LLM-assisted reviewer.}
+The claim phrasing, label mapping, and cross-post/reject decisions were
+produced by one reviewer working with LLM assistance, not by two
+independent human annotators, so no inter-annotator agreement statistic
+is available (and none is fabricated). The verdict itself always traces
+to an independent professional fact-check via the recorded quote, which
+bounds the risk, but the phrasing and mapping are unverified by a second
+human -- a real circularity concern given that an LLM-based system is the
+intended evaluee. A second-annotator pass is the top open item
+(Section~\ref{sec:futurework}). \textbf{(3)~Source concentration.}
+$\sim$88\% of \texttt{validation} ground truth is Alt News's, because the
+other archives yielded far less under the same bar (Lead Stories: $\sim$77\%
+of its candidates had media already taken down; regional-language
+archives produced almost nothing against an English-centric screening
+judge; Full Fact and Check Your Fact mostly fact-check politician
+statements rather than recirculated posts). \textbf{(4)~Deferred
+visual analysis.} 115 \texttt{validation} items were ingested without the
+vision-context stage (a $\sim$10-minute-per-item local model call that
+produced low-value output on compressed social-video keyframes);
+\texttt{visual\_information\_available} is recorded as null, not guessed,
+for those, pending a backfill pass. \textbf{(5)~Domain and language.}
+Still Indian political short-form content, now with a Hindi share
+(26\%) closer to the stated multilingual target but still English-majority.
+Full construction detail, and every promoted/deferred/rejected
+candidate's recorded reasoning:
+\texttt{research/dataset/TruthLens\_Dataset.xlsx} and the
+\texttt{candidates\_v3\_*.jsonl} provenance files.
 
 \section{Results}
 \label{sec:results}
@@ -1868,15 +2045,28 @@ program (Section~\ref{sec:multimodalanalysis}) that most of this
 dataset's real false claims live outside the specific Instagram post
 being fact-checked. At this measured rate, a several-hundred-item
 target is not reachable through deeper automated crawling of the same
-source type in any bounded timeframe -- a structural property of where
-this specific misinformation pattern actually gets posted, not a
-tooling or effort gap: five sources were checked, two archives fully
-exhausted on a second, broadened pass, and every judge-output anomaly
-found was traced to a specific, fixed cause rather than shrugged off as
-noise. The dataset stands at 22 items (\texttt{dev}: 9,
-\texttt{validation}: 13) as of this writing. Full detail, including
-every individual promoted/rejected candidate's disclosed reasoning:
+source type \emph{under the Instagram-only constraint} in any bounded
+timeframe -- a structural property of where this specific misinformation
+pattern actually gets posted, not a tooling or effort gap: five sources
+were checked, two archives fully exhausted on a second, broadened pass,
+and every judge-output anomaly found was traced to a specific, fixed
+cause rather than shrugged off as noise. Full detail, including every
+individual promoted/rejected candidate's disclosed reasoning:
 \texttt{research/MASS\_SOURCING\_V2.md}.
+
+\textbf{This finding was subsequently acted on.} Because the ceiling
+was a property of the platform restriction rather than of the sourcing
+method, a later pass relaxed that restriction -- admitting posts from
+X/Twitter, Facebook, and Instagram -- and added a review-gated
+annotation step in which a single reviewer adjudicates each screened
+candidate against the full professional fact-check article. This grew
+the \texttt{validation} split from 13 to 193 items (202 including the
+frozen \texttt{dev} set), yielding the \textsc{TruthLens-202} corpus
+described in Section~\ref{sec:truthlens202}. The corpus is built but not
+yet evaluated end-to-end, and its construction carries its own disclosed
+limitations (single LLM-assisted reviewer; $\sim$88\% single-source
+ground truth; three domain-driven skews), all stated in
+Section~\ref{sec:truthlens202}.
 
 \section{A Taxonomy of Failure Modes Found in Live Testing}
 \label{sec:failuremodes}
@@ -1935,8 +2125,10 @@ program's own benchmark construction:
 
 \section{Threats to Validity}
 \label{sec:threats}
-Ten threats, stated here at the density needed to be checkable; full
-reasoning for each: Appendix~\ref{sec:appendixthreats}.
+Twelve threats, stated here at the density needed to be checkable; full
+reasoning for the first ten: Appendix~\ref{sec:appendixthreats}. The last
+two concern the \textsc{TruthLens-202} corpus and are detailed in
+Section~\ref{sec:truthlens202}.
 
 \begin{itemize}
 \item \textbf{Small, non-independent sample.} $n=9$ (6 resolved from
@@ -1974,6 +2166,19 @@ reasoning for each: Appendix~\ref{sec:appendixthreats}.
   audit} -- a systematic coverage or resolution asymmetry would
   propagate undetected, since no second ground-truth source exists to
   check against.
+\item \textbf{\textsc{TruthLens-202}'s claim/label annotations are a
+  single LLM-assisted reviewer's work, not verified by a second human}
+  (Section~\ref{sec:truthlens202}). Verdicts trace to an independent
+  professional fact-check via a recorded verbatim quote, which bounds
+  the risk, but the claim phrasing and label mapping are unaudited --
+  a circularity concern given that an LLM-based system is the intended
+  evaluee. No result on that split is reported until this is addressed.
+\item \textbf{\textsc{TruthLens-202} is $\sim$88\% single-source (Alt
+  News) and carries three domain-driven skews} (83\% \texttt{FALSE},
+  80\% X-sourced, 80\% \texttt{provenance}-type); any end-to-end
+  evaluation on it must use balanced, per-class metrics and treat the
+  source concentration as a coverage limitation, not a representative
+  sample of the fact-checking ecosystem.
 \end{itemize}
 
 \section{Discussion}
@@ -2083,20 +2288,20 @@ tuned against knowing the right answer. We would rather report a real
 \label{sec:futurework}
 
 \begin{enumerate}
-\item \textbf{Scale the held-out benchmark past $n=9$} -- \emph{partially
-  addressed, and the binding constraint re-measured}: grew to 15
-  (Section~\ref{sec:foundationphase}), then to 22 via automated,
-  multi-source sourcing infrastructure (Section~\ref{sec:massSourcing}),
-  still short of the 20--30 target and the $\sim$40--60 needed for real
-  McNemar power. The original $\sim$8\% Tier-1 sourcing hit rate, cited
-  here in every prior version of this item as the binding constraint,
-  is now known to have been optimistic relative to the automated
-  pipeline's real, larger-scale, stricter-bar measurement: roughly one
-  promotable item per 900 candidates checked across five sources.
-  Closing this gap needs a different source class (this dataset's
-  Instagram-specific pattern is structurally scarce, not
-  under-searched), not faster or deeper crawling of the same kind of
-  source.
+\item \textbf{Scale the held-out benchmark past $n=9$} -- \emph{addressed
+  as a corpus; end-to-end evaluation now the open work}. The benchmark
+  grew to 15 (Section~\ref{sec:foundationphase}), then to 22 under an
+  Instagram-only constraint (Section~\ref{sec:massSourcing}) at a
+  measured yield of roughly one item per 900 candidates. Relaxing that
+  constraint to all short-form platforms and adding a review-gated
+  annotation step grew the \texttt{validation} split to 193 items --
+  \textsc{TruthLens-202} (Section~\ref{sec:truthlens202}). What remains:
+  (a)~run the full TruthLens pipeline over all 193 \texttt{validation}
+  items and report reel-level accuracy with per-class breakdowns
+  (balanced, given the 83\% \texttt{FALSE} skew); (b)~a second
+  independent annotator pass (item~8); (c)~a backfill of the deferred
+  vision-context stage on 115 items; (d)~broaden the ground-truth base
+  beyond the current $\sim$88\% single-source concentration.
 \item \textbf{Diagnose and close claim-extraction coverage failures on
   degraded audio.} Still open -- EXP-016
   (Section~\ref{sec:foundationmultimodal}) re-confirmed rather than
@@ -2127,9 +2332,14 @@ tuned against knowing the right answer. We would rather report a real
   Section~\ref{sec:bce}'s pre-registered gate (no bin under 3 items) was
   not met at $n=9$ and remains unmet at $n=15$.
 \item \textbf{A second, independent annotator}, for a real
-  inter-annotator agreement statistic on Tier-2 items and the draft
+  inter-annotator agreement statistic on Tier-2 items, the draft
   judgments underlying Sections~\ref{sec:evidencevalidation}
-  and~\ref{sec:multimodalanalysis}.
+  and~\ref{sec:multimodalanalysis}, and -- now the largest instance --
+  the 165 review-gated claim/label annotations in
+  \textsc{TruthLens-202}'s \texttt{validation} split, whose phrasing and
+  label mapping are currently the work of a single LLM-assisted reviewer
+  (Section~\ref{sec:truthlens202}). This is the top open item before any
+  result on that split can be reported.
 \item \textbf{The \texttt{.gov.in} full-page-fetch reliability gap}
   (403s, TLS failures) remains open; closing it needs a scoped
   certificate-verification exception or further diagnosis.
@@ -2323,22 +2533,38 @@ test, and no run of any kind, has yet exercised a live account, since
 doing so needs an operator-side account-linking step outside this
 codebase that had not been completed as of this writing.
 
+Acting on that session's own structural finding -- that the yield
+ceiling was a property of the Instagram-only constraint, not of the
+sourcing method -- a subsequent pass relaxed the platform scope to all
+short-form political posts and added a review-gated annotation step,
+growing the \texttt{validation} split from 13 to 193 items:
+\textsc{TruthLens-202} (Section~\ref{sec:truthlens202}). This makes a
+benchmark at the scale this program set out to build finally available.
+It is deliberately reported as a corpus, not a result: no item in the
+\texttt{validation} split has been run through the pipeline, its
+claim/label annotations are one LLM-assisted reviewer's work pending a
+second annotator, $\sim$88\% of its ground truth is from a single
+organization, and its label/platform/claim-type distributions carry
+three domain-driven skews that any evaluation on it must handle with
+per-class metrics. Every one of those limitations is stated in full in
+Section~\ref{sec:truthlens202}, not softened here.
+
 Work on this program is paused at this point. What is left open, stated
-as concretely as everything reported above: the dataset, at 22 items,
-remains short of the $\sim$40--60 needed for real McNemar power
-(Section~\ref{sec:futurework}), and this session's own measurement is
-now the load-bearing evidence for why closing that gap needs a
-different source class, not more of the same one; RQ5 and RQ6 remain
-deferred for the same pre-registered reason as before; the claim
--extraction coverage gap, the cross-post attribution problem, and the
-verdict-stage reliability-under-contradiction finding are each
-diagnosed but not resolved; and the publishing pipeline's real-account
-connection, and everything downstream of it (a first live post, its own
-review-queue usage in practice, and any resulting engagement or
-correction workflow), is unattempted. None of these are hidden or
-understated in the sections above; collected here only so a resumption
-of this work starts from an accurate list rather than a reconstruction
-of one.
+as concretely as everything reported above: the \texttt{validation}
+split exists at $n=193$ but has not been evaluated end-to-end, and doing
+so -- with a second independent annotator, a balanced per-class metric,
+a vision-context backfill on 115 items, and a broader ground-truth base
+than the current single-source majority -- is the immediate next work
+(Section~\ref{sec:futurework}); RQ5 and RQ6 remain deferred for the same
+pre-registered reason as before; the claim-extraction coverage gap, the
+cross-post attribution problem, and the verdict-stage
+reliability-under-contradiction finding are each diagnosed but not
+resolved; and the publishing pipeline's real-account connection, and
+everything downstream of it (a first live post, its own review-queue
+usage in practice, and any resulting engagement or correction workflow),
+is unattempted. None of these are hidden or understated in the sections
+above; collected here only so a resumption of this work starts from an
+accurate list rather than a reconstruction of one.
 
 \appendix
 

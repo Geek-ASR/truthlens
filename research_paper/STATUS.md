@@ -1,10 +1,83 @@
 # Paper status
 
-Last updated: 2026-09-07 (ninth update: the deferred recompile from the
-eighth update, now done). See below for this pass's summary; prior
-updates preserved unedited underneath.
+Last updated: 2026-09-08 (tenth update: TruthLens-202 benchmark folded
+in + professional-quality pass). See below for this pass's summary;
+prior updates preserved unedited underneath.
 
-## Latest update (this pass, 2026-09-07) -- recompile only
+## Latest update (this pass, 2026-09-08) -- TruthLens-202 + quality pass
+
+Folds in the all-platform, review-gated benchmark-scaling session that
+grew the `validation` split from 13 to 193 items (202 with the frozen
+9-item `dev` set): the **TruthLens-202** corpus. Also a general
+professional-quality pass over the abstract and framing per explicit
+instruction ("make it like a professional research paper, emphasis on
+quality").
+
+**What changed in `main.tex`:**
+
+- **Abstract** rewritten into an explicit three-contributions arc
+  (methodological correction / support-validity construct + validator
+  recall 16.7->40% + claim-decomposition counterfactual n=4 / the
+  TruthLens-202 artifact). Scope line broadened from "Instagram Reels"
+  to "short-form political video and image posts". States loudly, in
+  the abstract itself, that **no reel-level accuracy on TruthLens-202
+  is reported here** -- it is a contributed artifact, not a contributed
+  result.
+- **New `\subsection{TruthLens-202}` (`sec:truthlens202`, Section VI-F)**
+  before Results, with subsubsections: why the platform scope was
+  relaxed (the measured Instagram-only ~1-per-900 yield, cross
+  -referenced to the existing `sec:massSourcing` finding, not a new
+  claim); sourcing pipeline (11,544 candidates screened across seven
+  archives); review-gated annotation protocol (four recorded fields,
+  ground truth anchored to a verbatim fact-check quote); composition +
+  **new Table IV**; leakage/split discipline; and five plainly-stated
+  limitations (not yet evaluated / single LLM-assisted reviewer, no IAA
+  / ~88% single-source Alt News / visual-context deferred on 115 /
+  still Indian-domain, English-majority).
+- **`sec:massSourcing`** given a forward bridge ("this finding was
+  subsequently acted on"); the stale "dataset stands at 22 items" line
+  removed.
+- **Intro, Contributions (new bullet 7), Threats to Validity (+2
+  bullets, "Ten threats" -> "Twelve"), Future Work (items 1 and 8),
+  Conclusion** all updated to introduce TruthLens-202 consistently and
+  to state end-to-end evaluation + a second annotator as the immediate
+  open work.
+
+**Every number in the new material was verified against the actual
+dataset files this pass** (`items.jsonl`, `items_v2.jsonl`,
+`candidates_v3_*.jsonl`, `review_batch.jsonl`), and three drafted
+figures were corrected to match: Language row `English 146, Hindi 52,
+Bengali 3, Arabic 1` (a spurious "mixed 1" removed); Media row
+`video 200, photo 2` (was 199/3); and the annotation-protocol prose now
+carries the real ledger -- 372 adjudicated (166 promote / 148 defer /
+58 reject), 165 completing ingestion, 206 `deferred_crosspost` markers,
+28 pre-protocol items (9 `needs_review` + 19 unmarked), arithmetic
+shown as `165 + 28 = 193`. Label/platform/claim-type/fact-checker
+/modality rows were checked and already matched.
+
+**Compile:** `tectonic` 0.17.0, same engine as every prior compiled
+update. Clean -- no undefined references, no undefined citations, no
+multiply-defined labels; only the pre-existing font-shape and two
+-column line-breaking badness warnings (7 overfull hboxes, all in the
+pre-existing appendix/bib region, none new). **Page count 30 -> 32.**
+`main.pdf` regenerated (373 KiB).
+
+**Visually verified** via `pdftoppm` (100 dpi PNGs): page 1 (abstract,
+three-contribution arc sets correctly), page 8 (start of
+`sec:truthlens202`, two subsubsections, two-column layout intact), page
+9 (review-gated-protocol paragraph with the corrected ledger + Table IV
+with the corrected Language and Media rows, no overflow, fits the
+column), page 10 (composition tail + limitations (4)-(5), clean
+transition into Section VII Results). No `??`, no missing glyphs, no
+broken cross-references on any page checked.
+
+**Not changed:** the `[Affiliation placeholder -- TODO]` on page 1
+(same deliberate placeholder logged in every prior update). The frozen
+6-item paired comparison and all `n=6` results are untouched --
+TruthLens-202 is a strictly separate `validation` split with no result
+reported on it.
+
+## Prior update (ninth, 2026-09-07) -- recompile only
 
 Closes the one open item the eighth update (below) left behind: that
 pass edited `main.tex` (the `sec:publishing` and `sec:massSourcing`
