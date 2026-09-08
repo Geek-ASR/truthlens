@@ -322,9 +322,10 @@ capability in this table originates with TruthLens.
 \label{tab:relatedwork}
 \centering
 \scriptsize
-\begin{tabular}{lccccccc}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lccccccl}
 \toprule
-System & Multimodal & Short-video & Political & Claim decomp. & Retrieval/RAG & Source tiering & Verification mechanism \\
+System & Multimodal & Short-video & Political & Claim decomp. & Retrieval/RAG & Source tiering & Verification \\
 \midrule
 FEVER \cite{thorne2018fever} & \ding{55} & \ding{55} & \ding{55} & \ding{55} & \ding{51} & \ding{55} & none (label-only benchmark) \\
 LIAR \cite{wang2017liar} & \ding{55} & \ding{55} & \ding{51} & \ding{55} & \ding{55} & \ding{55} & none (label-only benchmark) \\
@@ -367,7 +368,8 @@ dropped or forced.
 \label{tab:rqs}
 \centering
 \footnotesize
-\begin{tabular}{p{0.04\linewidth}p{0.55\linewidth}p{0.35\linewidth}}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{p{0.04\linewidth}p{0.55\linewidth}p{0.33\linewidth}}
 \toprule
 RQ & Question & Status \\
 \midrule
@@ -510,7 +512,7 @@ passing through one additional narrow, grounded LLM call each
 \draw[arr] (n6) -- (n7);
 \draw[arr] (n7) -- (n8);
 \draw[arr] (n8) -- (n9);
-\node[align=left, right=0.15cm of n2, text width=1.7cm] {\scriptsize escalate to paid model on substantiveness-check failure};
+\node[align=left, right=0.15cm of n2, text width=1.9cm] {\scriptsize escalate to paid model on quality-check failure};
 \draw[-{Stealth[length=1.4mm]}, dashed] (n2.east) -- ++(0.35,0);
 \node[align=left, right=0.15cm of n7, text width=1.9cm] {\scriptsize downgrades rather than trusts on any of 4 checks failing};
 \draw[-{Stealth[length=1.4mm]}, dashed] (n7.east) -- ++(0.35,0);
@@ -977,20 +979,18 @@ from a single organization, Alt News.
 \label{tab:tl202}
 \centering
 \footnotesize
-\begin{tabular}{@{}ll@{}}
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}p{0.20\linewidth}p{0.74\linewidth}@{}}
 \toprule
 Dimension & Distribution \\
 \midrule
-Ground-truth label & \texttt{FALSE} 167 (82.7\%), \texttt{MISLEADING} 30, \texttt{TRUE} 5 \\
-Source platform & X/Twitter 161 (79.7\%), Instagram 25, Facebook 16 \\
+GT label & \texttt{FALSE} 167 (82.7\%), \texttt{MISLEADING} 30, \texttt{TRUE} 5 \\
+Platform & X/Twitter 161 (79.7\%), Instagram 25, Facebook 16 \\
 Language & English 146, Hindi 52, Bengali 3, Arabic 1 \\
-Claim type & \texttt{provenance} 161 (79.7\%), \texttt{event} 12, \\
- & \texttt{misleading\_context} 12, \texttt{quote} 11, other 6 \\
+Claim type & \texttt{provenance} 161 (79.7\%), \texttt{event} 12, \texttt{misleading\_context} 12, \texttt{quote} 11, other 6 \\
 Media & video 200, photo 2 \\
-Fact-checker & Alt News 170, Lead Stories 14, BOOM 4, \\
- (\texttt{validation}) & Check Your Fact 2, others 3 \\
-Modality present & caption 192/193, audio 163/193, OCR 91/193 \\
- (\texttt{validation}) & (visual-context analysis deferred on 115) \\
+Fact-checker (val.) & Alt News 170, Lead Stories 14, BOOM 4, Check Your Fact 2, others 3 \\
+Modality (val.) & caption 192/193, audio 163/193, OCR 91/193; visual-context analysis deferred on 115 \\
 Cross-post links & 206 documented same-media relationships \\
 \bottomrule
 \end{tabular}
@@ -1087,14 +1087,15 @@ finding (Baseline 2 66.7\%, Baseline 3 50.0\%, both ahead of TruthLens).
 \label{tab:table2}
 \centering
 \scriptsize
+\setlength{\tabcolsep}{4pt}
 \begin{tabular}{lrrl}
 \toprule
-Config & Superseded Acc.\ & Corrected Acc.\ & 95\% CI (corrected) \\
+Config & Superseded & Corrected & 95\% CI \\
 \midrule
-B1: LLM-only & 0.0\% & 0.0\% & [0.0,39.0] \\
-B2: Search+LLM & 66.7\% & 50.0\% & [18.8,81.2] \\
-B3: Search+RAG+LLM & 50.0\% & 0.0\% & [0.0,39.0] \\
-Full TruthLens & 33.3\% & 33.3\% & [9.7,70.0] \\
+B1: LLM-only & 0.0\% & 0.0\% & [0.0, 39.0] \\
+B2: Search+LLM & 66.7\% & 50.0\% & [18.8, 81.2] \\
+B3: Search+RAG+LLM & 50.0\% & 0.0\% & [0.0, 39.0] \\
+Full TruthLens & 33.3\% & 33.3\% & [9.7, 70.0] \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1162,6 +1163,27 @@ validator false negative (item-0004), not a general disadvantage.
 table} (superseded by Table~\ref{tab:table2} above) is not cited as
 evidence for any claim going forward and is retained only for the
 historical record, in Appendix~\ref{sec:appendixsuperseded}.
+
+\subsection{A real gap found and fixed during the six-item re-run, and known
+disclosed gaps}
+Extending the pipeline run to items 0008/0009 hit a genuine
+\texttt{MissingGreenlet} crash -- the same bug class already fixed once in
+production code -- after a per-claim exception handler called
+\texttt{db.rollback()}, the next line's synchronous attribute access on an
+already-expired ORM object crashed the whole script instead of recording
+just that one claim's failure. Fixed by capturing needed values before the
+try block, matching the earlier production fix's pattern; re-verified
+live, the script then completed without crashing
+(Section~\ref{sec:failuremodes}). Items 0008/0009's full-TruthLens
+condition remains blocked by a real Gemini free-tier quota exhaustion,
+confirmed live (two consecutive 429s, one from evidence-analysis
+escalation, one from claim-extraction escalation) -- an external,
+time-of-day resource constraint, not a system defect. Baselines 1--3
+completed for both items (no Gemini dependency by design). Per-class F1
+and full precision/recall breakdowns are not computed at this sample
+size, where several label classes appear 0--1 times and per-class F1
+would mostly be undefined or single-observation -- a scope decision, not
+an omission dressed up with misleadingly precise zeros and ones.
 
 \subsection{\textsc{TruthLens-202}: local-only end-to-end evaluation ($n=193$)}
 \label{sec:tl202eval}
@@ -1331,27 +1353,6 @@ does not provide. Section~\ref{sec:futurework} lists the configurations
 (larger local model, a vision-first extraction path, a metered cloud
 escalation tier) whose evaluation against this same held-out split is
 now the open work.
-
-\subsection{A real gap found and fixed during this exact run, and known
-disclosed gaps}
-Extending the pipeline run to items 0008/0009 hit a genuine
-\texttt{MissingGreenlet} crash -- the same bug class already fixed once in
-production code -- after a per-claim exception handler called
-\texttt{db.rollback()}, the next line's synchronous attribute access on an
-already-expired ORM object crashed the whole script instead of recording
-just that one claim's failure. Fixed by capturing needed values before the
-try block, matching the earlier production fix's pattern; re-verified
-live, the script then completed without crashing
-(Section~\ref{sec:failuremodes}). Items 0008/0009's full-TruthLens
-condition remains blocked by a real Gemini free-tier quota exhaustion,
-confirmed live (two consecutive 429s, one from evidence-analysis
-escalation, one from claim-extraction escalation) -- an external,
-time-of-day resource constraint, not a system defect. Baselines 1--3
-completed for both items (no Gemini dependency by design). Per-class F1
-and full precision/recall breakdowns are not computed at this sample
-size, where several label classes appear 0--1 times and per-class F1
-would mostly be undefined or single-observation -- a scope decision, not
-an omission dressed up with misleadingly precise zeros and ones.
 
 \section{Ablation Study}
 \label{sec:ablation}
@@ -2427,16 +2428,17 @@ advantage materializes.
 \label{tab:whenhelps}
 \centering
 \scriptsize
-\begin{tabular}{lccc}
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{lccl}
 \toprule
-Item & Multi-claim? & Claim extracted? & TruthLens vs.\ B2 \\
+Item & Multi-claim? & Extracted? & TL vs.\ B2 \\
 \midrule
 item-0001 & Yes (4) & Yes & Both correct \\
 item-0002 & Yes (2) & Yes & Both correct \\
 item-0004 & No (1) & Yes & B2 only correct \\
 item-0005 & Yes (2) & Yes & Both wrong \\
-item-0006 & No (0) & \textbf{No} & Both wrong (TruthLens abstains) \\
-item-0007 & No (0) & \textbf{No} & Both wrong (TruthLens abstains) \\
+item-0006 & No (0) & \textbf{No} & Both wrong; TL abstains \\
+item-0007 & No (0) & \textbf{No} & Both wrong; TL abstains \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -3498,7 +3500,7 @@ attempt hit an already-active Gemini cooldown from concurrent earlier
 work (0/20 retries fired); clean rows 6/20. Attempt 2, run after that
 cooldown's own end time: the first retry attempt returned a real HTTP
 429 (``Quota exceeded for metric:
-\texttt{generativelanguage.googleapis.com/generate\_content\_free\_tier\_requests},
+\texttt{generativelanguage.googleapis.com/\allowbreak generate\_\allowbreak content\_\allowbreak free\_\allowbreak tier\_\allowbreak requests},
 limit: 20''), setting a fresh cooldown that blocked the remaining 19
 retries too; clean rows 5/20. One clean reclassification
 (\texttt{contradicts} $\to$ \texttt{temporally\_mismatched}) is reported

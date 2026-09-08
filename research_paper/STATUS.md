@@ -1,11 +1,35 @@
 # Paper status
 
-Last updated: 2026-09-09 (eleventh update: TruthLens-202 local-only
-end-to-end evaluation folded in -- first real result on the 193-item
-validation split). See below for this pass's summary; prior updates
+Last updated: 2026-09-09 (twelfth update: tighten-and-polish pass on top
+of the eleventh's TruthLens-202 evaluation). See below; prior updates
 preserved unedited underneath.
 
-## Latest update (this pass, 2026-09-09) -- TruthLens-202 local-only evaluation
+## Latest update (this pass, 2026-09-09) -- tighten and polish
+
+Structural/readability pass, no new results:
+
+- **Results section reordered** so the two evaluations are cleanly
+  separated: VII-A methodological correction -> VII-B six-item headline
+  -> VII-C "a real gap found and fixed during the six-item re-run"
+  (retitled from "...during this exact run" -- ambiguous once there are
+  two runs) -> VII-D \textsc{TruthLens-202} local-only evaluation
+  ($n$=193). All six-item material now precedes all 193-item material.
+- **All 7 overfull hboxes eliminated (now 0).** Fixes: `\tabcolsep`
+  reduced and headers shortened on the related-work table (Tab.~I), the
+  RQ-status table (Tab.~II), the six-item comparison table
+  (Tab.~V: "Superseded Acc." -> "Superseded", etc.), and the per-item
+  conditions table (Tab.~whenhelps: "TruthLens" -> "TL"); the
+  \textsc{TruthLens-202} composition table (Tab.~IV) switched to
+  wrapping `p{}` columns with abbreviated row labels; one TikZ
+  architecture-diagram node reworded ("substantiveness-check" ->
+  "quality-check"); one long appendix URL made line-breakable with
+  `\allowbreak`.
+- Compile clean via `tectonic` 0.17.0: 0 overfull, no undefined
+  refs/citations, no multiply-defined labels (only the standing
+  `TU/ptm` font-substitution notes). 34 pages, unchanged. Visually
+  re-verified pages 4, 9, 11, 12.
+
+## Prior update (eleventh, 2026-09-09) -- TruthLens-202 local-only evaluation
 
 Runs the full pipeline over all 193 `validation` items in the local
 -only configuration (every LLM stage on local `llama3.2` 3B, keyless
