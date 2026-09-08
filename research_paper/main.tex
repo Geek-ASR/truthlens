@@ -82,10 +82,19 @@ professional fact-check via a verbatim evidence quote under a review-gated
 annotation protocol, with 206 documented same-media cross-post
 relationships. We report its full composition, including three
 domain-driven skews (83\% \texttt{FALSE}, 80\% X-sourced, 80\%
-provenance-type claims) and a source concentration ($\sim$88\% Alt News),
-and are explicit that \emph{no reel-level accuracy on
-\textsc{TruthLens-202} is reported here} -- running the full pipeline over
-it, and a second independent annotator pass, are the immediate next steps.
+provenance-type claims) and a source concentration ($\sim$88\% Alt News).
+We then run the complete pipeline over all 193 validation items in a
+\$0, no-API-key, fully local configuration (every stage on a local 3B
+model, keyless search, no cloud escalation). The result is deliberately
+unflattering and is reported as a floor, not a headline: only 34.7\% of
+items produce a verdict at all, and on those the bucketed accuracy is
+29.9\% (Wilson 95\% CI [20.2, 41.7]), below an always-\texttt{FALSE}
+baseline's balanced accuracy. The binding constraint is localised
+precisely -- claim extraction, not evidence retrieval (0\%
+research-failure) or verdict reasoning: 65.3\% of real posts yield no
+checkable claim to the local model, and the \texttt{MISLEADING} class is
+never once recovered (0/7). Strengthening that configuration, and a
+second independent annotator pass, are the stated next steps.
 Alongside these we report the evidence-quality picture behind the frozen
 results (a primary-source domain-restriction fix moving source-tier
 classification from $\sim$11\% to 95\% of retrieved sources; a still-open
@@ -164,10 +173,14 @@ comparison, we release \textsc{TruthLens-202}: a 202-item held-out
 corpus of real short-form political posts across X, Instagram and
 Facebook, built once a measured structural finding showed
 Instagram-only sourcing to be capped at roughly one usable item per 900
-candidates screened. \textsc{TruthLens-202} is presented as an
-evaluation artifact with its construction and limitations documented in
-full (Section~\ref{sec:truthlens202}); it has not yet been run through
-the pipeline, and no accuracy on it is reported here. We report every
+candidates screened. \textsc{TruthLens-202}'s construction and limitations are documented in
+full (Section~\ref{sec:truthlens202}), and we report the first
+end-to-end run over its 193 validation items in a \$0 local-only
+configuration (Section~\ref{sec:tl202eval}): a deliberate floor, on
+which 34.7\% of posts reach a verdict and bucketed accuracy is 29.9\%,
+with claim extraction -- not retrieval or verdict reasoning --
+identified as the component that decides whether a post gets checked
+at all. We report every
 result this comparison produced, including one that is not flattering
 but not about TruthLens: a subsequent, skeptical audit of our own
 experimental design found that the baselines had been given a cleaner
@@ -426,8 +439,12 @@ experiments in Sections~\ref{sec:results}--\ref{sec:bce} actually support:
   cross-post relationships (Section~\ref{sec:truthlens202}). Its full
   composition and limitations -- a single LLM-assisted reviewer,
   $\sim$88\% single-source ground truth, and three domain-driven skews --
-  are reported; end-to-end evaluation on it is explicitly left as future
-  work, so it is a contributed artifact, not a contributed result.
+  are reported in full. We also contribute the first end-to-end result
+  on it (Section~\ref{sec:tl202eval}): a local-only, \$0 configuration
+  run over all 193 validation items, reported as a floor -- 34.7\% of
+  posts reach a verdict, 29.9\% bucketed accuracy on those, and claim
+  extraction identified as the binding constraint (65.3\%
+  no-checkable-claim rate at 0\% infrastructure failure).
 \end{enumerate}
 
 TruthLens does not claim to have invented retrieval-augmented LLM
@@ -773,8 +790,10 @@ computed; it is small by deliberate, disclosed choice
 \textbf{\textsc{TruthLens-202}} (Section~\ref{sec:truthlens202}) is a
 separate, larger \texttt{validation} split, built after the frozen
 comparison, that the platform-scope and sourcing findings of this program
-made feasible; it is a corpus for future end-to-end evaluation, and no
-reel-level accuracy on it is reported in this paper.
+made feasible. It is evaluated end-to-end once here, in a single
+local-only configuration (Section~\ref{sec:tl202eval}); that number is
+reported as a floor and is kept strictly separate from the frozen
+\texttt{dev}-split results, which it does not affect.
 
 \subsection{Ground-truth tiers}
 \textbf{Tier 1 (used for every item in this evaluation):} the claim in the
@@ -864,12 +883,14 @@ $n=1$-per-comparison.
 
 The 9-item comparison set above is frozen and never expanded. Separately,
 this program built a larger held-out corpus, \textsc{TruthLens-202}, for
-future end-to-end evaluation. It comprises 202 real short-form political
+end-to-end evaluation. It comprises 202 real short-form political
 posts: the 9 comparison items form its \texttt{dev} split, and 193 newly
-collected items form a \texttt{validation} split that no result in this
-paper touches. We describe how it was built, its composition, and its
-limitations in full, because the way an evaluation set is constructed is
-itself a claim that should be checkable.
+collected items form a \texttt{validation} split, evaluated once in this
+paper (local-only configuration, Section~\ref{sec:tl202eval}) and kept
+separate from the frozen \texttt{dev}-split results. We describe how it
+was built, its composition, and its limitations in full, because the way
+an evaluation set is constructed is itself a claim that should be
+checkable.
 
 \subsubsection{Why the platform scope was relaxed}
 The five earlier sourcing passes (Sections~\ref{sec:dataset},
@@ -987,9 +1008,11 @@ in this paper was tuned on \textsc{TruthLens-202}; it did not exist when
 the frozen comparison was run.
 
 \subsubsection{Limitations, stated plainly}
-\textbf{(1)~Not yet evaluated.} No item in the \texttt{validation} split
-has been run through the full TruthLens pipeline; this paper reports the
-corpus, not a result on it. \textbf{(2)~Single, LLM-assisted reviewer.}
+\textbf{(1)~One configuration evaluated so far.} All 193
+\texttt{validation} items have been run end-to-end, but only in the
+local-only configuration (Section~\ref{sec:tl202eval}); the larger-local
+-model, vision-first, and cloud-escalation configurations are not yet
+measured against this split. \textbf{(2)~Single, LLM-assisted reviewer.}
 The claim phrasing, label mapping, and cross-post/reject decisions were
 produced by one reviewer working with LLM assistance, not by two
 independent human annotators, so no inter-annotator agreement statistic
@@ -1139,6 +1162,175 @@ validator false negative (item-0004), not a general disadvantage.
 table} (superseded by Table~\ref{tab:table2} above) is not cited as
 evidence for any claim going forward and is retained only for the
 historical record, in Appendix~\ref{sec:appendixsuperseded}.
+
+\subsection{\textsc{TruthLens-202}: local-only end-to-end evaluation ($n=193$)}
+\label{sec:tl202eval}
+The frozen six-item comparison above measures the architecture against
+its baselines under a controlled claim input. It says nothing about how
+the deployed system behaves on a large, uncurated sample of the content
+it targets. \textsc{TruthLens-202}'s \texttt{validation} split
+(Section~\ref{sec:truthlens202}) is that sample, and this subsection
+reports the first end-to-end run over all 193 of its items.
+
+\paragraph{Configuration and what it measures}
+The run uses the \emph{local-only} configuration: every LLM stage
+(claim extraction, research planning, evidence analysis, verdict) on the
+local \texttt{llama3.2} 3B model, keyless DuckDuckGo search, and
+\emph{no} cloud escalation -- \texttt{GEMINI\_API\_KEY} unset, so every
+quality-retry path in the code is inert. This is the \$0, no-API-key,
+no-rate-limit configuration the project targets, and it is the honest
+floor: any cloud escalation can only raise these numbers. Ingestion was
+not re-run (each item keeps the real transcript/OCR from its promotion
+pass); the run executes the exact production stage functions in the
+\texttt{orchestrator.analyze\_reel} order, then the deterministic
+\texttt{derive\_overall\_verdict}. Full per-item output:
+\texttt{research/results/local\_eval\_v2.jsonl}; scorer:
+\texttt{research/benchmark\_v2/score\_local\_eval.py}. No prompt,
+threshold, or model choice was changed in response to these results --
+they are reported as first-run.
+
+\paragraph{Headline: the system declines far more often than it decides}
+Table~\ref{tab:tl202eval} gives the outcome distribution.
+\textbf{Only 34.7\% of items (67/193) produce a verdict at all};
+65.3\% end in \texttt{no\_verifiable\_claims} -- the local model
+extracted nothing checkable from the post's transcript, OCR, and
+caption. The infrastructure-failure rate is \textbf{0\%}: every one of
+those 126 non-verdicts is a model-capability outcome, not a crashed
+search backend. On the 67 resolved items, bucketed accuracy (TRUE/
+MOSTLY\_TRUE, FALSE/MOSTLY\_FALSE, and MISLEADING/MISSING\_CONTEXT/
+OUTDATED collapsed; \texttt{UNVERIFIED} never a match, per
+Section~\ref{sec:expmethodology}) is \textbf{29.9\% (20/67), Wilson 95\% CI
+[20.2\%, 41.7\%]}. Balanced accuracy (mean per-bucket recall) is
+\textbf{22.2\%}, which is \emph{below} the 33.3\% an always-\texttt{FALSE}
+constant predictor scores on that metric -- the system is not, on this
+sample and in this configuration, extracting usable signal at the
+reel level.
+
+\begin{table}[!t]
+\caption{\textsc{TruthLens-202} local-only run: outcomes and headline metrics ($n=193$)}
+\label{tab:tl202eval}
+\centering
+\footnotesize
+\begin{tabular}{@{}lr@{}}
+\toprule
+Quantity & Value \\
+\midrule
+Resolved (produced a verdict) & 67 / 193 \quad(34.7\%) \\
+\texttt{no\_verifiable\_claims} & 126 / 193 \quad(65.3\%) \\
+\texttt{research\_failed} / \texttt{error} & 0 / 0 \\
+\midrule
+Bucketed accuracy (resolved) & 20 / 67 \quad(29.9\%) \\
+\quad Wilson 95\% CI & [20.2\%,\ 41.7\%] \\
+Balanced accuracy (mean bucket recall) & 22.2\% \\
+Always-\texttt{FALSE} baseline (bal.\ acc.) & 33.3\% \\
+Macro-F1 (3 GT-present classes) & 0.194 \\
+Abstention rate (\texttt{UNVERIFIED} / resolved) & 29 / 67 \quad(43.3\%) \\
+False-abstention rate (all items) & 155 / 193 \quad(80.3\%) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=0.92\linewidth]{figures/fig9_local_eval_outcomes.pdf}
+\caption{Pipeline outcome for all 193 \texttt{validation} items,
+local-only configuration. The \texttt{no\_verifiable\_claims} slice --
+posts from which the local 3B model extracts nothing checkable -- is
+almost twice the size of the slice that reaches a verdict.}
+\label{fig:tl202outcomes}
+\end{figure}
+
+\paragraph{The binding constraint is claim extraction, upstream of everything else}
+The 0\% research-failure rate rules out the search backend. The
+per-class picture (Table~\ref{tab:tl202perclass},
+Fig.~\ref{fig:tl202perclass}) localises the rest: \texttt{FALSE} --
+83\% of the corpus -- is recovered with precision 0.80 but recall only
+0.21; the model is accurate \emph{when} it commits to \texttt{FALSE},
+but commits rarely. \texttt{MISLEADING} is \textbf{never once recovered
+(0/7)}: the local model has no working notion of the ``authentic
+material, false framing'' category that is the dominant real-world
+pattern (80\% of the corpus is provenance-type). Inspection of the 11
+resolved items where a \texttt{FALSE}/\texttt{MISLEADING} claim received
+an affirmative (\texttt{TRUE}/\texttt{MOSTLY\_TRUE}) verdict shows the
+same root cause as the abstentions: the ``claim'' the model extracted
+was a fragment of on-screen dialogue (``These scopes are there!'';
+``Where did you go?''; a recital of the US Pledge of Allegiance), not
+the post's actual assertion. The pipeline then correctly verified a
+trivially-true fragment -- a claim-\emph{coverage} failure
+(Section~\ref{sec:multimodalanalysis}), not a verdict-reasoning failure.
+
+\begin{table}[!t]
+\caption{Per-class performance on resolved items ($n=67$). Classes with zero support and zero predictions omitted.}
+\label{tab:tl202perclass}
+\centering
+\footnotesize
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+Class & Precision & Recall & F1 & Support \\
+\midrule
+\texttt{FALSE}      & 0.80 & 0.21 & 0.33 & 57 \\
+\texttt{MISLEADING} & 0.00 & 0.00 & 0.00 & 7 \\
+\texttt{TRUE}       & 0.20 & 0.33 & 0.25 & 3 \\
+\midrule
+\multicolumn{4}{@{}l}{Macro-F1 (unweighted over the 3 classes)} & 0.194 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[!t]
+\caption{Confusion matrix, resolved items ($n=67$), ground-truth bucket $\times$ predicted bucket.}
+\label{tab:tl202confusion}
+\centering
+\footnotesize
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+GT $\downarrow$ / Pred $\rightarrow$ & \texttt{FALSE} & \texttt{MISL.} & \texttt{TRUE} & \texttt{UNVER.} \\
+\midrule
+\texttt{FALSE} ($n=57$)      & \textbf{19} & 1 & 10 & 27 \\
+\texttt{MISLEADING} ($n=7$)  & 4 & \textbf{0} & 1 & 2 \\
+\texttt{TRUE} ($n=3$)        & 1 & 1 & \textbf{1} & 0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=0.92\linewidth]{figures/fig11_local_eval_perclass_f1.pdf}
+\caption{Per-class precision, recall, and F1 on the 67 resolved
+\textsc{TruthLens-202} items. \texttt{FALSE} carries the only non-trivial
+signal, and even there recall is 0.21; \texttt{MISLEADING} is a total
+miss.}
+\label{fig:tl202perclass}
+\end{figure}
+
+\paragraph{Breakdowns}
+Accuracy on resolved items does not move meaningfully with the corpus's
+known skews. By platform: Facebook 4/7, X 15/54 (27.8\%), Instagram
+1/6. By language: English 30.2\% (16/53), Hindi 33.3\% (4/12), Bengali
+0/2. By ground-truth label: \texttt{FALSE} 33.3\% (19/57),
+\texttt{MISLEADING} 0/7, \texttt{TRUE} 1/3. Crucially, the 78 items
+that \emph{did} carry a backfilled vision context scored no better
+(27.6\%, 8/29 resolved) than the 115 without it (31.6\%, 12/38) --
+consistent with the pre-registered concern that \texttt{llava-phi3} on
+compressed social-video keyframes adds little, and evidence that the
+deferred visual analysis (Section~\ref{sec:truthlens202}, limitation 4)
+is not the missing piece here.
+
+\paragraph{What this is, and is not}
+This is a first-run, single-configuration floor on a
+deliberately-skewed, single-annotator corpus; it is not a bound on the
+architecture. It establishes three things concretely: (i) with a local
+3B model, \emph{claim extraction} -- not retrieval, not verdict
+reasoning -- is the component that determines whether short-form
+political misinformation gets checked at all, and it fails on roughly
+two-thirds of real posts; (ii) the deterministic safeguards hold up
+where they run (0\% research-failure, high \texttt{FALSE} precision, no
+crash across 193 items); (iii) the \texttt{MISLEADING}/provenance
+category needs explicit modelling that the current text-only extraction
+does not provide. Section~\ref{sec:futurework} lists the configurations
+(larger local model, a vision-first extraction path, a metered cloud
+escalation tier) whose evaluation against this same held-out split is
+now the open work.
 
 \subsection{A real gap found and fixed during this exact run, and known
 disclosed gaps}
@@ -2062,11 +2254,15 @@ annotation step in which a single reviewer adjudicates each screened
 candidate against the full professional fact-check article. This grew
 the \texttt{validation} split from 13 to 193 items (202 including the
 frozen \texttt{dev} set), yielding the \textsc{TruthLens-202} corpus
-described in Section~\ref{sec:truthlens202}. The corpus is built but not
-yet evaluated end-to-end, and its construction carries its own disclosed
-limitations (single LLM-assisted reviewer; $\sim$88\% single-source
-ground truth; three domain-driven skews), all stated in
-Section~\ref{sec:truthlens202}.
+described in Section~\ref{sec:truthlens202}. That corpus is then
+evaluated end-to-end once, in a \$0 local-only configuration
+(Section~\ref{sec:tl202eval}), which surfaces its own finding: on real,
+uncurated short-form posts the local 3B model fails to extract a
+checkable claim from 65.3\% of them, making claim extraction -- not
+retrieval or verdict reasoning -- the binding constraint. Its
+construction carries its own disclosed limitations (single LLM-assisted
+reviewer; $\sim$88\% single-source ground truth; three domain-driven
+skews), all stated in Section~\ref{sec:truthlens202}.
 
 \section{A Taxonomy of Failure Modes Found in Live Testing}
 \label{sec:failuremodes}
@@ -2127,8 +2323,9 @@ program's own benchmark construction:
 \label{sec:threats}
 Twelve threats, stated here at the density needed to be checkable; full
 reasoning for the first ten: Appendix~\ref{sec:appendixthreats}. The last
-two concern the \textsc{TruthLens-202} corpus and are detailed in
-Section~\ref{sec:truthlens202}.
+two concern the \textsc{TruthLens-202} corpus and its local-only
+evaluation and are detailed in Sections~\ref{sec:truthlens202} and
+\ref{sec:tl202eval}.
 
 \begin{itemize}
 \item \textbf{Small, non-independent sample.} $n=9$ (6 resolved from
@@ -2172,13 +2369,17 @@ Section~\ref{sec:truthlens202}.
   professional fact-check via a recorded verbatim quote, which bounds
   the risk, but the claim phrasing and label mapping are unaudited --
   a circularity concern given that an LLM-based system is the intended
-  evaluee. No result on that split is reported until this is addressed.
+  evaluee. The Section~\ref{sec:tl202eval} result is reported with this
+  caveat attached and as a floor, not a validated headline; a
+  second-annotator pass is the top open item
+  (Section~\ref{sec:futurework}).
 \item \textbf{\textsc{TruthLens-202} is $\sim$88\% single-source (Alt
   News) and carries three domain-driven skews} (83\% \texttt{FALSE},
-  80\% X-sourced, 80\% \texttt{provenance}-type); any end-to-end
-  evaluation on it must use balanced, per-class metrics and treat the
-  source concentration as a coverage limitation, not a representative
-  sample of the fact-checking ecosystem.
+  80\% X-sourced, 80\% \texttt{provenance}-type). The
+  Section~\ref{sec:tl202eval} evaluation therefore leads with balanced
+  accuracy and per-class F1, not raw accuracy, and treats the source
+  concentration as a coverage limitation, not a representative sample
+  of the fact-checking ecosystem.
 \end{itemize}
 
 \section{Discussion}
@@ -2289,18 +2490,24 @@ tuned against knowing the right answer. We would rather report a real
 
 \begin{enumerate}
 \item \textbf{Scale the held-out benchmark past $n=9$} -- \emph{addressed
-  as a corpus; end-to-end evaluation now the open work}. The benchmark
-  grew to 15 (Section~\ref{sec:foundationphase}), then to 22 under an
+  as a corpus and evaluated once; stronger configurations now the open
+  work}. The benchmark grew to 15
+  (Section~\ref{sec:foundationphase}), then to 22 under an
   Instagram-only constraint (Section~\ref{sec:massSourcing}) at a
   measured yield of roughly one item per 900 candidates. Relaxing that
   constraint to all short-form platforms and adding a review-gated
   annotation step grew the \texttt{validation} split to 193 items --
-  \textsc{TruthLens-202} (Section~\ref{sec:truthlens202}). What remains:
-  (a)~run the full TruthLens pipeline over all 193 \texttt{validation}
-  items and report reel-level accuracy with per-class breakdowns
-  (balanced, given the 83\% \texttt{FALSE} skew); (b)~a second
-  independent annotator pass (item~8); (c)~a backfill of the deferred
-  vision-context stage on 115 items; (d)~broaden the ground-truth base
+  \textsc{TruthLens-202} (Section~\ref{sec:truthlens202}) -- which was
+  then run end-to-end in the local-only configuration
+  (Section~\ref{sec:tl202eval}: 29.9\% bucketed accuracy on the 34.7\%
+  of items that resolve; claim extraction the binding constraint). What
+  remains: (a)~re-run the same held-out split under a larger local model
+  (\texttt{llama3.1:8b}/\texttt{mistral}) and a metered cloud-escalation
+  tier, reporting the three as an ablation of capability vs.\ cost;
+  (b)~a vision-first claim-extraction path for provenance-type posts,
+  where the visual \emph{is} the claim and text-only extraction (shown
+  here to fail on 65\% of items) cannot succeed; (c)~a second
+  independent annotator pass (item~8); (d)~broaden the ground-truth base
   beyond the current $\sim$88\% single-source concentration.
 \item \textbf{Diagnose and close claim-extraction coverage failures on
   degraded audio.} Still open -- EXP-016
@@ -2338,8 +2545,9 @@ tuned against knowing the right answer. We would rather report a real
   the 165 review-gated claim/label annotations in
   \textsc{TruthLens-202}'s \texttt{validation} split, whose phrasing and
   label mapping are currently the work of a single LLM-assisted reviewer
-  (Section~\ref{sec:truthlens202}). This is the top open item before any
-  result on that split can be reported.
+  (Section~\ref{sec:truthlens202}). This is the top open item before the
+  local-only result (Section~\ref{sec:tl202eval}) can be treated as a
+  validated headline rather than a floor.
 \item \textbf{The \texttt{.gov.in} full-page-fetch reliability gap}
   (403s, TLS failures) remains open; closing it needs a scoped
   certificate-verification exception or further diagnosis.
@@ -2539,22 +2747,28 @@ sourcing method -- a subsequent pass relaxed the platform scope to all
 short-form political posts and added a review-gated annotation step,
 growing the \texttt{validation} split from 13 to 193 items:
 \textsc{TruthLens-202} (Section~\ref{sec:truthlens202}). This makes a
-benchmark at the scale this program set out to build finally available.
-It is deliberately reported as a corpus, not a result: no item in the
-\texttt{validation} split has been run through the pipeline, its
-claim/label annotations are one LLM-assisted reviewer's work pending a
-second annotator, $\sim$88\% of its ground truth is from a single
-organization, and its label/platform/claim-type distributions carry
-three domain-driven skews that any evaluation on it must handle with
-per-class metrics. Every one of those limitations is stated in full in
-Section~\ref{sec:truthlens202}, not softened here.
+benchmark at the scale this program set out to build finally available,
+and we run the full pipeline over all 193 of its \texttt{validation}
+items once, in a \$0 local-only configuration
+(Section~\ref{sec:tl202eval}). That result is reported as a floor, with
+its limitations stated rather than softened: 34.7\% of posts reach a
+verdict at all, bucketed accuracy on those is 29.9\% (below an
+always-\texttt{FALSE} baseline on balanced accuracy), the annotations
+are one LLM-assisted reviewer's work pending a second annotator, and the
+corpus carries a single-source majority and three domain-driven skews.
+Its one firm, transferable finding is diagnostic: with a local 3B model,
+\emph{claim extraction} -- not retrieval (0\% infrastructure failure)
+and not verdict reasoning -- is what determines whether short-form
+political misinformation gets checked, and it fails on roughly
+two-thirds of real posts.
 
 Work on this program is paused at this point. What is left open, stated
 as concretely as everything reported above: the \texttt{validation}
-split exists at $n=193$ but has not been evaluated end-to-end, and doing
-so -- with a second independent annotator, a balanced per-class metric,
-a vision-context backfill on 115 items, and a broader ground-truth base
-than the current single-source majority -- is the immediate next work
+split has been evaluated only in the local-only configuration, and the
+larger-local-model, vision-first, and metered-cloud-escalation
+configurations -- reported together as a capability-vs.-cost ablation --
+plus a second independent annotator and a broader ground-truth base are
+the immediate next work
 (Section~\ref{sec:futurework}); RQ5 and RQ6 remain deferred for the same
 pre-registered reason as before; the claim-extraction coverage gap, the
 cross-post attribution problem, and the verdict-stage

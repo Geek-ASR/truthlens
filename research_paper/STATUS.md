@@ -1,10 +1,86 @@
 # Paper status
 
-Last updated: 2026-09-08 (tenth update: TruthLens-202 benchmark folded
-in + professional-quality pass). See below for this pass's summary;
-prior updates preserved unedited underneath.
+Last updated: 2026-09-09 (eleventh update: TruthLens-202 local-only
+end-to-end evaluation folded in -- first real result on the 193-item
+validation split). See below for this pass's summary; prior updates
+preserved unedited underneath.
 
-## Latest update (this pass, 2026-09-08) -- TruthLens-202 + quality pass
+## Latest update (this pass, 2026-09-09) -- TruthLens-202 local-only evaluation
+
+Runs the full pipeline over all 193 `validation` items in the local
+-only configuration (every LLM stage on local `llama3.2` 3B, keyless
+DuckDuckGo search, `GEMINI_API_KEY` unset so every escalation path is
+inert -- the $0/no-key config the project targets) and folds the real
+numbers into the paper. No prompt/threshold/model choice was changed in
+response to the results; reported as a first-run floor.
+
+**How it was run (no app redesign):**
+
+- New `backend/research/benchmark_v2/run_local_eval.py` -- resumable
+  harness that executes the exact production stage functions
+  (`claim_extraction` -> `research_planning` -> `search_fetch` ->
+  `evidence_analysis` -> `verdict`) in `orchestrator.analyze_reel`
+  order, then `derive_overall_verdict`, one METRICS.md-schema row per
+  item. Refuses to start if a Gemini key is present. Ingestion not
+  re-run (reuses each item's real transcript/OCR from promotion).
+- New `score_local_eval.py` -- METRICS.md-exact scoring: bucketed
+  accuracy over `resolved` items, balanced accuracy, macro/per-class
+  F1, confusion matrix, abstention / false-abstention / research-failed
+  rates reported separately, Wilson CIs, breakdowns by
+  platform/label/language/vision-availability.
+- New `figures_local_eval.py` -- `fig9` (outcome distribution) and
+  `fig11` (per-class P/R/F1) into `research_paper/figures/`, house
+  style; refuses to draw if the run is incomplete.
+- Raw output: `research/results/local_eval_v2.jsonl` (193 rows),
+  `LOCAL_EVAL_V2_REPORT.md`, `local_eval_v2_scores.json`.
+
+**The result (real, first-run, local-only):**
+
+- Outcome split: **67/193 resolved (34.7%)**, **126/193
+  `no_verifiable_claims` (65.3%)**, 0 `research_failed`, 0 `error`.
+- Bucketed accuracy on resolved: **20/67 = 29.9%**, Wilson 95% CI
+  [20.2%, 41.7%]. Balanced accuracy **22.2%** -- *below* an
+  always-`FALSE` predictor's 33.3%. Macro-F1 **0.194**.
+- Per-class: `FALSE` P .80 / R .21; `MISLEADING` **0/7**; `TRUE` 1/3.
+- Abstention 43.3% of resolved; false-abstention 80.3% of all items.
+- The 11 "false claim -> affirmative verdict" cases are
+  claim-*coverage* failures (a dialogue fragment extracted instead of
+  the post's assertion), not verdict-reasoning failures.
+- Vision context gave no benefit (27.6% with vs 31.6% without).
+- Firm transferable finding: with a local 3B model, **claim extraction
+  -- not retrieval, not verdict reasoning -- is the binding
+  constraint**; it fails on ~2/3 of real posts.
+
+**Paper edits (main.tex):**
+
+- Abstract contribution (3) rewritten from "no accuracy reported" to
+  the full local-only result, framed as a floor.
+- New Results subsection `sec:tl202eval` ("TruthLens-202: local-only
+  end-to-end evaluation, n=193") -- config rationale, outcome +
+  headline table (Tab.~VI), per-class table (Tab.~VII), confusion
+  matrix (Tab.~VIII), Fig.~4/5, failure decomposition, breakdowns,
+  "what this is and is not".
+- `sec:truthlens202` limitation (1) changed from "not yet evaluated" to
+  "one configuration evaluated so far".
+- Contributions bullet 7, Intro, `sec:dataset` preamble,
+  `sec:massSourcing` bridge, Future Work items 1 & 8, Threats to
+  Validity (last two bullets), Conclusion -- all updated from
+  "corpus/artifact, no result" to "evaluated once, local-only floor;
+  stronger configs (8B local, vision-first extraction, metered cloud
+  escalation) reported as a capability/cost ablation is the open work".
+
+**Compile:** `tectonic` 0.17.0, clean -- no undefined refs/citations,
+no multiply-defined labels; 7 overfull hboxes, all pre-existing
+appendix/bib region, none new. **32 -> 34 pages.** Visually verified
+pages 1 (abstract), 11-12 (new subsection + 3 tables + 2 figures) via
+`pdftoppm`; two cosmetic fixes applied (paragraph-heading double
+punctuation; Fig.~4 x-axis label overlap) and re-verified.
+
+**Not changed:** the `[Affiliation placeholder -- TODO]` on page 1. The
+frozen 6-item comparison and all `n=6` results are untouched -- the
+local-only run writes to the separate `validation` split only.
+
+## Prior update (tenth, 2026-09-08) -- TruthLens-202 + quality pass
 
 Folds in the all-platform, review-gated benchmark-scaling session that
 grew the `validation` split from 13 to 193 items (202 with the frozen
