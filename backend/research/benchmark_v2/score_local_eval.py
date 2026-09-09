@@ -182,18 +182,27 @@ def main() -> None:
     n_rf = oc.get("research_failed", 0)
     n_err = oc.get("error", 0)
     abst = n_unv_resolved / n_res if n_res else 0.0
-    # every v2 item has a confident GT label -> "resolvable"; a UNVERIFIED
-    # output or a no_verifiable_claims outcome on such an item is a false
-    # abstention.
-    false_abst = (n_unv_resolved + n_novc) / n_scored if n_scored else 0.0
+    # METRICS.md defines "false-abstention rate" strictly as UNVERIFIED *outputs*
+    # (a produced verdict of UNVERIFIED) on a confidently-resolvable (Tier-1) item,
+    # over Tier-1 items. All 193 v2 items are Tier-1 by construction, so:
+    strict_false_abst = n_unv_resolved / n_scored if n_scored else 0.0
+    # The broader quantity below -- every item on which the system produced no
+    # committed verdict, for ANY reason -- is NOT the pre-registered false-abstention
+    # rate; it is a "declined-to-answer / non-response rate". Reported under its own
+    # name so the two are never conflated (prior versions mislabelled this "false
+    # abstention"; see EXPERIMENT_PROTOCOL_V3 / METRICS_ADDENDUM_V3).
+    non_response = (n_unv_resolved + n_novc + n_rf) / n_scored if n_scored else 0.0
     L.append("## Abstention and infrastructure outcomes\n")
     L.append(f"- Abstention rate (UNVERIFIED / resolved) = {n_unv_resolved}/{n_res} = {_pct(abst)}")
-    L.append(f"- False-abstention rate ((UNVERIFIED resolved + no_verifiable_claims) / scored, "
-             f"every GT label is confident) = {n_unv_resolved + n_novc}/{n_scored} = {_pct(false_abst)}")
+    L.append(f"- False-abstention rate, METRICS.md strict (UNVERIFIED outputs / Tier-1 items) "
+             f"= {n_unv_resolved}/{n_scored} = {_pct(strict_false_abst)}")
+    L.append(f"- Declined-to-answer / non-response rate ((UNVERIFIED-resolved + no_verifiable_claims "
+             f"+ research_failed) / scored) = {n_unv_resolved + n_novc + n_rf}/{n_scored} = {_pct(non_response)}")
     L.append(f"- Research-failed rate = {n_rf}/{n_scored} = {_pct(n_rf / n_scored) if n_scored else '-'}")
     L.append(f"- Errored items = {n_err}\n")
     scores["abstention_rate"] = abst
-    scores["false_abstention_rate"] = false_abst
+    scores["false_abstention_rate_strict"] = strict_false_abst
+    scores["non_response_rate"] = non_response
     scores["research_failed_rate"] = (n_rf / n_scored) if n_scored else None
 
     # --- breakdowns ---

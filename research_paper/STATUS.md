@@ -1,10 +1,76 @@
 # Paper status
 
-Last updated: 2026-09-09 (twelfth update: tighten-and-polish pass on top
-of the eleventh's TruthLens-202 evaluation). See below; prior updates
+Last updated: 2026-09-09 (thirteenth update: V3 experiment
+pre-registration + a live-defect fix). See below; prior updates
 preserved unedited underneath.
 
-## Latest update (this pass, 2026-09-09) -- tighten and polish
+## Latest update (this pass, 2026-09-09) -- V3 pre-registration + defect fix
+
+Sets up "one more experimental iteration" (improved claim extraction ->
+run on all 193 -> baselines on 193 -> full metric report -> second-pass
+annotation). A multi-agent design pass produced the plan; its verifier
+agents hit a session limit, so the author reconciled it against the
+rigor + feasibility lenses directly.
+
+**New pre-registration artifacts (committed before any V3 run):**
+
+- `research/EXPERIMENT_PROTOCOL_V3.md` -- the frozen protocol. Key
+  decisions: (1) claim-extraction v2 = 8B model for the extraction
+  stage ONLY (downstream stays 3B; an 8B smoke test measured ~90s/call
+  on this 8GB box, so all-stages-8B is infeasible) + a v5 prompt (6
+  changes, each tied to one observed failure type) + a deterministic
+  post-filter (F1 triviality / F2 recitation / F3a debunk-framing / F4
+  quote-sanitation / F5 incidental). (2) The proposed article-echo leak
+  guard (F3b) is CUT -- comparing the system's own output against
+  fact-check text and then scoring it is fatal contamination. (3)
+  Framing is post-registered, NOT blind: the failure types were read
+  off the published 3B run, so v2 is tuned only on the 9 dev items + a
+  synthetic diagnostic set and the 193 run is one held-out confirmation
+  shot. (4) Full-193 configs: C0 (3B+v4, frozen) / C1 (3B+v5+filter,
+  new) / C3 (8B-extraction+v5+filter, new); C2 (8B-extraction+v4) on
+  dev + a 40-item subsample; post-filter on/off is a free re-score. (5)
+  Baselines B1/B2/B3 x {SHARED = every config gets the same frozen v5
+  extraction claims; ORACLE = every config gets the reviewer's
+  ground_truth_claim, labeled a non-comparable upper bound}; verdict on
+  3B; one shared on-disk search cache so retrieval is held constant and
+  DuckDuckGo rate-limiting can't bias later configs. (6) Deterministic
+  n=56 second-pass subsample, PABAK/Gwet's AC1 as the headline agreement
+  stat (kappa paradox under 83% FALSE), disclosed as intra-project
+  LLM-assisted re-annotation, NOT an independent-human IAA study. (7) A
+  provenance no-claim adjudication rubric -- bin the no_verifiable_claims
+  items (i) correct scope-limited abstention / (ii) genuine text-coverage
+  failure / (iii) degraded input, judged against the actual ingested
+  text; report the adjusted coverage-failure rate as the lead number,
+  65.3% as deployment reality. (8) Pre-declared falsification criteria
+  (confirms / stronger-form / falsifies a-e / inconclusive band) with
+  each branch's paper rewrite drafted before the C3 numbers are seen.
+- `research/METRICS_ADDENDUM_V3.md` -- 12 metric definitions
+  pre-registered before the freeze (balanced accuracy on both
+  denominators; corpus-level bucketed accuracy; the false-abstention
+  relabel; macro-F1 scope; resolution & no-claim-rate formulas; the
+  baseline extraction-source condition; the ORACLE reference row;
+  claim-extraction instrumentation; is_visual_claim handling;
+  support-validity stratified sampling; constant-predictor references;
+  the ground_truth_tier backfill rule).
+
+**Live-defect fix applied to the shipped draft this pass:**
+
+- `score_local_eval.py` and Table VI called
+  `(UNVERIFIED-resolved + no_verifiable_claims)/193 = 155/193 = 80.3%`
+  the **"false-abstention rate"**. METRICS.md defines that term strictly
+  as UNVERIFIED *outputs* on Tier-1 items / Tier-1 items = **29/193 =
+  15.0%**. Table VI now shows the strict 15.0% AND relabels the 80.3%
+  figure as a **"declined-to-answer / non-response rate"**; the scorer
+  emits both under the correct names. Paper recompiles clean, 34 pages,
+  0 overfull.
+- `items_v2.jsonl`: `ground_truth_tier` backfilled to `1` on all 193
+  (every item traces to a professional fact-check with a verbatim anchor
+  quote -> Tier-1 by construction, which the scorer already assumed).
+
+No experiment has been run yet -- this pass only froze the protocol and
+fixed the metric label. The V3 runs are the next work.
+
+## Prior update (twelfth, 2026-09-09) -- tighten and polish
 
 Structural/readability pass, no new results:
 

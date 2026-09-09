@@ -114,6 +114,7 @@
     }
   },
   "abstention_rate": 0.43283582089552236,
-  "false_abstention_rate": 0.8031088082901554,
+  "false_abstention_rate_strict": 0.15025906735751296,
+  "non_response_rate": 0.8031088082901554,
   "research_failed_rate": 0.0
 }

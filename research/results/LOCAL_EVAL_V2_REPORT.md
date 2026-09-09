@@ -43,7 +43,8 @@
 ## Abstention and infrastructure outcomes
 
 - Abstention rate (UNVERIFIED / resolved) = 29/67 = 43.3%
-- False-abstention rate ((UNVERIFIED resolved + no_verifiable_claims) / scored, every GT label is confident) = 155/193 = 80.3%
+- False-abstention rate, METRICS.md strict (UNVERIFIED outputs / Tier-1 items) = 29/193 = 15.0%
+- Declined-to-answer / non-response rate ((UNVERIFIED-resolved + no_verifiable_claims + research_failed) / scored) = 155/193 = 80.3%
 - Research-failed rate = 0/193 = 0.0%
 - Errored items = 0
 
