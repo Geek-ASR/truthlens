@@ -1853,418 +1853,221 @@ Full latency/cost gap detail: Appendix~\ref{sec:appendixbce}.
 \section{Foundation-Phase System Extensions}
 \label{sec:foundationphase}
 
-A subsequent work program, run against a formal 13-phase research
-roadmap (\texttt{research/RESEARCH\_ROADMAP\_V2.md}), extended the
-dataset and system described above. \textbf{Scope discipline, stated up
-front:} none of this work re-measures reel-level accuracy or touches the
-frozen paired six-item comparison in Section~\ref{sec:results} -- the
-new benchmark items below are held in a \texttt{validation} split,
-explicitly not used for any tuning decision, and the formal
-DEV/VALIDATION/TEST freeze (this roadmap's own Phase 12) has not yet
-occurred. What follows is real, measured, component-level work,
-reported with the same discipline as everything above: every number
-traces to a versioned experiment in \texttt{experiments/registry.jsonl}
-(EXP-009 through EXP-029), and negative or inconclusive results are kept
-exactly as prominent as positive ones.
+A subsequent work program, run against a 13-phase research roadmap
+(\texttt{research/RESEARCH\_ROADMAP\_V2.md}), extended the dataset and
+system. \textbf{Scope discipline:} none of this re-measures reel-level
+accuracy or touches the frozen six-item comparison
+(Section~\ref{sec:results}); new benchmark items are held in a
+\texttt{validation} split used for no tuning decision. Every number
+traces to a versioned experiment (EXP-009--030,
+\texttt{experiments/registry.jsonl}; full numbers
+Appendix~\ref{sec:appendixfoundation}); negative and inconclusive
+results are kept as prominent as positive ones.
 
-\subsection{Dataset growth: 9 $\to$ 15 items}
-Six new items were sourced from the same professional fact-checking
-pool (BOOM Live, Alt News), each independently verified: a live
-Instagram URL check, and content-hash deduplication against every
-existing item. Composition shifted from 7 FALSE / 1 MISLEADING / 1 TRUE
-to 12 FALSE / 2 MISLEADING / 1 TRUE (still no second TRUE-labeled item
-despite two dedicated sourcing passes -- consistent with, not a failure
-of, the already-disclosed structural skew in
-Section~\ref{sec:datasetgaps}: professional fact-checkers publish far
-more debunks than confirmations). All six new items were fully
-ingested (real transcription, OCR, vision-context) and assigned to a
-\texttt{validation} split held separate from the original nine's
-\texttt{dev} split -- the first genuine split discipline this project
-has had, short of the $\sim$20--30 item target Future Work already
-named.
-
-\subsection{Two new deterministic validator checks, integrated with measured evidence}
+\subsection{Dataset growth and two new validator checks}
 \label{sec:newchecks}
-Two new checks were added to \texttt{validate\_verdict()}, each
-following the same discipline as the original four
-(Section~\ref{sec:evidencevalidation}): prototyped independently, not
-integrated until real evaluation cleared a stopping-condition bar.
+Six new items from the same fact-checker pool (BOOM Live, Alt News),
+each live-URL- and content-hash-checked, grew the set 9$\to$15
+(12 FALSE / 2 MISLEADING / 1 TRUE -- still no second TRUE item after two
+sourcing passes, consistent with the disclosed debunk-vs-confirmation
+skew) and were assigned to a \texttt{validation} split.
 
-\textbf{Check 6 (temporal consistency)} flags a verdict when the claim
-asserts an explicit, unambiguous date and every cited source with a
-known publication date predates it by more than two days -- the "old
-footage presented as current" pattern. Deliberately narrow: real
-\texttt{time\_reference} values in this project's data are almost all
-vague ("recent," "present," "unspecified"); only explicit dates resolve,
-avoiding false positives on legitimately time-unanchored claims.
+Two checks were added to \texttt{validate\_verdict()} under the same
+discipline as the original four (prototype, then integrate only once
+real evaluation clears a stopping bar). \textbf{Check 6 (temporal
+consistency)} flags a verdict when the claim asserts an explicit date
+and every dated cited source predates it by $>2$ days -- deliberately
+narrow, since real \texttt{time\_reference} values here are almost all
+vague. \textbf{Check 7 (entity consistency)} flags a verdict when none
+of the claim's PERSON/ORG/LOCATION entities appear (exact or fuzzy,
+\texttt{SequenceMatcher} $\geq 0.75$ tuned on real transliteration
+pairs) in a cited source whose stance influenced the verdict -- a
+promotion of a previously-unintegrated prototype whose 4 false positives
+(all one abstract-concept entity) motivated a type filter; the
+corrected re-evaluation found 2/2 flagged violations genuine, zero
+false positives. \textbf{Measured effect:} the adversarial synthetic
+validator benchmark, expanded 28$\to$34 cases, moved precision
+81.8\%$\to$87.5\% and recall 50.0\%$\to$60.9\%, and \emph{the
+previously-named uncatchable entity-mismatch gap case is now caught};
+the benchmark's only two false positives are the same pre-existing
+Check-3 limitation, so both new checks add recall at zero measured
+precision cost.
 
-\textbf{Check 7 (entity consistency)} flags a verdict when none of the
-claim's PERSON/ORGANIZATION/LOCATION entities appear, exactly or via a
-calibrated fuzzy match (\texttt{difflib.SequenceMatcher}, threshold
-0.75, tuned against real transliteration-variant pairs in this
-project's own data), in a cited source with a stance that actually
-influenced the verdict. This is a direct promotion of the
-entity-consistency prototype named as unintegrated future work in an
-earlier pass of this program: the original prototype's 4 false positives
-(all one abstract-concept entity, \{"Democracy", type: "concept"\},
-matched against unrelated legal text) motivated a type filter; a
-corrected re-evaluation against real evidence found 2 of 2 flagged
-violations were genuine true positives with zero false positives,
-clearing the integration bar.
-
-\textbf{Measured effect}: the adversarial synthetic validator benchmark
-(Section~\ref{sec:evidencevalidation}) was expanded from 28 to 34 cases
-with six new cases targeting exactly these two checks, including a
-direct re-test of the original benchmark's own previously-diagnosed,
-explicitly-marked-uncatchable entity-mismatch case. Precision rose
-81.8\%$\to$87.5\%, recall rose 50.0\%$\to$60.9\%, and \textbf{the
-previously-named gap case is now caught}. The benchmark's only two false
-positives are the same, already-documented Check-3 limitation from the
-original 28 cases (unrelated to Checks 6/7) -- both new checks add real
-recall with zero measured precision cost.
-
-\subsection{A cross-cutting reliability finding, confirmed four independent times}
+\subsection{A cross-cutting reliability finding, confirmed four times}
 \label{sec:reliabilityfinding}
-Four separate experiments, each targeting a different pipeline stage,
-independently surfaced the same underlying pattern: \textbf{raw,
-un-retried output from the local model (llama3.2) on real content is
-substantively empty or unusable a large fraction of the time}, and this
-system's existing layered defenses (Gemini-escalation quality retries)
-are doing substantially more real work than a pipeline-level pass/fail
-reading would suggest.
+Four experiments, each targeting a different stage, independently
+surfaced the same pattern: \textbf{raw un-retried local-model
+(\texttt{llama3.2}) output on real content is substantively empty or
+unusable a large fraction of the time}, and the existing
+Gemini-escalation quality retries do more real work than a
+pipeline-level pass/fail reading suggests. Claim \texttt{source\_quote}
+population: 0 of 12 real claims across 8 items (EXP-012), reconfirmed at
+0 of 90 across an 8-way modality sweep (EXP-016). Evidence-stance
+explanations: 80\% (16/20) of raw judgments run without the
+substantiveness-retry safeguard had an empty explanation on one side
+(EXP-017). Adversarial stress testing: zero crashes across six cases,
+but the one case needing a quality retry hit real Gemini quota
+exhaustion from this program's own usage (EXP-020). None of these was
+designed to measure model reliability; each surfaced it as a byproduct,
+which is why four independent confirmations are more convincing than one
+dedicated study.
 
-\begin{itemize}
-\item Claim \texttt{source\_quote} population: 0 of 12 real extracted
-  claims across 8 real items had a verbatim-groundable quote (EXP-012);
-  independently reconfirmed at 0 of 90 claims across a full 8-way
-  modality sweep (EXP-016, Section~\ref{sec:foundationmultimodal}).
-\item Evidence-stance explanations: 80\% (16/20) of raw evidence-stance
-  judgments, run without the existing substantiveness-retry safeguard,
-  had an empty explanation on at least one side of a taxonomy comparison
-  (EXP-017).
-\item Adversarial stress testing (EXP-020, Section~\ref{sec:foundationadversarial}):
-  zero crashes across six adversarial text-content cases, but the one
-  case needing a real quality-retry hit real Gemini quota exhaustion
-  from this same evaluation program's own cumulative usage.
-\end{itemize}
-No single one of these experiments was designed to measure model
-reliability directly; each surfaced it as a byproduct of testing
-something else, which is why four independent confirmations are more
-convincing than one dedicated study would be. Full detail:
-Appendix~\ref{sec:appendixfoundation}.
-
-\subsection{Retrieval, multimodal, and cross-post extensions (summary)}
+\subsection{Retrieval, multimodal, and cross-post extensions}
 \label{sec:foundationmultimodal}
 \label{sec:foundationadversarial}
-Three further extensions were built and measured, each with a real,
-disclosed result rather than an assumed win (full numbers:
-Appendix~\ref{sec:appendixfoundation}):
-
 \textbf{Structured 5-query retrieval} (exact-claim, entity-focused,
-primary-source, contradiction, context-history, replacing the prior
-loosely-typed 2--5 query generation) raised source-tier classification
-(23.5\%$\to$38.1\%, $n=42$ sources / 4 claims) but \emph{lowered}
-manually-judged relevance (68.75\%$\to$43.75\%) and usable-evidence rate
-(18.75\%$\to$0\%) on this small sample -- traced to a real, disclosed
-confound: one claim with no natural institutional subject (a private
-organization) received 7 of 16 primary-tier hits, all irrelevant,
-because the mandatory primary-source query type fires unconditionally.
-Excluding that one claim, the other three score 78\% relevant, above
-baseline. Reported as a genuine mixed result, not smoothed into a clean
-win.
+primary-source, contradiction, context-history) raised source-tier
+classification (23.5\%$\to$38.1\%, $n=42$ sources) but lowered
+manually-judged relevance (68.75\%$\to$43.75\%) and usable-evidence
+rate (18.75\%$\to$0\%) on this small sample -- traced to one claim with
+no natural institutional subject receiving 7 of 16 primary-tier hits,
+all irrelevant, because the primary-source query type fires
+unconditionally; excluding it, the other three score 78\% relevant.
+Reported as a mixed result, not smoothed into a win. \textbf{Full
+8-combination multimodal re-analysis} reproduced rather than resolved
+the original non-monotonic surprise: vision-alone highest on
+ground-truth claim coverage (37.5\%), \texttt{ocr+vision} below every
+single-signal condition (12.5\%). \textbf{Cross-post detection, stage 1
+of 3}: a perceptual-hashing first-pass filter validated against real
+re-extracted frames (same-video Hamming distance 0; different-video 20,
+threshold 10); stages 2--3 not built. \textbf{Bounded adversarial stress
+testing} of claim extraction (six hand-built cases) produced zero
+crashes and no cross-signal hallucination, but surfaced two unnamed
+gaps: no check tests caption/transcript mutual consistency, and
+mixed-script content showed a possible Latin-script extraction bias.
 
-\textbf{Full 8-combination multimodal re-analysis} (extending
-Section~\ref{sec:multimodalanalysis}'s 3-condition design to
-independently toggle audio/OCR/vision, caption always on) reproduced
-rather than resolved the original non-monotonic surprise: vision-alone
-scored highest on ground-truth claim coverage (37.5\%), and
-\texttt{ocr+vision} scored below every single-signal condition
-(12.5\%), on the same 8 real items.
-
-\textbf{Cross-post detection, stage 1 of 3}: a perceptual-hashing
-first-pass filter (\texttt{imagehash}, a new dependency) was built and
-validated against real re-extracted video frames -- a same-video control
-matched at Hamming distance 0, a different-video control did not match
-(distance 20, threshold 10). Stages 2 (claim-embedding clustering) and 3
-(Gemini escalation for ambiguous pairs) are not yet built.
-
-\textbf{Bounded adversarial stress testing} of claim extraction (six
-hand-constructed cases: garbled OCR, caption/transcript contradiction,
-near-empty input, mixed-script chaos, repetitive content, near-max-token
-length) produced zero crashes and no hallucinated cross-signal merging,
-but surfaced two previously-unnamed structural gaps: no check anywhere
-tests whether a post's caption and transcript are mutually consistent,
-and mixed-script content showed a possible bias toward extracting only
-Latin-script segments, silently dropping non-Latin-script content from
-the same continuous statement.
-
-\subsection{Immediate follow-up: two named gaps investigated, one closed negatively, one corrected}
+\subsection{Two named gaps investigated}
 \label{sec:followup}
-Both gaps named above were investigated in the same autonomous pass,
-each with a real, disclosed outcome rather than left standing as
-untested hypotheses (full detail: Appendix~\ref{sec:appendixfoundation}).
+The \textbf{input-signal consistency check} is infeasible in its cheap
+form: caption-vs-transcript keyword (Jaccard) similarity, calibrated on
+real data before shipping, is 0.000 for every legitimate benchmark item
+checked ($n=4$) -- captions and transcripts are different registers,
+often different languages, even when consistent. The
+\textbf{multilingual-extraction bias} does \emph{not} generalize:
+against the 90-claim dataset, non-Latin-script claims are the majority
+(48/90) and script distribution tracks each item's dominant language,
+including one genuinely code-switched item that produced both scripts.
+The original single-case finding was real but narrow; \emph{we report
+the correction as prominently as the finding}. The \texttt{source\_quote}
+population gap was attacked with a strengthened extraction prompt (a
+self-check procedure plus a worked example from a real miss): 0\%
+population before and after ($n=8$), and on the example's own item the
+strengthened prompt produced zero claims where the baseline produced
+seven -- a clean negative result for prompt engineering as the fix.
+Finally, the 6 VALIDATION items were run through the complete real
+pipeline and committed: 4 produced zero claims, two produced 3 real
+claims with real verdicts, and Check 7 correctly downgraded a
+Jharkhand-police claim cited against an unrelated 2026 IIT Palakkad
+article -- the first live confirmation it generalizes to new production
+data.
 
-The \textbf{input-signal consistency check} was found infeasible in its
-obvious cheap form: keyword-overlap (Jaccard) similarity between a
-post's caption and transcript, calibrated against real data \emph{before}
-being written into production, is 0.000 for every real, legitimate
-benchmark item checked ($n=4$) -- captions and transcripts are different
-text registers, and often different languages, even when fully
-consistent. A check calibrated this way on this project's own data would
-flag essentially all legitimate content as inconsistent. Real semantic
-understanding would be needed instead of a cheap heuristic.
-
-The \textbf{multilingual-extraction bias} suspected above does
-\emph{not} generalize: re-examined against the larger 90-claim dataset
-already collected for the 8-combination multimodal analysis
-(Section~\ref{sec:foundationmultimodal}), non-Latin-script claims are
-the \emph{majority} (48/90, 53.3\%), and script distribution tracks each
-real item's own dominant language exactly -- including one genuinely
-code-switched real item, which produced claims in both scripts, not
-just Latin. The original single-case finding was real but did not
-generalize; the likely correct, narrower reading is that unnaturally
-dense intra-sentence code-switching (three scripts within one
-synthetic clause) is harder than the inter-sentence or paragraph-level
-code-switching that occurs in real speech, not a general script bias.
-\textbf{We report this correction with the same prominence as the
-original finding, per this paper's standing discipline.}
-
-Separately, the \texttt{source\_quote} population gap
-(Section~\ref{sec:reliabilityfinding}) was directly attacked with a
-strengthened extraction prompt -- an explicit self-check procedure plus
-a worked example built from a real observed miss (a claim whose text
-was itself a verbatim OCR line, "5,154 likes", yet left unquoted). The
-fix did not work: 0\% source-quote population both before and after,
-$n=8$ items, and on the exact item the worked example was built from,
-the strengthened prompt produced \emph{zero} claims where the baseline
-had produced seven unquoted ones. This is a clean negative result for
-prompt engineering as the fix, strengthening rather than resolving the
-underlying finding.
-
-Finally, the 6 real VALIDATION-split items
-(Section~\ref{sec:foundationphase}) were, for the first time, run
-through the complete real pipeline (claim extraction through verdict)
-and the results genuinely committed -- unlocking the aggregation
-counterfactual this paper's Future Work has named since
-Section~\ref{sec:decompcounterfactual}. 4 of 6 items produced zero
-claims (consistent with this pass's own already-documented low
-real-world extraction yield); the other two produced 3 real claims with
-real verdicts. One of them is independently notable: Check 7 (entity
-consistency) correctly downgraded a claim about a Jharkhand-police
-protest that had been cited against a wholly unrelated real article (a
-2026 IIT Palakkad security incident) -- the first live confirmation that
-Check 7 generalizes to genuinely new production data, not just the
-historical and synthetic cases it was built and tested against.
-
-\subsection{A second autonomous pass: aggregation confirmed, a security defense measured and hardened, a verdict-stage reliability gap found}
+\subsection{A second pass: aggregation, a security defense, a verdict-stage gap}
 \label{sec:secondpass}
-A further autonomous pass extended this work along four lines, each
-producing a real, disclosed result rather than an assumed one.
+\textbf{Aggregation (Phase 10)} was unblocked by the population pass:
+exactly one VALIDATION item (item-0010) qualified. Single-claim-only
+missed (\texttt{UNVERIFIED} vs.\ ground truth \texttt{FALSE}); full
+decomposition via the production \texttt{derive\_overall\_verdict()}
+resolved correctly to \texttt{FALSE} -- directionally consistent with
+the $n=4$ DEV result, reported at its real $n=1$. \textbf{Cross-post
+stage 2} (claim-embedding clustering) is blocked by a confirmed
+infrastructure gap: the local Ollama server was not started with
+embedding support and no embedding model is pulled -- disclosed as a
+concrete prerequisite, not worked around. \textbf{Prompt-injection
+defense} had zero test coverage despite processing untrusted content on
+every post. Code review found the delimiter convention never neutralized
+literal delimiter tokens already in untrusted text -- a deterministic
+bypass, closed by sanitizing before wrapping, verified both directions.
+Of 5 live adversarial attempts against claim extraction, a blunt
+override succeeded once (the injected false claim emitted verbatim as a
+maximum-importance verifiable claim) -- the first real measurement of
+this project's stated expectation that small local models resist in-band
+instructions less reliably; a hardened prompt reduced this to 0/5.
+Carried through the pipeline, the one success was independently resolved
+by the downstream validator to a correct evidence-grounded \texttt{FALSE}
+citing 12 real sources ($n=1$, an unusually well-evidenced test claim).
+\textbf{A new verdict-stage failure}: constructed evidence with a
+0.95-reliability government source supporting and a 0.20-reliability
+uncited source contradicting produced no \texttt{TRUE}/\texttt{MOSTLY\_TRUE}
+in 0 of 14 trials across two prompt versions -- some with reasoning that
+named the weak source as unreliable yet did not act on it, one pairing a
+wrong label with maximum confidence. An explicit reliability-weighting
+prompt rule did not resolve it (0/7) -- a measured negative result; the
+rule is kept as objectively-correct guidance, not claimed as a fix. A
+deterministic check (cited-evidence reliability vs.\ verdict direction)
+was then built and held to the Checks-6/7 bar -- 10/10 synthetic, 14/14
+observed wrong trials caught, 0/34 benchmark interactions -- and
+integrated as \textbf{Check 8} with precision/recall unchanged
+(87.5\%/60.9\%). A direct re-run of the evidence-stance taxonomy
+comparison fixed its own confound (porting in the substantiveness-retry
+safeguard) but hit a hard external ceiling: a real HTTP 429 confirmed
+the fallback model's free tier is capped at 20 requests/day, which this
+program's usage repeatedly exhausts; three attempts (4/20, 6/20, 5/20
+clean rows) remain inconclusive about the candidate taxonomy's value.
 
-\textbf{Aggregation (Phase 10)}, previously blocked on the VALIDATION
-split having no multi-claim items with real verdicts, was unblocked by
-the population pass above (Section~\ref{sec:followup}): exactly one
-VALIDATION item (item-0010) qualified. Single-claim-only resolved to
-\texttt{UNVERIFIED} (a miss against real ground truth \texttt{FALSE});
-full decomposition, using the same \texttt{derive\_overall\_verdict()}
-production itself calls, correctly resolved to \texttt{FALSE}.
-Directionally consistent with the original $n=4$ DEV-split finding
-(Section~\ref{sec:decompcounterfactual}) that aggregation helps, but
-explicitly reported at its real $n=1$ and not claimed as statistically
-meaningful.
-
-\textbf{Cross-post detection stage 2} (claim-embedding clustering,
-Section~\ref{sec:foundationphase}) was attempted and found blocked by a
-concrete, confirmed infrastructure gap rather than left unattempted
-without explanation: this project's local Ollama server was not started
-with embedding support (\texttt{ollama.Client().embeddings(...)} fails
-with an explicit ``start it with \texttt{--embeddings}'' error,
-confirmed live), and no dedicated embedding model is pulled locally
-either. Restarting a service this project depends on, or pulling a new
-model, was judged outside what an autonomous pass should do
-unilaterally -- disclosed as a real, concrete prerequisite rather than
-worked around with a weaker substitute under the same column's name.
-
-\textbf{Prompt-injection defense} had zero existing test coverage
-despite processing genuinely untrusted content (transcript, OCR,
-caption) by design on every real post -- confirmed by an empty result
-from searching the test suite for any injection-related coverage before
-this pass. Two things were found and both were fixed, not just
-reported. First, code review (not model behavior) found the delimiter
-convention every LLM stage relies on never neutralized literal
-occurrences of its own delimiter tokens already present in untrusted
-text -- a deterministic, model-independent bypass, closed by sanitizing
-those tokens before wrapping and verified in both directions. Second, 5
-live adversarial attempts against claim extraction found the most
-direct injection style (a blunt override instruction) succeeded once,
-producing the injected false claim verbatim as a verifiable,
-maximum-importance claim -- the first real measurement of this
-project's own previously-stated expectation that small local models
-resist in-band instructions less reliably than larger ones. A hardened
-extraction prompt reduced this to 0/5 on re-test. Separately, carrying
-the one pre-fix successful injection through the real remainder of the
-pipeline (research planning through verdict) showed the downstream
-anti-hallucination validator independently resolving it to a correct,
-evidence-grounded \texttt{FALSE} verdict citing 12 real sources --
-confirming, for the first time with a measurement rather than an
-assertion, that this system's documented security posture (the
-validator as the actual backstop) holds for at least this case. Full
-detail, including the caveat that this is $n=1$ against an unusually
-well-evidenced test claim: \texttt{research/PROMPT\_INJECTION\_STRESS\_V2.md}.
-
-\textbf{A new adversarial category (Step 18's \#8, ``contradictory
-sources'') at the verdict stage} surfaced a real, reproducible failure
-not previously characterized: constructed evidence with a
-0.95-reliability primary-government source supporting a claim and a
-0.20-reliability, uncited source contradicting it produced TRUE or
-MOSTLY\_TRUE in 0 of 14 real trials across two prompt versions --
-including runs whose own reasoning text correctly identified the
-contradicting source as unreliable while still not choosing a label
-reflecting that assessment, and one run pairing a wrong label with
-maximum stated confidence. An explicit reliability-weighting rule added
-to the verdict prompt, with a worked example distinct from the held-out
-test case, did not resolve this on re-test (still 0/7). This is reported
-as a genuine, measured negative result -- the fix is kept regardless,
-since it is objectively correct guidance and not shown to make anything
-worse, but is not claimed to have solved the underlying issue. The
-likely real fix, a deterministic validator check comparing cited
--evidence reliability against verdict direction (mirroring how Checks 6
-and 7 succeeded where prompt-only approaches would not have been
-trustworthy), is named as a concrete candidate for a dedicated future
-pass rather than added without its own integration evaluation. Full
-detail: \texttt{research/CONTRADICTORY\_SOURCES\_V2.md}.
-
-Finally, a direct re-run of the evidence-stance taxonomy comparison
-(Section~\ref{sec:followup} named this as the concrete next step) fixed
-its own named confound -- porting the production substantiveness-retry
-safeguard into the comparison's new-taxonomy call -- and in doing so
-surfaced a deeper, quantified constraint rather than a clean answer: a
-real HTTP 429 response confirmed the fallback model's free tier is
-capped at exactly 20 requests/day on this project's key, a limit this
-session's own real usage repeatedly exhausts. Three independent
-attempts (4/20, 6/20, 5/20 clean rows) remain inconclusive about
-whether the candidate taxonomy adds real value -- not from an
-uncontrolled confound anymore, but from a hard, external infrastructure
-ceiling, now named and quantified rather than merely suspected.
-
-\textbf{An immediate follow-up} built and evaluated the deterministic
-check named above as the likely fix for the reliability-weighting
-failure, before deciding whether to integrate it -- the same discipline
-Checks 6 and 7 were held to. 10 hand-designed synthetic cases (10/10
-correct); a replay of the 19 real verdict labels actually observed in
-the failure above (14/14 wrong trials caught, including one that paired
-an incorrect \texttt{OUTDATED} label with maximum stated confidence; 0/5
-false positives on the genuinely closer-call sanity case); and the
-existing 34-case adversarial benchmark (0 interactions, confirming no
-regression risk before any production change). Integrated as Check 8;
-re-running the full benchmark afterward showed precision/recall
-completely unchanged (87.5\%/60.9\%), confirming the zero-regression
-prediction empirically rather than by assumption. Full detail:
-\texttt{research/CONTRADICTORY\_SOURCES\_V2.md}.
-
-\subsection{A benchmark-scaling session: automated multi-source sourcing, and a measured structural yield ceiling}
+\subsection{A benchmark-scaling session: a measured structural yield ceiling}
 \label{sec:massSourcing}
-Continued manual sourcing (the same method as
-Section~\ref{sec:foundationphase}, one article read and judged at a
-time) added three further items, 15$\to$18, before its own throughput
--- roughly one usable item per 20--30 articles checked, consistent with
-the original $\sim$8\% hit-rate estimate (Section~\ref{sec:dataset}) --
-was judged too slow against an explicit, direct instruction to reach a
-several-hundred-item benchmark. In response, an automated pipeline
-replaced the human-in-the-loop read-and-judge step with a local
-llama3.2 judge call, keeping every other step (crawl, extract, verify
-retrievability, log) code rather than model: given a fact-check
-article's full text and a cited Instagram post's own real caption
-(fetched directly via \texttt{yt-dlp}, never inferred from the article),
-the judge decides whether the post's \emph{own} caption asserts the
-specific false claim, as opposed to the far more common case -- the
-central methodological lesson of this whole pass -- of a fact-checker
-citing an Instagram post as evidence of the \emph{true, original} event
-while the actual false claim was posted separately, often on X/Twitter
-and sometimes already deleted.
+Manual sourcing (one article read and judged at a time) added three
+items, 15$\to$18, at roughly one usable item per 20--30 articles --
+consistent with the original $\sim$8\% estimate -- before its throughput
+was judged too slow against an instruction to reach a several-hundred-item
+benchmark. An automated pipeline replaced the human read-and-judge step
+with a local \texttt{llama3.2} judge call (every other step kept as
+code): given a fact-check article and a cited Instagram post's real
+caption (fetched via \texttt{yt-dlp}, never inferred), the judge decides
+whether the post's \emph{own} caption asserts the specific false claim,
+as opposed to the far more common case -- the central methodological
+lesson of this pass -- of a fact-checker citing an Instagram post as
+evidence of the true original event while the false claim was posted
+separately, often on X/Twitter.
 
-Five independent fact-checker archives were crawled to exhaustion or a
-clear negative result: \texttt{altnews.in} (498 pages, 4{,}967
-articles, 515 candidates judged, 2 promoted); \texttt{vishvasnews.com}
-(two passes, the second after finding the first's URL filter silently
-excluded most of the site's real fact-check content -- see below; 951
-then 731 candidates judged, 1 promoted); \texttt{thequint.com}'s
-WebQoof vertical (English and, after an identical filter-gap finding,
-Hindi editions; 714 then 145 candidates judged, 1 promoted); and
-\texttt{factcrescendo.com} across its English, Tamil, Marathi, and
-Malayalam editions (533 candidates judged, 0 promoted).
-\texttt{factly.in} was sampled (1{,}000 articles) and dropped before
-any candidate-level judging -- zero Instagram references found, a
-disclosed negative result rather than a silent omission.
-\texttt{newschecker.in} was excluded entirely, unattempted: its
-\texttt{robots.txt} explicitly disallows this project's crawler
-user-agent, a publisher directive treated as final rather than
-something a generic user-agent could legitimately route around.
+Five fact-checker archives were crawled to exhaustion or a clear
+negative: \texttt{altnews.in} (4{,}967 articles, 515 candidates judged,
+2 promoted); \texttt{vishvasnews.com} (two passes -- the second after a
+URL filter was found to silently exclude most fact-check content;
+1{,}682 candidates, 1 promoted); \texttt{thequint.com}'s WebQoof
+(English + Hindi editions after an identical filter-gap finding; 859
+candidates, 1 promoted); \texttt{factcrescendo.com} (English, Tamil,
+Marathi, Malayalam; 533 candidates, 0 promoted); \texttt{factly.in}
+(1{,}000 articles sampled, zero Instagram references, dropped).
+\texttt{newschecker.in} was excluded, unattempted, on a
+\texttt{robots.txt} directive against this crawler's user-agent. Two
+contributing sources were only found to be contributing after fixing a
+real filter bug -- Vishvas filtered on \texttt{/viral/} when 856 of 979
+sampled URLs contained \texttt{fact-check} under other sections; WebQoof
+missed a separate \texttt{/hindi/webqoof/} edition -- and a
+post-judgment consistency filter had been checking a generic note
+instead of the judge's real reasoning, letting self-contradicting
+judgments through until manual review caught it (fixed; caught four more
+immediately).
 
-Two of the four contributing sources were only found to be contributing
-sources after fixing a real tooling bug, not because the underlying
-content did not exist: Vishvas's crawler filtered on a
-\texttt{/viral/} URL path on the (reasonable but wrong) assumption that
-this was the site's fact-check category, when direct sampling of one
-sitemap file found 856 of 979 URLs contained the substring
-\texttt{fact-check} against only 356 under \texttt{/viral/} -- real
-fact-checks filed under \texttt{/politics/}, \texttt{/society/}, and
-other sections the original filter never saw. WebQoof's crawler
-similarly filtered on \texttt{/news/webqoof/} only, missing a
-separate, real \texttt{/hindi/webqoof/} edition entirely. Both were
-broadened and re-run; each found real additional volume (roughly
-double the candidate pool, in Vishvas's case) but not a
-proportionally larger count of genuine misinformation-source posts,
-strengthening rather than undermining the finding below. A separate,
-independently-caught tooling bug in the post-judgment consistency
-filter (\texttt{spot\_check\_eligible\_candidates.py}) had been
-silently checking a generic auto-accepted note instead of the judge's
-real stated reasoning for one source's output shape specifically,
-letting self-contradicting judgments (reasoning stating the caption
-does not assert the claim, while the structured label said it did)
-through undetected until manual review of newly-eligible candidates
-caught it; fixed, and confirmed to catch four further real cases
-immediately afterward.
+\textbf{The measured result:} across roughly 3{,}600 real candidates
+judged over five sources, 4 were promoted (items 19--22, each verified
+against the article and the post's caption before promotion) -- a
+blended yield on the order of one promotable item per 900 candidates,
+an order of magnitude worse than the $\sim$8\% a smaller manual pass had
+suggested, and consistent with the earlier finding that most of this
+dataset's false claims live outside the Instagram post being
+fact-checked. At this rate a several-hundred-item target is not
+reachable through deeper automated crawling of the same source type
+\emph{under the Instagram-only constraint} -- a structural property of
+where this pattern gets posted, not an effort gap (full detail:
+\texttt{research/MASS\_SOURCING\_V2.md}).
 
-\textbf{The measured result, reported plainly}: across roughly 3{,}600
-real candidates judged over five contributing sources, 4 were promoted
--- items 19--22, each individually verified against the source
-article's own text and the post's real caption before promotion, not
-accepted on the local judge's word alone. That is a blended yield on
-the order of one promotable item per 900 candidates checked, an order
-of magnitude worse than the $\sim$8\% figure the original, much
-smaller manual-sourcing pass had suggested, and consistent with, not
-contradicting, an earlier disclosed finding in this same research
-program (Section~\ref{sec:multimodalanalysis}) that most of this
-dataset's real false claims live outside the specific Instagram post
-being fact-checked. At this measured rate, a several-hundred-item
-target is not reachable through deeper automated crawling of the same
-source type \emph{under the Instagram-only constraint} in any bounded
-timeframe -- a structural property of where this specific misinformation
-pattern actually gets posted, not a tooling or effort gap: five sources
-were checked, two archives fully exhausted on a second, broadened pass,
-and every judge-output anomaly found was traced to a specific, fixed
-cause rather than shrugged off as noise. Full detail, including every
-individual promoted/rejected candidate's disclosed reasoning:
-\texttt{research/MASS\_SOURCING\_V2.md}.
-
-\textbf{This finding was subsequently acted on.} Because the ceiling
-was a property of the platform restriction rather than of the sourcing
-method, a later pass relaxed that restriction -- admitting posts from
+\textbf{This finding was acted on.} Because the ceiling was a property
+of the platform restriction, a later pass relaxed it -- admitting
 X/Twitter, Facebook, and Instagram -- and added a review-gated
-annotation step in which a single reviewer adjudicates each screened
-candidate against the full professional fact-check article. This grew
-the \texttt{validation} split from 13 to 193 items (202 including the
-frozen \texttt{dev} set), yielding the \textsc{TruthLens-202} corpus
-described in Section~\ref{sec:truthlens202}. That corpus is then
-evaluated end-to-end once, in a \$0 local-only configuration
-(Section~\ref{sec:tl202eval}), which surfaces its own finding: on real,
-uncurated short-form posts the local 3B model fails to extract a
-checkable claim from 65.3\% of them, making claim extraction -- not
-retrieval or verdict reasoning -- the binding constraint. Its
-construction carries its own disclosed limitations (single LLM-assisted
-reviewer; $\sim$88\% single-source ground truth; three domain-driven
-skews), all stated in Section~\ref{sec:truthlens202}.
+annotation step (a single reviewer adjudicates each screened candidate
+against the full fact-check article), growing the \texttt{validation}
+split from 13 to 193 items (202 with the frozen \texttt{dev} set): the
+\textsc{TruthLens-202} corpus (Section~\ref{sec:truthlens202}). That
+corpus is then evaluated end-to-end once, in a \$0 local-only
+configuration (Section~\ref{sec:tl202eval}), which surfaces its own
+finding: the local 3B model fails to extract a checkable claim from
+65.3\% of real posts, making claim extraction -- not retrieval or
+verdict reasoning -- the binding constraint. Its construction carries
+disclosed limitations (single LLM-assisted reviewer; $\sim$88\%
+single-source ground truth; three domain-driven skews), all stated in
+Section~\ref{sec:truthlens202}.
 
 \section{A Taxonomy of Failure Modes Found in Live Testing}
 \label{sec:failuremodes}
@@ -2387,43 +2190,35 @@ evaluation and are detailed in Sections~\ref{sec:truthlens202} and
 \section{Discussion}
 \label{sec:discussion}
 
-\textbf{On the value of auditing your own baselines as skeptically as
-your own system.} This program's most consequential finding was
-produced not by improving TruthLens but by a post-hoc audit that treated
-our own experimental design with the same skepticism this paper applies
-to the system under test, finding that our baselines had been quietly
-advantaged for the entire program (Section~\ref{sec:baselinefix}).
-Without that audit, this paper would have published a confident, wrong
--in-degree explanation for why TruthLens loses to a single-shot
-baseline: the diagnosed causes (claim-extraction coverage,
-validator false negatives) were real contributing factors, but the
-uncorrected number overstated their effect, since part of it was an
-artifact of unequal claim input, not architecture. The general lesson we
-think generalizes beyond this paper: a baseline is part of the
-experimental apparatus, not a neutral reference point, and deserves the
-same implementation-level scrutiny as the system it is compared against.
+\textbf{Audit your baselines as skeptically as your own system.} This
+program's most consequential finding came not from improving TruthLens
+but from a post-hoc audit that treated our own experimental design with
+the skepticism this paper applies to the system under test, finding the
+baselines quietly advantaged program-wide
+(Section~\ref{sec:baselinefix}). Without it, this paper would have
+published a confident, wrong-in-degree explanation for why TruthLens
+loses to a single-shot baseline: the diagnosed causes (claim-extraction
+coverage, validator false negatives) were real, but the uncorrected
+number overstated their effect because part of it was an artefact of
+unequal claim input. A baseline is part of the apparatus, not a neutral
+reference, and deserves the same implementation-level scrutiny as the
+system it is compared against.
 
-\textbf{On label accuracy vs.\ support validity.} Two general,
-ground-truth-independent fixes moved validator recall from 16.7\% to
-40\% (Section~\ref{sec:evidencevalidation}) while reel-level accuracy
-stayed at 2/6 throughout, both before and after the baseline correction.
-\textbf{Label accuracy and support validity are different axes that can
-move independently} -- a concrete demonstration, not an inference from
-theory. A benchmark reporting only label accuracy would have shown no
-progress during a pass of work that materially reduced how often the
-system publishes a confidently wrong, unsupported verdict.
+\textbf{Label accuracy vs.\ support validity.} Two general,
+ground-truth-independent fixes moved validator recall 16.7\%$\to$40\%
+while reel-level accuracy stayed at 2/6, before and after the baseline
+correction. \textbf{Label accuracy and support validity are different
+axes that can move independently} -- a benchmark reporting only label
+accuracy would have shown no progress during a pass that materially
+reduced how often the system publishes a confidently wrong, unsupported
+verdict.
 
-\textbf{The corrected comparison, and when TruthLens helps specifically.}
-Once claim input is held constant, full TruthLens beats two of three
-baselines outright and trails the third by a much smaller margin than
-before (Section~\ref{sec:results}); the two remaining wrong items trace
-to claim-extraction coverage failure (items 0006/0007) and one validator
-false negative (item-0004), and Section~\ref{sec:decompcounterfactual}
-shows aggregation delivering a real gain once claim extraction has more
-than one claim. Table~\ref{tab:whenhelps} replaces a single win/lose
-framing with the most direct answer this sample can give to where the
-advantage materializes.
-
+\textbf{When TruthLens helps, specifically.} Once claim input is held
+constant, full TruthLens beats two of three baselines and trails the
+third by a much smaller margin; the two remaining wrong items are a
+claim-extraction coverage failure (0006/0007) and one validator false
+negative (0004). Table~\ref{tab:whenhelps} replaces a win/lose framing
+with where the advantage materialises.
 \begin{table}[!t]
 \caption{Per-item conditions, corrected comparison ($n=6$)}
 \label{tab:whenhelps}
@@ -2445,343 +2240,155 @@ item-0007 & No (0) & \textbf{No} & Both wrong; TL abstains \\
 \end{table}
 
 Reading the matrix rather than the aggregate: TruthLens and Baseline 2
-agree on every item where claim extraction succeeded and produced more
-than one claim (items 0001, 0002) -- exactly where
+agree on every item where extraction succeeded and produced more than one
+claim (0001, 0002) -- exactly where
 Section~\ref{sec:decompcounterfactual}'s counterfactual shows aggregation
-adding value. TruthLens's one exclusive loss (item-0004) is a
-single-claim item, where decomposition has nothing to contribute and the
-comparison reduces to per-claim reasoning quality alone, where the
-already-diagnosed validator false negative costs it. Both systems fail
-identically whenever claim extraction itself fails (items 0006/0007) --
-architecture downstream of claim extraction cannot compensate for having
-no claim, for either system. The pattern this small sample suggests,
-stated as a hypothesis for a larger dataset to test, not a conclusion
-this $n$ can support: TruthLens's advantage over a single-shot baseline
-may be concentrated specifically in multi-claim items with successful
-extraction, and structurally absent everywhere claim extraction fails or
-a post has only one claim to begin with.
+adding value. The one exclusive loss (0004) is single-claim, where
+decomposition contributes nothing and the already-diagnosed validator
+false negative costs it. Both systems fail identically when extraction
+fails (0006/0007). Stated as a hypothesis for a larger dataset, not a
+conclusion this $n$ supports: TruthLens's advantage over a single-shot
+baseline may be concentrated in multi-claim items with successful
+extraction and structurally absent where extraction fails or a post has
+only one claim.
 
-This also changes how DeVerna et al.'s finding \cite{deverna2025curatedcontext}
-that curated context matters more than reasoning ability for political
-fact-checking should be read against our results. The corrected
-comparison is broadly consistent with theirs: TruthLens's
-curation-heavy architecture is competitive with, and mostly ahead of,
-simpler alternatives once claim input is fairly controlled, and its one
-remaining loss traces to a specific, upstream coverage gap rather than
-curation itself underperforming. The lesson we draw is methodological
-as much as architectural: curation-heavy systems should be evaluated at
-the component level, with baseline implementation audited as carefully
-as the system under test, because an end-to-end label-accuracy number
-alone -- as this program's own uncorrected first pass demonstrated --
-can misattribute a claim-input confound to an architectural one.
-
-Finally, we note what this program deliberately did not do: it did not
-tune any prompt, threshold, or model choice on the frozen held-out
-dataset's contents (Section~\ref{sec:expmethodology}), and the two general
-validator fixes were built to be ground-truth-independent, with the one
-place that assumption is imperfect (the new validator check's
-phrase-list calibration) disclosed as a named threat to validity rather
-than presented as a clean win. The baseline correction in
-Section~\ref{sec:baselinefix} is similarly ground-truth-independent: it
-changes what claim text baselines receive, not any threshold or judgment
-tuned against knowing the right answer. We would rather report a real
-33.3\%, a real correction, and an honest account of both than a smoother
--looking number we could not defend the provenance of.
+This tempers how DeVerna et al.'s finding
+\cite{deverna2025curatedcontext} that curated context matters more than
+reasoning ability should be read against ours: the corrected comparison
+is broadly consistent with theirs -- TruthLens's curation-heavy
+architecture is competitive with, and mostly ahead of, simpler
+alternatives once claim input is fairly controlled -- but the lesson we
+draw is methodological as much as architectural: curation-heavy systems
+should be evaluated at the component level, with baselines audited as
+carefully as the system, because an end-to-end label-accuracy number can
+misattribute a claim-input confound to an architectural one. We did not
+tune any prompt, threshold, or model choice on the frozen held-out set;
+the validator fixes and the baseline correction are all
+ground-truth-independent. We would rather report a real 33.3\%, a real
+correction, and an honest account of both than a smoother number whose
+provenance we could not defend.
 
 \section{Future Work}
 \label{sec:futurework}
 
+Items already acted on in this program are marked; the rest are open.
+
 \begin{enumerate}
-\item \textbf{Scale the held-out benchmark past $n=9$} -- \emph{addressed
-  as a corpus and evaluated once; stronger configurations now the open
-  work}. The benchmark grew to 15
-  (Section~\ref{sec:foundationphase}), then to 22 under an
-  Instagram-only constraint (Section~\ref{sec:massSourcing}) at a
-  measured yield of roughly one item per 900 candidates. Relaxing that
-  constraint to all short-form platforms and adding a review-gated
-  annotation step grew the \texttt{validation} split to 193 items --
-  \textsc{TruthLens-202} (Section~\ref{sec:truthlens202}) -- which was
-  then run end-to-end in the local-only configuration
-  (Section~\ref{sec:tl202eval}: 29.9\% bucketed accuracy on the 34.7\%
-  of items that resolve; claim extraction the binding constraint). What
-  remains: (a)~re-run the same held-out split under a larger local model
-  (\texttt{llama3.1:8b}/\texttt{mistral}) and a metered cloud-escalation
-  tier, reporting the three as an ablation of capability vs.\ cost;
-  (b)~a vision-first claim-extraction path for provenance-type posts,
-  where the visual \emph{is} the claim and text-only extraction (shown
-  here to fail on 65\% of items) cannot succeed; (c)~a second
-  independent annotator pass (item~8); (d)~broaden the ground-truth base
-  beyond the current $\sim$88\% single-source concentration.
-\item \textbf{Diagnose and close claim-extraction coverage failures on
-  degraded audio.} Still open -- EXP-016
-  (Section~\ref{sec:foundationmultimodal}) re-confirmed rather than
-  closed this gap: the same items still produce zero verifiable claims
-  across all 8 modality combinations tested, not just the original 3.
-\item \textbf{Video-provenance verification.} \emph{Partially addressed,
-  stage 2 blocker now diagnosed}: a perceptual-hashing first-pass filter
-  is built and validated against real video frames
-  (Section~\ref{sec:foundationphase}); stage 2 (claim-embedding
-  clustering) was attempted and found blocked by a confirmed
-  infrastructure gap, not an unattempted item -- the local Ollama server
-  lacks embedding support and no embedding model is pulled locally
-  (Section~\ref{sec:secondpass}). Restarting the service or pulling a
-  new model is the concrete, named prerequisite; stage 3 (Gemini
-  escalation) and any live pipeline integration remain undone.
-\item \textbf{Test the new validator checks against phrasings/scenarios
-  they were not calibrated on} -- \emph{addressed} for the two checks
-  added this pass (Section~\ref{sec:newchecks}); the original four
-  checks' own circularity (Section~\ref{sec:evidencevalidation}) is
-  still open.
-\item \textbf{Complete items 0008/0009's full-TruthLens condition and
-  re-verify the vision-context fix end-to-end}, both blocked by the same
-  Gemini free-tier quota exhaustion, once quota resets.
-\item \textbf{A dedicated matched-pair sourcing pass for RQ5}, sourced
-  for topic/structure/difficulty match across political actors rather
-  than actor diversity (Section~\ref{sec:bce}).
-\item \textbf{Calibration, once the dataset is large enough to bin} --
-  Section~\ref{sec:bce}'s pre-registered gate (no bin under 3 items) was
-  not met at $n=9$ and remains unmet at $n=15$.
-\item \textbf{A second, independent annotator}, for a real
-  inter-annotator agreement statistic on Tier-2 items, the draft
-  judgments underlying Sections~\ref{sec:evidencevalidation}
-  and~\ref{sec:multimodalanalysis}, and -- now the largest instance --
-  the 165 review-gated claim/label annotations in
-  \textsc{TruthLens-202}'s \texttt{validation} split, whose phrasing and
-  label mapping are currently the work of a single LLM-assisted reviewer
-  (Section~\ref{sec:truthlens202}). This is the top open item before the
-  local-only result (Section~\ref{sec:tl202eval}) can be treated as a
-  validated headline rather than a floor.
-\item \textbf{The \texttt{.gov.in} full-page-fetch reliability gap}
-  (403s, TLS failures) remains open; closing it needs a scoped
-  certificate-verification exception or further diagnosis.
-\item \textbf{Near-duplicate OCR-frame-variant claim deduplication}
-  (Section~\ref{sec:multimodalanalysis}) -- \emph{addressed}: a
-  deterministic, similarity-calibrated deduplication pass now runs
-  before persistence.
-\item \textbf{Diagnose why claim extraction almost never populates a
-  verbatim \texttt{source\_quote}} (Section~\ref{sec:reliabilityfinding})
-  -- \emph{attempted}: a strengthened instruction (an explicit self
-  -check procedure plus a worked example built from a real observed
-  miss) did not move the population rate at all (0\% both ways, $n=8$
-  items) -- a clean negative result, not an unattempted item anymore.
-  The two live hypotheses (prompt under-elicitation vs.\ genuinely
-  unquotable paraphrases) remain undistinguished; a bigger architectural
-  change (e.g.\ eliciting the quote before the claim text) is the next
-  candidate, not attempted.
-\item \textbf{An input-signal consistency check} for claim extraction
-  (does a post's caption agree with its transcript/OCR content) --
-  \emph{investigated}: the obvious cheap approach (keyword-overlap
-  similarity) is not viable, calibrated against real data before being
-  written into production -- Jaccard similarity between caption and
-  transcript keywords is 0.000 for every real, legitimate benchmark
-  item checked, because captions and transcripts are different text
-  registers (and often different languages) even when fully consistent.
-  Real semantic understanding would be needed instead, not attempted.
-\item \textbf{A multilingual-extraction audit} (does non-Latin-script
-  content get dropped disproportionately) -- \emph{investigated and
-  corrected}: the single adversarial case motivating this item
-  (Section~\ref{sec:foundationadversarial}) does NOT generalize when
-  checked against the larger 90-claim dataset already collected this
-  session -- non-Latin-script claims are the majority (48/90), tracking
-  each item's own real dominant language correctly, including in a
-  genuinely code-switched real item. The suspected bias was a real
-  finding about ONE synthetic, intra-sentence code-switching
-  construction, not a general property of this system -- corrected here
-  rather than left standing as originally (over-)stated.
-\item \textbf{Complete the full end-to-end adversarial suite} (Step 18's
-  20 categories, 100+ cases) -- \emph{extended}: beyond the original
-  6-case claim-extraction-only slice, prompt-injection robustness (5
-  cases, claim-extraction and verdict stages) and contradictory sources
-  (\#8, 3 cases plus repeated-sampling stability runs, verdict stage)
-  are now covered (Section~\ref{sec:secondpass}); categories needing real
-  AI-generated-image/edited-video/audio-corruption content remain
-  unbuilt.
-\item \textbf{A deterministic reliability-weighted verdict check} --
-  \emph{addressed}: built as a candidate and evaluated against the same
-  bar Checks 6/7 were held to (10/10 synthetic ground-truth cases; 14/14
-  of the real observed wrong trials from the measured failure above
-  caught; 0/5 false positives on a genuinely closer-call sanity case; 0
-  interactions with the existing 34-case benchmark, confirming no
-  regression), then integrated as Check 8
-  (Section~\ref{sec:secondpass}). Not yet independently validated
-  against real, non-synthetic production disagreement cases, since the
-  current benchmark rarely produces cited evidence with both a
-  supporting and a contradicting stance for the same claim.
-\item \textbf{A properly isolated test database for Gemini-quota
-  scenario tests}, or a way to scope the provider's global cooldown
-  check to a test context -- the collision between real concurrent usage
-  and mocked scenarios (Appendix~\ref{sec:appendixtaxonomy}, entry 22)
-  is now quantified (a confirmed 20-requests/day free-tier cap) but not
-  fixed.
+\item \textbf{Evaluate \textsc{TruthLens-202} beyond the local-only floor}
+  (\emph{corpus built and evaluated once}). Re-run the same 193-item
+  held-out split under a larger local model, a vision-first
+  claim-extraction path for provenance posts (where the visual \emph{is}
+  the claim and text-only extraction fails on $\sim$65\% of items), and a
+  metered cloud-escalation tier, reported together as a
+  capability-vs.-cost ablation. This is the top result-bearing open item.
+\item \textbf{A second, independent annotator} for the 165 review-gated
+  \textsc{TruthLens-202} claim/label annotations (currently one
+  LLM-assisted reviewer) and the Tier-2 draft judgments underlying
+  Sections~\ref{sec:evidencevalidation}/\ref{sec:multimodalanalysis} --
+  the prerequisite before the local-only result is a validated headline
+  rather than a floor.
+\item \textbf{Close claim-extraction coverage failures} on degraded
+  audio and, more broadly, the near-zero verbatim \texttt{source\_quote}
+  population (\emph{attacked}: a strengthened prompt did not move the
+  rate, $n=8$; a structural change such as eliciting the quote before the
+  claim is the next candidate). EXP-016 re-confirmed the degraded-audio
+  gap across all 8 modality combinations.
+\item \textbf{Video-provenance / cross-post verification}
+  (\emph{stage 1 built}: a perceptual-hash first-pass filter validated on
+  real frames). Stage 2 (claim-embedding clustering) is blocked by a
+  confirmed infrastructure gap -- the local Ollama server lacks embedding
+  support and no embedding model is pulled; stage 3 and pipeline
+  integration are undone.
+\item \textbf{Matched-pair sourcing for RQ5 and a large-enough set for
+  RQ6}: both remain deferred by pre-registered rule -- RQ5 needs a
+  sourcing pass matched on topic/structure/difficulty across political
+  actors; RQ6's binning gate (no bin under 3 items) is unmet.
+\item \textbf{Independently validate the deterministic checks} against
+  phrasings and real production disagreement cases they were not
+  calibrated on -- Checks 6/7/8 were held to a synthetic bar; the
+  original four checks' circularity is still open, as is the
+  \texttt{.gov.in} full-page-fetch reliability gap (403s, TLS failures).
+\item \textbf{Extend the adversarial suite} to the categories needing
+  real AI-generated-image, edited-video, and audio-corruption content
+  (prompt-injection and contradictory-sources are now covered).
+\item \textbf{Isolated test infrastructure for quota-dependent tests}:
+  the collision between real concurrent Gemini usage and mocked scenarios
+  is quantified (a confirmed 20-requests/day cap) but not fixed, and the
+  live publishing-account connection and everything downstream of it
+  remain unattempted.
 \end{enumerate}
 
 \section{Conclusion}
 \label{sec:conclusion}
 
 This paper reports the first evaluation of TruthLens against independent,
-held-out ground truth, and we lead with the least flattering result it
-produced -- not a weakness in TruthLens, but in our own experimental
-design: a skeptical post-hoc audit found that our baselines had been
-given a cleaner claim input than TruthLens's own extraction ever
-produced, across this entire program, contradicting our stated
-methodology and inflating baseline performance. We report this first
-because a research program that only audits the system under test, never
-its own baselines, is not applying its own standard uniformly. Corrected,
-full TruthLens beats two of three baselines outright and trails the third
-by a substantially smaller margin than the uncorrected comparison showed,
-on the same paired 6-item sample; the remaining gap traces to
-claim-extraction coverage failures on 2 items and one validator false
-negative, both independently diagnosed -- more scientifically useful
-than either the original, partly-artifactual negative number or an
-uncritical positive one would have been. A claim-decomposition
-counterfactual analysis separately shows aggregation delivering a real
-accuracy gain (50.0\% vs.\ 25.0\%, $n=4$) once claim extraction has more
-than one claim to work with. Two general, ground-truth-independent
-validator fixes measurably improved recall (16.7\%$\to$40\%, 100\%
-precision throughout) while leaving reel-level accuracy completely
-unchanged -- a concrete demonstration that verdict-label accuracy and
-the formally-defined \emph{support validity} construct
-(Section~\ref{sec:methodology}) are separable properties, and, we argue,
-the more important axis for an architecture whose premise is
-evidence-before-verdict rather than label-matching. Also reported in
-full: a gap between finding topically-relevant primary sources (68.75\%)
-and extracting usable evidence from them (18.75\%); a multimodal
-claim-coverage result in which OCR-derived evidence recovered a claim
-audio transcription missed entirely; and a structural finding -- most of
-this dataset's actual false claims live outside the specific post being
-fact-checked -- that sets a real ceiling on single-post claim extraction
-regardless of component quality. RQ5 (bias) and RQ6 (calibration) are
-deferred, not forced, because this dataset's size cannot yet support
-either -- the same discipline held throughout: report what the data
-shows, including a negative result, a deferred question, a bug in our own
-baselines, or a threat to validity in our own fix. The taxonomy of
-concrete failure modes (Appendix~\ref{sec:appendixtaxonomy}) -- 24
-entries, over a third found and fixed during this evaluation program
-itself, all but three with a deterministic check and a regression test
-built from the case that surfaced it -- is as practically useful a contribution as
-any single number above, since most of these failures, including the
-baseline confound this conclusion opens with, are only discoverable by
-running a complete system against real content, not by unit-testing
-components in isolation. Scaling the benchmark past $n=9$, closing the
-claim-extraction coverage gap, and running the matched-pair and
-calibration analyses this paper withholds are the concrete next steps.
+held-out ground truth, and leads with the least flattering result it
+produced -- one in our own experimental design, not the system. A
+skeptical post-hoc audit found our baselines had been given a cleaner
+claim input than TruthLens's own extraction ever produced, program-wide,
+contradicting our stated methodology and inflating baseline performance;
+a research program that audits the system under test but never its own
+baselines is not applying its standard uniformly. Corrected, full
+TruthLens beats two of three baselines outright and trails the third by a
+substantially smaller margin on the paired six-item sample, with the
+residual gap tracing to claim-extraction coverage failures on two items
+and one validator false negative -- more useful than the original
+partly-artifactual negative number or an uncritical positive one. A
+claim-decomposition counterfactual ($n=4$) separately shows aggregation
+delivering a real gain (50.0\% vs.\ 25.0\%) once extraction produces more
+than one claim, and two ground-truth-independent validator fixes moved
+recall 16.7\%$\to$40\% (100\% precision) while leaving reel-level accuracy
+unchanged -- a concrete demonstration that label accuracy and the
+formally-defined \emph{support validity} construct are separable
+properties. RQ5 (bias) and RQ6 (calibration) are deferred, not forced,
+per pre-registered rules. The 24-entry taxonomy of failure modes
+(Appendix~\ref{sec:appendixtaxonomy}) -- over a third found during this
+evaluation, all but three paired with a deterministic check and a
+regression test -- is as practically useful as any single number, since
+most, including the baseline confound, are discoverable only by running a
+complete system against real content.
 
 A subsequent foundation-phase program
-(Section~\ref{sec:foundationphase}) extends this picture without
-touching the frozen headline comparison above: the benchmark grew to 15
-items; two new deterministic validator checks (temporal and entity
-consistency), each integrated only after independent evaluation cleared
-a stopping-condition bar, measurably improved the adversarial-benchmark
-precision and recall (81.8\%/50.0\%$\to$87.5\%/60.9\%) with zero new
-false positives, and directly closed a previously-named, explicitly
--disclosed gap case. Most consequentially, four independent experiments
--- each designed to measure something else, none of them a dedicated
-reliability study -- converged on the same underlying finding: raw
+(Section~\ref{sec:foundationphase}) extends this without touching the
+frozen comparison: the set grew to 15 items; two deterministic validator
+checks (temporal, entity), each integrated only after clearing an
+evaluation bar, moved adversarial-benchmark precision/recall
+81.8\%/50.0\%$\to$87.5\%/60.9\% and closed a previously-named gap case;
+four independent experiments converged on the same finding -- raw
 local-model output on real content is substantively empty or unusable a
-large fraction of the time, and this system's Gemini-escalation defenses
-are carrying more of the real reliability burden than a component-level
-pass/fail reading would suggest. Structured 5-query retrieval, a full
-8-combination multimodal re-analysis, a candidate 8-category evidence
--stance taxonomy, the first stage of a perceptual-hash cross-post
-detector, and a bounded adversarial stress test were each built and
-measured with a real, disclosed result -- two clear wins, two honest
-mixed-to-negative findings, and two newly-named, not-yet-investigated
-structural gaps (input-signal consistency, multilingual extraction
-bias) -- consistent with, not an exception to, the discipline this paper
-has applied throughout: report what was actually measured, including
-when it complicates the story.
+large fraction of the time, and the escalation defenses carry more of the
+reliability burden than a pass/fail reading suggests. A prompt-injection
+defense with zero prior test coverage was measured live (1/5 succeeded,
+0/5 after a hardened prompt plus a deterministic delimiter fix, with the
+downstream validator independently neutralising the one success), and a
+genuinely new verdict-stage failure -- label selection not weighting
+source reliability under contradiction (0/14 trials) -- was reported
+unresolved after an insufficient prompt fix, then addressed with a
+deterministic Check 8. A benchmark-scaling session measured a structural
+ceiling: roughly one promotable item per 900 candidates under an
+Instagram-only constraint, an order of magnitude below the initial
+estimate, because most of this pattern's false claims are posted
+elsewhere (often X/Twitter) than the fact-checked Instagram post.
 
-A second autonomous pass (Section~\ref{sec:secondpass}) closed both
-named gaps above with real, disclosed outcomes (one infeasible as
-specified, one corrected rather than confirmed), unlocked the
-aggregation counterfactual on real VALIDATION data for the first time
-($n=1$, directionally consistent with the original finding), and
-extended the adversarial suite into two new categories. A
-prompt-injection defense with zero prior test coverage was measured
-live: 1 of 5 attempts against a small local model succeeded, a
-structural delimiter-spoofing gap was found and fixed independently of
-model behavior, a hardened prompt reduced the measured failure rate to
-0/5, and the downstream anti-hallucination validator was confirmed, not
-merely assumed, to independently neutralize the one pre-fix success.
-Separately, a genuinely new failure mode was found and honestly reported
-as unresolved: verdict-label selection does not reliably weight source
-reliability under direct contradiction (0 of 14 real trials favored a
-0.95-reliability source over a 0.20-reliability, uncited one), and a
-targeted prompt fix, though kept, measurably failed to resolve it --
-the third time this program has found prompt engineering insufficient
-to fully correct a small local model's behavior, reinforcing rather
-than contradicting this paper's central finding that architectural
-defenses (deterministic checks, Gemini escalation, and now a validator
-functioning as a measured, not merely claimed, security backstop) carry
-more of this system's real reliability burden than prompt design alone.
-
-A final benchmark-scaling session (Section~\ref{sec:massSourcing}) grew
-the dataset 15$\to$22 by building automated, multi-source sourcing
-infrastructure rather than continuing to scale a manual process whose
-own throughput had already been measured too slow for the several
--hundred-item target it was built toward. The infrastructure itself
-worked -- five independent fact-checker archives crawled, two real
-tooling bugs found and fixed after direct evidence they were silently
-excluding a majority of one source's real content, and every one of
-four promoted items individually re-verified against its source article
-and the post's own real caption before promotion, not accepted on the
-local judge's word alone -- but the honest result it produced is a
-negative one for the several-hundred-item target specifically: a
-blended yield of roughly one promotable item per 900 real candidates
-checked, an order of magnitude below the rate the original, smaller
-manual pass had suggested. Reported as a structural finding, not a
-tooling failure, because deeper automated crawling of the same source
-type could not have closed that gap -- consistent with, and now
-measured at far higher volume than, this paper's own earlier finding
-(Section~\ref{sec:multimodalanalysis}) that most of this dataset's
-actual false claims live outside the specific post being fact-checked.
-The same session separately verified, rather than newly built, this
-system's tenth pipeline stage (Section~\ref{sec:publishing}): human
--approval-gated publishing to a real Instagram account via the official
-Meta Graph API, present since this project's initial build but carrying
-zero test coverage until now. 18 tests were added against that gap; no
-test, and no run of any kind, has yet exercised a live account, since
-doing so needs an operator-side account-linking step outside this
-codebase that had not been completed as of this writing.
-
-Acting on that session's own structural finding -- that the yield
-ceiling was a property of the Instagram-only constraint, not of the
-sourcing method -- a subsequent pass relaxed the platform scope to all
-short-form political posts and added a review-gated annotation step,
-growing the \texttt{validation} split from 13 to 193 items:
-\textsc{TruthLens-202} (Section~\ref{sec:truthlens202}). This makes a
-benchmark at the scale this program set out to build finally available,
-and we run the full pipeline over all 193 of its \texttt{validation}
-items once, in a \$0 local-only configuration
-(Section~\ref{sec:tl202eval}). That result is reported as a floor, with
-its limitations stated rather than softened: 34.7\% of posts reach a
-verdict at all, bucketed accuracy on those is 29.9\% (below an
-always-\texttt{FALSE} baseline on balanced accuracy), the annotations
-are one LLM-assisted reviewer's work pending a second annotator, and the
-corpus carries a single-source majority and three domain-driven skews.
-Its one firm, transferable finding is diagnostic: with a local 3B model,
-\emph{claim extraction} -- not retrieval (0\% infrastructure failure)
-and not verdict reasoning -- is what determines whether short-form
-political misinformation gets checked, and it fails on roughly
-two-thirds of real posts.
-
-Work on this program is paused at this point. What is left open, stated
-as concretely as everything reported above: the \texttt{validation}
-split has been evaluated only in the local-only configuration, and the
-larger-local-model, vision-first, and metered-cloud-escalation
-configurations -- reported together as a capability-vs.-cost ablation --
-plus a second independent annotator and a broader ground-truth base are
-the immediate next work
-(Section~\ref{sec:futurework}); RQ5 and RQ6 remain deferred for the same
-pre-registered reason as before; the claim-extraction coverage gap, the
-cross-post attribution problem, and the verdict-stage
-reliability-under-contradiction finding are each diagnosed but not
-resolved; and the publishing pipeline's real-account connection, and
-everything downstream of it (a first live post, its own review-queue
-usage in practice, and any resulting engagement or correction workflow),
-is unattempted. None of these are hidden or understated in the sections
-above; collected here only so a resumption of this work starts from an
-accurate list rather than a reconstruction of one.
+Acting on that ceiling, a later pass relaxed the platform scope and added
+a review-gated annotation step, producing \textsc{TruthLens-202} (193
+\texttt{validation} items), and we run the full pipeline over all 193
+once in a \$0 local-only configuration (Section~\ref{sec:tl202eval}),
+reported as a floor with its limitations stated rather than softened:
+34.7\% of posts reach a verdict, bucketed accuracy on those is 29.9\%
+(below an always-\texttt{FALSE} baseline on balanced accuracy), the
+annotations are one LLM-assisted reviewer's work pending a second
+annotator, and the corpus carries a single-source majority and three
+domain-driven skews. Its one firm, transferable finding is diagnostic:
+with a local 3B model, \emph{claim extraction} -- not retrieval (0\%
+infrastructure failure) and not verdict reasoning -- determines whether
+short-form political misinformation gets checked at all, and it fails on
+roughly two-thirds of real posts. Work is paused here; the immediate
+open items are the larger-local-model / vision-first / metered-cloud
+ablation on the same held-out split, a second independent annotator, and
+a broader ground-truth base (Section~\ref{sec:futurework}), alongside the
+still-deferred RQ5/RQ6, the cross-post attribution problem, and the live
+publishing-account connection -- none hidden in the sections above.
 
 \appendix
 
@@ -2840,89 +2447,65 @@ not attempted here.
 
 \section{Threats to Validity: Full Reasoning}
 \label{sec:appendixthreats}
-Section~\ref{sec:threats} lists ten threats at a checkable density; full
-reasoning for each follows, in the same order.
 
-\textbf{Small, non-independent sample.} $n=9$ (6 with a resolved verdict
-from every configuration) is far below the 20--30 item target this
-program set for itself, already a deliberate reduction from an ideal
-50--100 (Section~\ref{sec:expmethodology}). Every proportion in this
-paper is reported with an exact count and a Wilson interval so a reader
-can judge how much these numbers could move with more data -- several,
-including the headline 33.3\% TruthLens accuracy figure, have confidence
-intervals wide enough to be consistent with a genuinely different true
-rate.
+Section~\ref{sec:threats} lists twelve threats at a checkable density;
+the additional reasoning for the first ten follows in the same order (the
+last two, on the \textsc{TruthLens-202} corpus and its local-only
+evaluation, are detailed in Sections~\ref{sec:truthlens202} and
+\ref{sec:tl202eval}).
 
-\textbf{Single domain, single-country content.} All evaluated content is
-Indian political short-form video with English/Hindi/Urdu mixed
-transcripts. Source-tiering domain lists and research-planning prompts
-were not tuned for, and have not been tested against, other national
+\textbf{Small, non-independent sample.} $n=9$ (6 resolved from every
+configuration) is far below this program's own 20--30 target and an ideal
+50--100. Every proportion carries an exact count and a Wilson interval;
+several, including the 33.3\% headline, have intervals wide enough to be
+consistent with a different true rate.
+
+\textbf{Single domain, single country.} Indian political short-form video
+with English/Hindi/Urdu transcripts; source-tiering domain lists and
+research-planning prompts are untuned and untested for other national
 contexts.
 
-\textbf{Single annotator, no inter-annotator agreement.} Every draft
-human judgment used in Sections~\ref{sec:evidencevalidation} and
-\ref{sec:multimodalanalysis} (validator TP/FP/TN/FN calls, evidence
--relevance judgments, claim-coverage matching) comes from one
-unadjudicated reviewer on this project. Tier-1 headline verdicts
-(Section~\ref{sec:dataset}) do not have this limitation, since they are
-independent professional organizations' own published verdicts, but every
-finer-grained judgment in this paper does.
+\textbf{Single annotator, no IAA.} Every draft judgment in
+Sections~\ref{sec:evidencevalidation}/\ref{sec:multimodalanalysis}
+(validator TP/FP/TN/FN, evidence relevance, claim-coverage matching) is
+one unadjudicated reviewer's; Tier-1 headline verdicts are exempt (they
+are independent organisations' published verdicts).
 
-\textbf{The new validator check's recall improvement is measured on the
-same sample it was calibrated against.} The 40\% recall figure
-(Section~\ref{sec:evidencevalidation}) is likely optimistic about
-generalization to differently-phrased ``no evidence found'' reasoning,
-since the check's phrase list was written after reading the two real
-cases it now catches. The general principle behind the check does not
-reference ground truth; its specific implementation does, in this narrow
-sense.
+\textbf{The new validator check's 40\% recall is measured on its own
+calibration sample.} Likely optimistic for differently-phrased ``no
+evidence found'' reasoning, since the phrase list was written after
+reading the two cases it now catches; the principle is
+ground-truth-independent, the implementation in this narrow sense is not.
 
-\textbf{The vision-context fix's effect on headline accuracy is not
-independently re-verified.} Section~\ref{sec:multimodalanalysis} states
-this as an expectation (no effect on items 0006/0007, whose root causes
-are diagnosed as unrelated to vision quality), not a measured result,
-because the paid fallback's quota was exhausted before this could be
-tested end-to-end.
+\textbf{The vision-context fix's headline effect is not independently
+re-verified} -- stated as an expectation (root causes of items 0006/0007
+diagnosed as unrelated to vision quality), not a measured result; the
+paid fallback's quota was exhausted before an end-to-end test.
 
-\textbf{item-0003 is permanently excluded, not scored as a failure.}
-Confirmed unfetchable across three independent attempts spanning this
-program -- a real content-acquisition limitation against Instagram
-specifically, not addressed by any fix in this paper.
+\textbf{item-0003 is permanently excluded, not scored as a failure} --
+confirmed unfetchable across three attempts, a real content-acquisition
+limitation against Instagram, unaddressed by any fix here.
 
-\textbf{Baseline comparison isolates architecture from model, but not
-from claim-extraction coverage.} All configurations use the same
-underlying model and search provider (Section~\ref{sec:expmethodology}),
-so a measured accuracy difference is attributable to architecture rather
-than model quality -- but Baselines 1--3 receive the claim as already
-extracted by TruthLens's own claim-extraction stage, so the headline
-comparison cannot separate ``TruthLens's downstream architecture
-underperforms'' from ``TruthLens's own claim extraction gave its
-downstream architecture nothing to work with for 2 of 6 items,'' and
-Section~\ref{sec:results} argues explicitly for the latter reading.
+\textbf{The baseline comparison isolates architecture from model but not
+from claim-extraction coverage.} Baselines 1--3 receive TruthLens's own
+extracted claim, so the headline comparison cannot separate ``downstream
+architecture underperforms'' from ``extraction gave it nothing for 2 of 6
+items''; Section~\ref{sec:results} argues for the latter.
 
 \textbf{The primary-source-retrieval fix is measured on tier
-classification, not full-text completeness}, and on a query sample
-distinct from Section~\ref{sec:evidencevalidation}'s main evidence
--quality run. The \texttt{.gov.in} full-page-fetch reliability gap
-(403s, TLS failures) it surfaced remains open, unresolved rather than
-merely undiscussed.
+classification, not full-text completeness}, on a query sample distinct
+from the main evidence-quality run; the \texttt{.gov.in} fetch gap it
+surfaced (403s, TLS) is open.
 
-\textbf{RQ5 and RQ6 are not evaluated, by design, not by omission.} Both
-are deferred per our own pre-registered fallback rules
-(Section~\ref{sec:bce}) rather than reported with an underpowered number
-dressed up as a finding.
+\textbf{RQ5 and RQ6 are deferred by design}, per pre-registered fallback
+rules (Section~\ref{sec:bce}), not reported with an underpowered number.
 
-\textbf{Ground truth is itself sourced from a small set of professional
-fact-checking organizations, whose own editorial judgment we do not
-independently audit.} BOOM Live, Alt News, and Factly are established,
-widely-cited Indian fact-checking organizations, and using their
-published verdicts as Tier-1 ground truth is standard practice in this
-subfield -- but this is distinct from RQ5's question of whether
-\emph{TruthLens} treats political actors comparably. A systematic
-asymmetry in which claims these organizations choose to cover, or how
-they resolve ambiguous cases, would propagate into every number in this
-paper undetected, since we have no second, independent ground-truth
-source to check them against.
+\textbf{Ground truth is a small set of professional fact-checkers whose
+editorial judgment we do not independently audit.} Using their published
+verdicts as Tier-1 truth is standard, but a systematic asymmetry in which
+claims they cover or how they resolve ambiguity would propagate into
+every number here undetected, with no second ground-truth source to
+check against.
 
 \section{Extended Bias, Calibration, and Efficiency Discussion}
 \label{sec:appendixbce}
@@ -3065,490 +2648,63 @@ honest, mixed result, not suppressed or overclaimed.
 
 \section{Full Taxonomy of Failure Modes Found in Live Testing}
 \label{sec:appendixtaxonomy}
-Section~\ref{sec:failuremodes} summarizes this taxonomy; the complete
-24-entry list, each with its full description and fix, is given here in
-full rather than only referenced, per this program's own discipline
-against omitting a disclosed finding for space.
+Section~\ref{sec:failuremodes} summarizes this taxonomy. All 24 entries
+are listed below, one line each, so none is dropped for space; several
+(entries 23--24) are the load-bearing measured results discussed in the
+body.
 
-\begin{itemize}
-\item \textbf{Schema-valid, substantively empty output.} Found
-  independently in \emph{four} different pipeline stages across this
-  project (claim extraction, content generation, verdict reasoning, and,
-  this evaluation program, evidence analysis): a locally hosted model
-  produces output that satisfies its schema -- a non-empty string, a
-  well-typed list -- while containing no actual information. No schema
-  validation catches this class of failure; only a content-level
-  substantiveness check does (Section~\ref{sec:cascade}), and each stage
-  needed its own, since the same architecture existing in one stage did
-  not transfer automatically to the next.
-\item \textbf{Verbatim-but-misattributed quotation.} A claim's source
-  quote can be a genuine, verbatim substring of the video's on-screen
-  text while still being the wrong kind of quote -- a caption written by
-  the video's publisher \emph{about} a person, not words that person said.
-  Fixed by requiring the candidate speaker's own name not to appear
-  inside the quote text itself before trusting the attribution.
-\item \textbf{Silent verdict/presentation inconsistency.} After
-  introducing reel-level, multi-claim verdict aggregation, a review
-  dashboard continued displaying the primary claim's own individual
-  verdict as ``the'' verdict, while the actually-published output
-  displayed the separately computed reel-level verdict; the two could and
-  did disagree with no error, because both values were valid data. Found
-  only by comparing rendered output against the database directly.
-\item \textbf{Bracket-matching truncation bug.} A display-sanitization
-  regex intended to strip an internal validation-note suffix used
-  non-greedy bracket matching, which stopped at the first closing bracket
-  encountered -- the closing bracket of a Python list repr \emph{inside}
-  the note itself -- leaving the note's own tail visible on a published
-  slide. Fixed by truncating at a literal marker string rather than
-  attempting to bracket-match free-form text.
-\item \textbf{Unrepresentative thumbnail selection.} A single frame
-  extracted at a fixed offset is not a reliable representative thumbnail.
-  Now several candidate frames are sampled and selected by a cheap
-  grayscale-variance ``visual complexity'' score, screening out
-  blank/flat/transition frames -- not real scene- or face-aware selection,
-  but a materially better floor than one fixed guess.
-\item \textbf{Entity confusion between similarly-named organizations.}
-  Evidence retrieval for a claim about one organization returned an
-  article about a different, similarly-named one; the evidence-analysis
-  stage labeled this source's stance as \texttt{contradicts} rather than
-  \texttt{irrelevant} -- an article about a different entity does not
-  contradict a claim about this one, it simply does not address it. Not
-  currently checked anywhere in the pipeline.
-\item \textbf{Downgraded reasoning reused as trusted input downstream.}
-  A verdict-proposal model's free-text reasoning, containing an
-  entity-confusion-driven fabrication, was correctly downgraded to
-  \texttt{UNVERIFIED} at the label level -- but downgrading a verdict
-  forces only its label, not its free-text \texttt{reasoning\_summary},
-  because there is no reliable way to isolate the offending sentence from
-  otherwise-reasonable-looking prose. That full text was still being
-  reused verbatim downstream. Fixed by treating any non-\texttt{passed}
-  validation status as disqualifying for reuse of that verdict's free
-  text anywhere.
-\item \textbf{Single-digit fabrication in generated headlines.} A
-  headline-generation prompt explicitly instructing the model never to
-  introduce a number not already in the source claim did so anyway,
-  converting ``4,000 crore rupees'' into an invented, arithmetically
-  wrong ``\$1 Billion.'' The existing number-grounding check ignores
-  single-digit numbers to avoid flagging incidental meta-commentary in
-  longer prose, an exception that does not apply to a headline this
-  short. Fixed with a headline-specific check requiring every digit
-  sequence in the generated headline to appear in the source claim,
-  falling back to the claim's own already-grounded text verbatim on
-  failure.
-\item \textbf{Vision-read text silently discarded before claim
-  extraction.} Vision analysis of a photo correctly read a specific
-  figure and timeframe off an on-screen graphic into a dedicated
-  ``visible text'' field, distinct from a vaguer scene-description field
-  -- but claim extraction's prompt only ever included the latter. Not a
-  hallucination, but a real signal thrown away before it could be used.
-  Fixed by including the on-screen-text field with the same weight as OCR
-  output.
-\item \textbf{Missing glyph rendering as a blank box.} The bundled
-  rendering fonts have no glyph for the Indian Rupee sign, a routine
-  character in this domain's claims, not an edge case. Fixed with a
-  character substitution applied only at render time.
-\item \textbf{Vision-transcription accuracy, left unresolved.} Distinct
-  from the prompt-echo bug below: the same vision analysis occasionally
-  misreads the text it is looking at (truncated words, a stray character
-  standing in for a digit) without discarding or fabricating it wholesale.
-  This is an accuracy limitation of the underlying vision model itself,
-  not a gap in the pipeline's use of it, and we chose not to patch it with
-  an unverified heuristic rather than risk a fix with an unknown
-  false-positive rate.
-\item \textbf{Empty-string claims passing schema validation.} A locally
-  hosted model returned claims with empty text for content whose OCR
-  plainly contained checkable claims -- a non-empty-string type
-  constraint does not require a non-empty \emph{string}. Fixed with a
-  dedicated substantiveness check plus an unconditional filter that never
-  persists a blank-text claim.
-\item \textbf{An except clause written against the wrong SDK exception
-  hierarchy.} A real rate-limit response from the fallback provider's API
-  raised an exception type the provider wrapper's error handling did not
-  recognize, because the specific API surface in use raises a separate
-  exception hierarchy entirely. This let a routine, expected condition --
-  daily quota exhaustion -- propagate as an unhandled exception rather
-  than a clear, typed error. A pre-existing unit test for this exact code
-  path had mocked the same wrong exception hierarchy the production code
-  was mishandling, so it passed throughout -- a concrete instance of a
-  test being internally consistent with buggy code while providing zero
-  real coverage of the failure it was written to catch. Fixed by catching
-  the SDK's actual exception hierarchy and rewriting the test against real
-  instances of it.
-\item \textbf{Baseline architecture silently inheriting a rescue
-  mechanism under evaluation.} Found while building Baselines 2--3
-  (Section~\ref{sec:expmethodology}): the first working draft called the
-  same provider factory every production stage uses, which silently
-  returns a Gemini-fallback-wrapped provider whenever an API key is set in
-  the environment -- giving both ``simple'' baselines the exact
-  failure-rescue mechanism TruthLens's own architecture was being
-  evaluated for having, introduced by accident rather than by a bad
-  research decision. Caught during smoke testing before any number was
-  reported anywhere; fixed by importing the local-only provider directly.
-\item \textbf{A second, differently-phrased ``no video'' error masking a
-  fetchable photo post.} item-0005 initially failed ingestion outright:
-  yt-dlp reported ``No video formats found!'' -- correct information (it
-  is a photo post) -- but the existing photo-post fallback matched only a
-  different, previously-seen phrasing (``no video in this post''). A
-  genuinely fetchable post failed hard instead of falling back to Open
-  Graph metadata. Fixed by matching against a tuple of known phrasings.
-\item \textbf{UUID hex fragments leaking through citation markup as fake
-  unsupported numbers.} Described in full in
-  Section~\ref{sec:evidencevalidation}: digits inside a cited evidence
-  ID's own UUID were being extracted by the number-grounding check as
-  apparent fabricated statistics, in two independently-discovered forms
-  (double- and single-bracket citation markup). The fix's own
-  side effect -- removing an accidental true positive from an earlier
-  validator audit -- is itself reported as a finding, not smoothed over.
-\item \textbf{47.1\% empty explanations in per-source evidence analysis.}
-  Described in full in Section~\ref{sec:evidencevalidation}: the one
-  LLM-calling pipeline stage with no substantiveness check of its own,
-  confirmed at scale once measured. Fixed with a per-source check.
-\item \textbf{Recurring vision-output prompt echo, previously
-  undercounted as a rare anecdote.} Described in full in
-  Sections~\ref{sec:cascade} and \ref{sec:multimodalanalysis}: the local
-  vision model repeatedly produces schema-valid, non-empty output that is
-  actually an echo of its own system prompt rather than a real image
-  description, found across at least 4 separate real reels this project
-  -- frequent, not rare, once actually counted. Fixed with a
-  word-overlap-with-prompt substantiveness check.
-\item \textbf{A label confidently contradicting the model's own stated
-  reasoning, undetected by any grounding check.} Described in full in
-  Section~\ref{sec:evidencevalidation}: reasoning stating no reliable
-  evidence exists, paired with a confident non-\texttt{UNVERIFIED} label
-  -- a distinct failure category from a fabricated citation or number,
-  since every citation and number involved can be entirely real. Fixed
-  with a new deterministic check, with its calibration circularity
-  explicitly disclosed as a threat to validity.
-\item \textbf{A \texttt{MissingGreenlet} crash from a stale ORM read
-  after rollback.} Found extending a research script to two new items
-  (Section~\ref{sec:results}): a per-claim exception handler's
-  \texttt{db.rollback()} expired an already-loaded ORM object, and the
-  next line's synchronous attribute access on it crashed the entire
-  script instead of recording one claim's failure -- the same bug class
-  already fixed once in production code. Fixed by capturing needed values
-  before the try block.
-\item \textbf{A table-generation script's printed output and its
-  persisted JSON summary silently disagreed, found while building this
-  paper's figures.} \texttt{day8\_final\_tables.py} reused the same two
-  variable names (\texttt{k}, \texttt{n}) across three separate
-  computations -- Table 1's full-TruthLens row, a per-baseline loop
-  building Table 2, and Table 3's decomposition ablation -- each printed
-  correctly to stdout immediately after being computed, but the summary
-  JSON was assembled at the end of the function from whatever those two
-  names last held, silently combining Table 2's third baseline's paired
-  -subset count (\texttt{n=6, k=3}) with Table 3's item count
-  (\texttt{n=4}) into a fabricated-looking \texttt{full\_truthlens\_n6:
-  \{n: 4, correct: 3\}} (75.0\%) that appeared nowhere in the script's own
-  printed tables and did not match Table~\ref{tab:table2}'s real,
-  already-published 33.3\% (2/6). This is the same failure class as the
-  silent verdict/presentation-inconsistency entry above -- two correct
-  -looking outputs from the same run, one right and one silently wrong --
-  just found in this project's own research tooling rather than
-  production code, and exactly why Figure~\ref{fig:mainresults} is
-  regenerated from, and checked against, the script's stdout rather than
-  trusted on the strength of a file simply existing. Caught only because
-  the figure was visually inspected against the table it was supposed to
-  plot before this section was finalized. Fixed by giving every
-  computation its own distinctly-named variables and by persisting
-  Table 2 explicitly (previously only printed), so the artifact a reader
-  or a script can load is no longer a smaller, silently-overlapping
-  namespace than what was shown on screen.
-\item \textbf{A quantifiable daily API quota collides with mocked test
-  scenarios, silently, rather than being isolated from them.} A quota
-  -aware provider's global cooldown check (correct, intended behavior:
-  once a real quota exhaustion is recorded, stop attempting real calls
-  against it) reads the same shared table real production usage writes
-  to. Any real exhaustion recorded by concurrent real usage makes
-  mocked test scenarios short-circuit into the real cooldown path
-  before ever reaching their scripted mock response, failing with a
-  missing-row lookup rather than a clear "quota exhausted" message.
-  Diagnosed to the exact free-tier limit responsible: a real \texttt{429}
-  response confirmed a 20-requests/day cap on the fallback model used.
-  Not fixed -- doing so safely needs either a fully isolated test
-  database or a way to scope the cooldown check to a test context, both
-  larger changes than warranted alongside this finding; the workaround
-  used was re-running the affected tests once concurrent real usage
-  finished, and quantifying the constraint so future runs can anticipate
-  it rather than be surprised by it.
-\item \textbf{A structural gap in the delimiter-based prompt-injection
-  defense, and one adversarial style that got past it.} The convention
-  every LLM-calling stage uses to mark reel-derived text as data, not
-  instructions, never neutralized literal occurrences of its own
-  delimiter tokens already present in the untrusted text being wrapped
-  -- a transcript or caption containing the literal closing token could,
-  in principle, forge a fake data-block boundary regardless of how
-  reliably any given model resists in-band instructions. Fixed
-  deterministically (sanitizing those tokens before wrapping) and
-  verified in both directions (reintroducing the bug on a scratch copy
-  confirmed a new regression test catches it; restoring the fix
-  confirmed it passes again). Separately, of 5 live adversarial
-  prompt-injection attempts against claim extraction, the most direct
-  style (a blunt "ignore all previous instructions" override) succeeded
-  once, producing the injected false claim verbatim as a verifiable,
-  maximum-importance claim -- confirming, for the first time with a
-  real measurement rather than an assertion, this project's own prior
-  documented expectation that small local models follow in-data
-  instructions more readily than larger ones. A hardened extraction
-  prompt reduced this to 0/5 on re-test; carrying the one pre-fix
-  success through the real remainder of the pipeline showed the
-  downstream anti-hallucination validator independently resolving it to
-  a correct, evidence-grounded \texttt{FALSE} verdict -- a real, if
-  single-case, confirmation that the validator functions as the
-  claimed backstop even when an earlier defense is bypassed.
-\item \textbf{Verdict-label selection does not reliably weight source
-  reliability under direct contradiction.} Constructed evidence with a
-  0.95-reliability primary-government source supporting a claim and a
-  0.20-reliability, uncited source contradicting it produced TRUE or
-  MOSTLY\_TRUE in 0 of 14 real trials across two prompt versions --
-  including runs whose own free-text reasoning correctly identified the
-  contradicting source as unreliable, yet still did not choose a label
-  reflecting that assessment; one run paired an incorrect label with
-  maximum (1.0) stated confidence. A prompt hardened with an explicit
-  reliability-weighting rule and worked example did not resolve this on
-  re-test (still 0/7) -- reported as a measured negative result, not
-  silently dropped. A deterministic validator check (comparing
-  cited-evidence reliability against verdict direction) was then built,
-  evaluated against the same bar Checks 6/7 were held to (10/10
-  synthetic cases, 14/14 real observed wrong trials caught, 0/34
-  interactions with the existing benchmark), and integrated as Check 8
-  with zero measured regression to existing benchmark precision/recall.
-\end{itemize}
+\begin{enumerate}
+\item \textbf{Schema-valid, substantively empty output.} A local model emits a schema-conforming but information-free string; found independently in four stages; each needs its own content-level substantiveness check (Section~\ref{sec:cascade}).
+\item \textbf{Verbatim-but-misattributed quotation.} A source quote is a real on-screen substring but is the publisher's caption \emph{about} a person, not their words; fixed by rejecting a quote that contains the candidate speaker's own name.
+\item \textbf{Silent verdict/presentation inconsistency.} A dashboard showed the primary claim's verdict while the published output showed the reel-level verdict; the two could disagree with no error; found only by diffing rendered output against the database.
+\item \textbf{Bracket-matching truncation bug.} A non-greedy sanitization regex stopped at a bracket inside a list-repr in the text it was stripping, leaving an internal note on a slide; fixed by truncating at a literal marker.
+\item \textbf{Unrepresentative thumbnail selection.} One fixed-offset frame is unreliable; now several frames are sampled and picked by grayscale-variance complexity to skip blank/transition frames.
+\item \textbf{Entity confusion between similarly-named organizations.} Retrieval returned an article about a different same-named org; evidence analysis labelled it \texttt{contradicts} rather than \texttt{irrelevant}; not currently checked.
+\item \textbf{Downgraded reasoning reused downstream.} A validator forces a verdict's label but not its free text; that text (carrying an entity-confusion fabrication) was reused verbatim; fixed by disqualifying any non-\texttt{passed} verdict's text from reuse.
+\item \textbf{Single-digit fabrication in generated headlines.} A headline prompt forbidding new numbers turned ``4,000 crore'' into ``\$1 Billion''; the number-grounding check skips single digits; fixed with a headline-specific digit-grounding check that falls back to the claim's own text.
+\item \textbf{Vision-read text silently discarded.} Vision read a figure/timeframe into a dedicated ``visible text'' field that claim extraction's prompt never included; fixed by weighting it like OCR.
+\item \textbf{Missing glyph rendering as a blank box.} Bundled fonts lack the Rupee sign, routine in this domain; fixed with a render-time substitution.
+\item \textbf{Vision-transcription accuracy, unresolved.} Vision occasionally misreads text (truncated words, stray characters) without discarding it -- an underlying-model limitation left unpatched rather than risk an unverified heuristic.
+\item \textbf{Empty-string claims passing schema validation.} A non-empty-string type does not require a non-empty string; fixed with a substantiveness check plus an unconditional blank-text filter.
+\item \textbf{\texttt{except} against the wrong SDK exception hierarchy.} A routine quota \texttt{429} raised an unrecognised type and propagated unhandled; a pre-existing test mocked the same wrong hierarchy so it never caught it; fixed against the real hierarchy, test rewritten against real instances.
+\item \textbf{Baseline silently inheriting a rescue mechanism under evaluation.} The first baseline draft used the provider factory, which returns a Gemini-fallback-wrapped provider when a key is set; caught in smoke testing before any number was reported; fixed by importing the local-only provider directly.
+\item \textbf{A second ``no video'' phrasing masking a fetchable photo post.} item-0005's \texttt{No video formats found!} did not match the known photo-fallback phrase, so a fetchable post failed hard; fixed by matching a tuple of phrasings.
+\item \textbf{UUID hex fragments leaking as fake unsupported numbers.} Digits inside a cited evidence ID's UUID were read as fabricated statistics, in two citation-markup forms; the fix also removed an accidental true positive from an earlier audit, itself reported.
+\item \textbf{47.1\% empty explanations in per-source evidence analysis.} The one LLM stage with no substantiveness check of its own; confirmed at scale once measured; fixed with a per-source check.
+\item \textbf{Recurring vision prompt echo, previously undercounted.} The local vision model repeatedly returns a schema-valid echo of its own system prompt across $\geq 4$ real reels; fixed with a word-overlap-with-prompt check.
+\item \textbf{A label contradicting the model's own reasoning.} Reasoning stating ``no reliable evidence'' paired with a confident non-\texttt{UNVERIFIED} label -- a distinct category from a fabricated citation or number; fixed with a new deterministic check whose calibration circularity is disclosed as a threat.
+\item \textbf{\texttt{MissingGreenlet} crash from a stale ORM read after rollback.} A per-claim handler's \texttt{db.rollback()} expired a loaded object; the next attribute access crashed the whole script; fixed by capturing values before the try block.
+\item \textbf{A research script's stdout and its JSON summary silently disagreed.} \texttt{day8\_final\_tables.py} reused \texttt{k}/\texttt{n} across three computations; the end-of-function JSON combined two tables' counts into a fabricated-looking \texttt{n{=}4, correct{=}3} (75\%) matching neither printed table nor the published 33.3\%; caught only by visually checking the figure against its table; fixed with distinct variable names and explicit table persistence.
+\item \textbf{A daily API quota colliding with mocked tests.} A quota-aware cooldown check reads the same shared table real usage writes; concurrent real exhaustion short-circuits mocked scenarios into the cooldown path; diagnosed to a confirmed 20-requests/day free-tier cap; not fixed (needs test isolation), worked around by re-running after real usage finished.
+\item \textbf{A structural gap in the delimiter prompt-injection defence.} The data-wrapping convention never neutralised literal delimiter tokens already in the untrusted text, allowing a forged boundary; fixed deterministically and regression-tested both directions. Separately, 1/5 live injection attempts (a blunt override) succeeded pre-fix, 0/5 after a hardened prompt; carried through the pipeline, the downstream validator independently resolved the one success to a correct \texttt{FALSE}.
+\item \textbf{Verdict-label selection does not weight source reliability under contradiction.} A 0.95 primary source supporting vs.\ a 0.20 uncited source contradicting produced no \texttt{TRUE}/\texttt{MOSTLY\_TRUE} in 0/14 trials, some with reasoning that named the weak source as unreliable yet did not act on it; a hardened prompt did not fix it (0/7); a deterministic Check~8 (cited-reliability vs.\ verdict direction) was built, cleared the same bar as Checks~6/7, and integrated with zero measured regression.
+\end{enumerate}
 
 \section{Extended Foundation-Phase Detail}
 \label{sec:appendixfoundation}
 
-Full numeric detail for Section~\ref{sec:foundationphase}, one
-subsection per experiment; every number traces to
-\texttt{experiments/registry.jsonl} and a dated results artifact under
+Full numeric detail for Section~\ref{sec:foundationphase}; every number
+traces to \texttt{experiments/registry.jsonl} and a dated artifact under
 \texttt{research/results/}.
 
-\subsection{EXP-013/EXP-019: validator checks, full numbers}
-Check 6 (temporal) and Check 7 (entity) were each unit-tested against
-real observed values before integration (7 and 7 regression tests
-respectively), then jointly stress-tested on the expanded 34-case
-adversarial benchmark. Combined confusion counts: TP=14, FP=2, FN=9,
-TN=9 (precision 87.5\%, recall 60.9\%). Both false positives are
-\texttt{valid-9}/\texttt{valid-10}, a pre-existing Check-3 limitation
-(a contrastive "the true figure is X, not the claimed Y" reasoning
-pattern false-positives because Y, the refuted number, is never present
-in the evidence passage -- only the claim text contains it, and Check 3
-only has access to evidence passages). A live end-to-end verification
-attempt (EXP-013) against a real claim with a resolvable
-\texttt{time\_reference} was inconclusive by circumstance -- an earlier
-check (missing citation) fired first because the real search results
-for that specific claim were mostly irrelevant -- disclosed rather than
-re-run at further real cost, since Check 6's logic is independently
-covered by direct unit tests.
-
-\subsection{EXP-012/EXP-016: source-quote groundedness}
-EXP-012 measured whether claim \texttt{extraction\_confidence}
-correlates with claim groundedness (a verbatim-quote match against the
-item's real content) across 8 real DEV-split items: 12 real,
-substantive, non-empty claims, 0 grounded -- zero variance blocked the
-intended correlation computation entirely. EXP-016 independently
-re-measured the same groundedness signal at much higher $n$ (90 real
-claims, 8 items $\times$ 8 modality combinations): also 0 grounded.
-Spot-checked directly, not assumed a measurement artifact: claim text
-is real and substantive (e.g., "\#CJP protesters allegedly pelted
-stones at a new hydrogen train"); the model simply does not populate
-\texttt{source\_quote} in practice, regardless of which input signals it
-is given.
-
-\subsection{EXP-016: full 8-combination coverage}
-Ground-truth claim coverage (same 8 real items as
-Section~\ref{sec:multimodalanalysis}, manual matching against
-\texttt{items.jsonl}): caption\_only 25.0\%, audio 25.0\%, ocr 25.0\%,
-\textbf{vision 37.5\%}, audio+ocr 25.0\%, audio+vision 25.0\%,
-\textbf{ocr+vision 12.5\%}, audio+ocr+vision 25.0\%. Two items produced
-zero claims in every one of the 8 conditions, including, notably, this
-dataset's one TRUE-labeled item. A third item produced 5 real claims
-under the richest condition, none of which covered the actual
-ground-truth assertion -- a genuine wrong-claim-extracted failure
-(Rule 5), distinct from the zero-claims failure mode.
-
-\subsection{EXP-015: 5-query retrieval, full numbers}
-4 real DEV claims, 20 queries (5 types $\times$ 4 claims), 42 sources
-fetched, 16 primary-tier. Per-query-type relevant-primary-source rate
-(manually judged): \texttt{primary\_source} 3/4 (75\%),
-\texttt{context\_history} 2/2 (100\%, $n=2$), \texttt{contradiction}
-1/3 (33\%), \texttt{entity\_focused} 1/4 (25\%), \texttt{exact\_claim}
-0/3 (0\%) -- the last driven entirely by one claim (a private
-organization with no natural government angle) whose 7 primary-tier
-hits were all keyword-collision false matches on unrelated
-\texttt{.gov.in}/\texttt{.nic.in} domains (a Gujarat seismology
-institute's insurance-claims page, an income-tax assessment page, a
-Supreme Court hearing list, among others) -- exposing that this
-system's domain-pattern tier classification has no content-relevance
-check of its own.
-
-\subsection{EXP-017: evidence-stance taxonomy, full numbers}
-An 8-category candidate stance taxonomy (4 new categories:
-\texttt{same\_event\_wrong\_entity}, \texttt{temporally\_mismatched},
-\texttt{insufficient\_detail}, \texttt{mentions\_only}) was compared
-against 20 real, already-persisted evidence rows. Raw category-change
-rate was 55\% (11/20), but 80\% (16/20) of rows had an empty
-explanation on at least one side because this specific comparison did
-not replicate the production substantiveness-retry safeguard -- filtered
-to the 4 rows where both sides were genuinely substantive, only 1
-changed category, too small an $n$ for any real conclusion about the
-taxonomy itself. Not integrated; the comparison's own confound is the
-more important, and more general, finding (Section~\ref{sec:reliabilityfinding}).
-
-\subsection{EXP-018: cross-post detection, full numbers}
-Same-video positive control (one real reel, frames independently
-re-extracted twice via separate \texttt{ffmpeg} sampling passes): 25 vs.\
-25 frames, minimum Hamming distance 0. Different-video negative control
-(two different real reels): 25 vs.\ 21 frames, minimum Hamming distance
-20 (match threshold 10). A genuine two-independently-posted-same-footage
-pair (this dataset's own item-0002, whose ground-truth notes name a
-specific real original source) was searched for live but its exact
-post URL could not be extracted from the citing fact-check article
-through available tooling -- disclosed as not achieved this pass rather
-than forced or approximated.
-
-\subsection{EXP-020: adversarial stress test, full numbers}
-Six synthetic, unpersisted cases run through the real, unmodified claim
--extraction stage: \texttt{garbled\_ocr} (0 claims), \texttt{caption\_
-transcript\_contradiction} (1 claim, from the caption only -- the
-unrelated transcript content was silently dropped, not merged),
-\texttt{extremely\_short} (0 claims), \texttt{mixed\_language\_chaos} (2
-claims, both from the English-script portion of a Hindi/Urdu/English
-sentence), \texttt{repetitive\_spam} (40 repetitions of one sentence
-collapsed to 1 claim), \texttt{near\_max\_tokens} (0 claims, confounded
-by a real Gemini quota-exhaustion event during the one quality-retry
-this case triggered). Zero crashes across all six.
-
-\subsection{EXP-021: source\_quote prompt strengthening, full numbers}
-A candidate prompt (\texttt{claim\_extraction.v4-quote-candidate})
-added an explicit 4-step self-check procedure and a worked example
-matching the real "5,154 likes" OCR case, identical otherwise to
-production's \texttt{v3}. Re-run against the same 8 real DEV items as
-EXP-012/EXP-016: baseline (v3, re-run fresh) produced 9 claims, 0 with
-\texttt{source\_quote} (0.0\%); the candidate (v4) produced 6 claims, 0
-with \texttt{source\_quote} (0.0\%). On the one item containing the
-literal "5,154 likes" text the worked example was built from, v3
-produced 7 unquoted claims and v4 produced zero claims at all --
-the stronger instruction did not recover the quote and may have
-suppressed extraction on that item entirely.
-
-\subsection{EXP-022: input-signal consistency feasibility, full numbers}
-Jaccard similarity of stopword-filtered keywords between
-\texttt{caption\_text} and \texttt{transcript}, computed for every real
-benchmark reel with both fields populated ($n=4$): 0.000 in all four
-cases (zero shared keywords). Not a sign of inconsistency -- the normal
-case for this project's real, legitimate, multilingual content.
-
-\subsection{EXP-023: multilingual bias re-examination, full numbers}
-Script classification (Latin vs.\ Devanagari/Urdu Unicode ranges) of
-all 90 real claims from EXP-016's own results file (no new extraction,
-pure re-analysis). Overall: 42 Latin, 48 non-Latin. Per-item: a
-fully-Marathi item produced 37 non-Latin vs.\ 8 Latin claims (the
-Latin ones being caption metadata -- like/comment counts -- not
-content); a fully-Hindi item (Karni Sena) produced 5/5 non-Latin; two
-English-language items produced Latin-only claims; and the one
-genuinely code-switched real item (Hindi-English mixed) produced claims
-in both scripts (7 Latin, 6 non-Latin) -- direct evidence against a
-general Latin-script bias.
-
-\subsection{EXP-024: VALIDATION-split real population, full numbers}
-The real, unmodified second half of \texttt{orchestrator.analyze\_reel()}
-(claim extraction through verdict) was run and committed for real
-against all 6 VALIDATION-split items. item-0011/0012/0013/0015
-produced zero claims. item-0010 produced 2 claims (one downgraded
-\texttt{entity\_mismatch}, one \texttt{FALSE}/\texttt{passed}); item-0014
-produced 1 claim (\texttt{FALSE}/\texttt{passed}, matching real ground
-truth). The entity-mismatch case was manually audited against its
-cited source: the claim ("a female student was severely beaten," in
-the context of a Jharkhand-police protest item) was cited against a
-real news article about an unrelated 2026 IIT Palakkad security
-incident -- a genuine, correct catch, confirming Check 7 generalizes to
-real production data it was never calibrated against.
-
-\subsection{EXP-025: aggregation counterfactual re-run on real VALIDATION data, full numbers}
-Filtering the 6 VALIDATION items to those with $\geq 2$ verifiable
-claims each carrying a real, current verdict yields exactly $n=1$
-(item-0010; real ground truth \texttt{FALSE}). Single-claim-only (the
-highest-importance claim's own verdict, itself \texttt{UNVERIFIED}
-after Check 7's entity-mismatch downgrade) misses. Full decomposition
-via the real, unmodified \texttt{derive\_overall\_verdict()}, combining
-both claims, correctly resolves to \texttt{FALSE}. Directionally
-consistent with, not statistical confirmation of, the original $n=4$
-DEV-split result.
-
-\subsection{EXP-026/EXP-027: prompt-injection stress test, full numbers}
-5 synthetic \texttt{Reel} cases, each embedding a differently-styled
-injection attempt in a different field (direct override in transcript;
-forged delimiter tokens plus a fake system message in caption; a
-roleplay/DAN jailbreak in OCR; an appeal-to-authority override in
-transcript; an override buried inside otherwise-legitimate content),
-run through the real, unmodified \texttt{claim\_extraction.extract\_claims()}.
-Pre-fix (\texttt{claim\_extraction.v3}): 1/5 succeeded (the direct
--override case). Post-fix (delimiter sanitization plus a hardened
-\texttt{claim\_extraction.v4} prompt): 0/5. EXP-027 carried the one
-pre-fix success through the real remainder of the pipeline: 12 sources
-fetched, 12 evidence rows produced, final verdict \texttt{FALSE},
-\texttt{validation\_status=passed}, reasoning grounded in real cited
-evidence (e.g.\ citing the absence of documented radiation-linked
-illness among Apollo astronauts, contradicting the injected
-moon-landing-hoax premise).
-
-\subsection{EXP-028: evidence-stance taxonomy comparison re-run, full numbers}
-Identical to EXP-017 except the new-taxonomy call now runs the same
-\texttt{\_explanation\_looks\_substantive} check plus Gemini quality
--retry production's \texttt{evidence\_analysis.py} itself uses, against
-the same 20 real \texttt{Evidence} rows. Attempt 1: every retry
-attempt hit an already-active Gemini cooldown from concurrent earlier
-work (0/20 retries fired); clean rows 6/20. Attempt 2, run after that
-cooldown's own end time: the first retry attempt returned a real HTTP
-429 (``Quota exceeded for metric:
-\texttt{generativelanguage.googleapis.com/\allowbreak generate\_\allowbreak content\_\allowbreak free\_\allowbreak tier\_\allowbreak requests},
-limit: 20''), setting a fresh cooldown that blocked the remaining 19
-retries too; clean rows 5/20. One clean reclassification
-(\texttt{contradicts} $\to$ \texttt{temporally\_mismatched}) is reported
-but assessed as a likely taxonomy-misapplication (the source's
-substantive numerical disagreement is what actually matters, not that
-its rules happened to be dated), not cherry-picked as a positive
-result.
-
-\subsection{EXP-029: contradictory-sources verdict stress test, full numbers}
-3 synthetic cases (constructed \texttt{Claim}/\texttt{Evidence}/\texttt{Source}
-rows with explicit, differing reliability scores) run through the real,
-unmodified \texttt{verdict.propose\_verdict()}. The
-\texttt{reliability\_weighted\_conflict} case (0.95-reliability
-primary-government support vs.\ 0.20-reliability uncited contradiction)
-was re-run repeatedly to characterize stability: pre-fix ($n=7$,
-\texttt{verdict.v2}) produced \texttt{MOSTLY\_FALSE} $\times 3$
-(confidence 0.0), \texttt{UNVERIFIED} $\times 3$ (confidence 0.4),
-\texttt{OUTDATED} $\times 1$ (confidence 1.0); post-fix ($n=7$,
-\texttt{verdict.v3}, after an explicit reliability-weighting rule was
-added to the prompt) produced \texttt{UNVERIFIED} $\times 5$,
-\texttt{MOSTLY\_FALSE} $\times 2$, confidence 0.0 throughout. 0 of 14
-total runs produced \texttt{TRUE}/\texttt{MOSTLY\_TRUE}. A sanity check
-on the \texttt{majority\_with\_credible\_outlier} case (3 established
--news sources agree, 1 higher-reliability outlier disagrees) showed
-similar post-fix instability (2/4 \texttt{MOSTLY\_TRUE}, 2/4
-\texttt{UNVERIFIED}), though with only 1 pre-fix sample a clean
-before/after comparison isn't possible for that case.
-
-\subsection{EXP-030: reliability-direction check (Check 8) evaluation, full numbers}
-A deterministic candidate check (max cited-evidence reliability per
-stance; flags when the gap exceeds 0.4 and the verdict sides with the
-lower-reliability stance) was evaluated in three parts before
-integration. Part 1, 10 synthetic ground-truth cases: 10/10 correct,
-including the intended-catch shape, its mirror image, a close gap that
-should not fire (0.10, the \texttt{majority\_with\_credible\_outlier}
-shape), missing-reliability data, and multiple evidence items per side.
-Part 2, a replay of EXP-029's own 19 real observed verdict labels: 14/14
-\texttt{reliability\_weighted\_conflict} trials flagged (0/14 before
-adding \texttt{OUTDATED} to the checked label set, since that was the
-one real trial using it), 0/5 \texttt{majority\_with\_credible\_outlier}
-trials false-flagged. Part 3, the existing 34-case adversarial benchmark:
-0 cases have cited evidence with both a real \texttt{stance} and
-\texttt{reliability\_score} together, so 0 interactions -- confirming no
-regression risk empirically before any production change. Integrated as
-Check 8; re-running the full benchmark through the real,
-now-updated \texttt{validate\_verdict()} afterward reproduced the
-identical pre-integration precision/recall (87.5\%/60.9\%).
+\begin{itemize}
+\item \textbf{EXP-013/019 (validator Checks 6--7).} Temporal and entity checks, 7+7 regression tests, then the 34-case adversarial benchmark jointly: TP 14, FP 2, FN 9, TN 9 (precision 87.5\%, recall 60.9\%). Both FPs are a pre-existing Check-3 contrastive-reasoning limitation. A live end-to-end test was inconclusive (an earlier check fired first); Check 6's logic is covered by unit tests.
+\item \textbf{EXP-012/016 (source-quote groundedness).} Across 8 DEV items (12 claims) and again at $n{=}90$ (8 items $\times$ 8 modality combinations), \emph{0} claims carried a verbatim-grounded \texttt{source\_quote}; spot-checked as real behaviour, not a measurement artefact.
+\item \textbf{EXP-016 (8-combination coverage).} Ground-truth claim coverage by modality: caption/audio/OCR 25.0\%, vision 37.5\%, OCR+vision 12.5\%, audio+OCR+vision 25.0\%. Two items produced 0 claims in all 8 conditions (including the one TRUE item); a third produced 5 claims, none covering the GT assertion (a wrong-claim failure).
+\item \textbf{EXP-015 (5-query retrieval).} 4 DEV claims, 20 queries, 42 sources, 16 primary-tier. Relevant-primary rate by query type: \texttt{primary\_source} 3/4, \texttt{context\_history} 2/2, \texttt{contradiction} 1/3, \texttt{entity\_focused} 1/4, \texttt{exact\_claim} 0/3 -- the last driven by one claim whose 7 primary-tier hits were all keyword-collision matches on unrelated \texttt{.gov.in} domains (domain-pattern tiering has no content-relevance check).
+\item \textbf{EXP-017 (evidence-stance taxonomy).} An 8-category candidate taxonomy vs.\ 20 real rows: raw change 55\%, but 80\% had an empty explanation on one side (no substantiveness-retry safeguard); filtered to 4 genuinely substantive rows, 1 changed -- $n$ too small. The comparison's own confound is the more general finding.
+\item \textbf{EXP-018 (cross-post detection).} Same-video control: minimum Hamming distance 0; different-video control: 20 (threshold 10). A genuine independently-posted-same-footage pair (item-0002) could not have its post URL extracted from the citing article -- not achieved this pass.
+\item \textbf{EXP-020 (adversarial stress test).} Six synthetic cases through the real claim extractor: \texttt{garbled\_ocr} 0, caption/transcript contradiction 1 (caption only), \texttt{extremely\_short} 0, \texttt{mixed\_language} 2 (English portion only), \texttt{repetitive\_spam} 1 (40 reps collapsed), \texttt{near\_max\_tokens} 0 (confounded by a Gemini quota event). Zero crashes.
+\item \textbf{EXP-021 (source\_quote prompt strengthening).} A v4 candidate with a 4-step self-check + worked example vs.\ v3 on the same 8 items: v3 9 claims / 0 quoted, v4 6 claims / 0 quoted; on the item the example was built from, v4 produced 0 claims -- the stronger instruction did not recover the quote and may have suppressed extraction.
+\item \textbf{EXP-022 (input-signal consistency feasibility).} Jaccard of caption vs.\ transcript keywords for the 4 reels with both fields: 0.000 in all 4 -- the normal case for legitimate multilingual content, not inconsistency.
+\item \textbf{EXP-023 (multilingual bias re-examination).} Script classification of all 90 EXP-016 claims: 42 Latin, 48 non-Latin; a Marathi item 37 non-Latin / 8 Latin (the Latin ones caption metadata), a Hindi item 5/5 non-Latin, English items Latin-only, the one code-switched item 7 Latin / 6 non-Latin -- direct evidence against a general Latin-script bias.
+\item \textbf{EXP-024 (VALIDATION-split real population).} The real second half of \texttt{analyze\_reel()} run and committed for all 6 VALIDATION items: 4 produced 0 claims; item-0010 2 claims (one \texttt{entity\_mismatch} downgrade, one \texttt{FALSE}/\texttt{passed}); item-0014 1 claim (\texttt{FALSE}/\texttt{passed}, matching ground truth). The entity-mismatch case audited as a genuine correct catch -- Check 7 generalising to real data it was never calibrated on.
+\item \textbf{EXP-025 (aggregation counterfactual on real VALIDATION data).} Only $n{=}1$ VALIDATION item has $\geq 2$ verdicted verifiable claims (item-0010); single-claim-only misses, full \texttt{derive\_overall\_verdict()} decomposition resolves to \texttt{FALSE} -- directionally consistent with, not confirmation of, the $n{=}4$ DEV result.
+\item \textbf{EXP-026/027 (prompt-injection stress test).} 5 synthetic reels, one injection style per field: pre-fix (v3) 1/5 succeeded (direct override), post-fix (delimiter sanitisation + hardened v4) 0/5. The one pre-fix success, carried through the real pipeline, reached \texttt{FALSE}/\texttt{passed} with evidence-grounded reasoning.
+\item \textbf{EXP-028 (evidence-stance re-run with the production safeguard).} As EXP-017 but with the substantiveness-retry active: both attempts hit Gemini cooldown/429 (0/20, then blocked), clean rows 6/20 then 5/20; 1 reclassification, assessed as a likely taxonomy-misapplication, not counted as a positive.
+\item \textbf{EXP-029 (contradictory-sources verdict stress test).} The \texttt{reliability\_weighted\_conflict} case (0.95 government support vs.\ 0.20 uncited contradiction), re-run for stability: pre-fix (v2, $n{=}7$) \texttt{MOSTLY\_FALSE}$\times3$, \texttt{UNVERIFIED}$\times3$, \texttt{OUTDATED}$\times1$; post-fix (v3, $n{=}7$, explicit reliability rule) \texttt{UNVERIFIED}$\times5$, \texttt{MOSTLY\_FALSE}$\times2$. 0/14 produced \texttt{TRUE}/\texttt{MOSTLY\_TRUE}; a \texttt{majority\_with\_credible\_outlier} sanity check showed similar post-fix instability.
+\item \textbf{EXP-030 (Check 8 evaluation).} A deterministic reliability-direction check (flags when the max-cited-reliability gap $>0.4$ and the verdict sides with the weaker stance): 10/10 synthetic cases; replaying EXP-029's 19 real labels, 14/14 \texttt{reliability\_weighted\_conflict} flagged, 0/5 \texttt{majority\_with\_credible\_outlier} false-flagged; 0 interactions with the 34-case benchmark. Integrated as Check 8 with identical pre/post precision/recall (87.5\%/60.9\%).
+\end{itemize}
 
 \bibliographystyle{IEEEtran}
 \bibliography{references}

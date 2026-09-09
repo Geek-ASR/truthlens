@@ -1,10 +1,45 @@
 # Paper status
 
-Last updated: 2026-09-09 (thirteenth update: V3 experiment
-pre-registration + a live-defect fix). See below; prior updates
-preserved unedited underneath.
+Last updated: 2026-09-09 (fourteenth update: length compression pass,
+34 -> 27 pages). See below; prior updates preserved unedited underneath.
 
-## Latest update (this pass, 2026-09-09) -- V3 pre-registration + defect fix
+## Latest update (this pass, 2026-09-09) -- compress to 27 pages
+
+Brought the paper from 34 to 27 pages (target 25-28) by summarising
+prose, with **zero diagrams, charts, tables or findings removed** (9
+`\includegraphics` + 1 TikZ architecture diagram + 18 tables, all
+intact; every numeric result and disclosure kept). Source `main.tex`
+3556 -> 2712 lines.
+
+What was compressed (prose only, essence kept):
+
+- **Appendix "Full Taxonomy of Failure Modes"** -- the 24 entries, each
+  a ~10-line paragraph, condensed to one line each (symptom + fix).
+  ~248 -> ~32 lines.
+- **Appendix "Extended Foundation-Phase Detail"** -- 19 per-experiment
+  `\subsection`s condensed to a one-line-per-experiment list keeping
+  every number. ~233 -> ~50 lines.
+- **Body "Foundation-Phase System Extensions"** -- the per-EXP
+  narrative collapsed to dense subsections; all load-bearing findings
+  kept (Checks 6/7 + 81.8/50.0 -> 87.5/60.9; the 4x reliability
+  finding; prompt-injection 1/5 -> 0/5; verdict-reliability 0/14 +
+  Check 8; mass-sourcing ~1-per-900 yield; the platform-relaxation
+  bridge to TruthLens-202). ~413 -> ~216 lines.
+- **Conclusion** -- 6 re-narrating paragraphs -> 3 tight ones. 165 ->
+  ~69 lines.
+- **Future Work** -- 16 items (many already "addressed") -> 8 focused
+  items. 124 -> ~47 lines.
+- **Discussion** -- trimmed ~25%, table `tab:whenhelps` kept intact.
+- **Appendix "Threats to Validity: Full Reasoning"** -- extra reasoning
+  per threat tightened; stale "ten threats" -> "twelve". 83 -> ~59.
+
+Compile: `tectonic` clean -- no undefined refs/citations, no
+multiply-defined labels, `main.out` stable (no rerun), **0 overfull
+hboxes**, 27 pages. Visually spot-checked the compressed Foundation-Phase
+section, Future Work, and Conclusion pages -- two-column layout intact,
+no overflow, reads professionally.
+
+## Prior update (thirteenth, 2026-09-09) -- V3 pre-registration + defect fix
 
 Sets up "one more experimental iteration" (improved claim extraction ->
 run on all 193 -> baselines on 193 -> full metric report -> second-pass
