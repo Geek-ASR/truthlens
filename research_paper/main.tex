@@ -12,18 +12,6 @@
 \usepackage{tikz}
 \usetikzlibrary{positioning,arrows.meta,shapes.multipart}
 
-% ============================================================================
-% STATUS (remove before submission): this draft reflects the Day 1-9 IEEE
-% evaluation program (research/EXPERIMENT_PLAN.md and sibling documents under
-% research/). Every number below traces to a versioned artifact under
-% research/results/ or research/*.csv; see research/DAY8_RESULTS.md,
-% research/VALIDATOR_EVALUATION.md, research/EVIDENCE_EVALUATION.md,
-% research/MULTIMODAL_EVALUATION.md, and research/BIAS_CALIBRATION_EFFICIENCY.md
-% for the full derivations. Day 10 (venue selection, line-by-line audit,
-% figure production, page-count trim) has not yet run. Search "TODO" for open
-% items. See research_paper/SOURCES.md for the citation-verification trail.
-% ============================================================================
-
 \begin{document}
 
 \title{TruthLens: A Verification-Gated Pipeline for Evidence-Grounded Fact-Checking of Short-Form Political Video}
@@ -31,9 +19,7 @@
 \author{
 \IEEEauthorblockN{Aditya Rekhe}
 \IEEEauthorblockA{
-% TODO: affiliation not known to the drafting assistant -- fill in before
-% submission. Left as a visible placeholder rather than a guess.
-\textit{[Affiliation placeholder -- TODO]} \\
+\textit{Independent Researcher} \\
 Email: adityarekhe1030@gmail.com}
 }
 
@@ -89,11 +75,14 @@ model, keyless search, no cloud escalation). The result is deliberately
 unflattering and is reported as a floor, not a headline: only 34.7\% of
 items produce a verdict at all, and on those the bucketed accuracy is
 29.9\% (Wilson 95\% CI [20.2, 41.7]), below an always-\texttt{FALSE}
-baseline's balanced accuracy. The binding constraint is localised
-precisely -- claim extraction, not evidence retrieval (0\%
-research-failure) or verdict reasoning: 65.3\% of real posts yield no
-checkable claim to the local model, and the \texttt{MISLEADING} class is
-never once recovered (0/7). Strengthening that configuration, and a
+baseline's balanced accuracy. The binding constraint on coverage is
+localised precisely -- claim extraction, not evidence retrieval (0\%
+research-failure): 65.3\% of real posts yield no checkable claim to the
+local model. Verdict reasoning is a second, smaller failure surface on
+the third that do resolve: the \texttt{MISLEADING} class is never once
+recovered (0/7), and item-level inspection attributes 2 of the 11
+affirmative-verdicts-on-false to a faithfully extracted claim that was
+then mis-verdicted. Strengthening that configuration, and a
 second independent annotator pass, are the stated next steps.
 Alongside these we report the evidence-quality picture behind the frozen
 results (a primary-source domain-restriction fix moving source-tier
@@ -178,9 +167,9 @@ full (Section~\ref{sec:truthlens202}), and we report the first
 end-to-end run over its 193 validation items in a \$0 local-only
 configuration (Section~\ref{sec:tl202eval}): a deliberate floor, on
 which 34.7\% of posts reach a verdict and bucketed accuracy is 29.9\%,
-with claim extraction -- not retrieval or verdict reasoning --
-identified as the component that decides whether a post gets checked
-at all. We report every
+with claim extraction -- not retrieval -- identified as the component
+that decides whether a post gets checked at all, and verdict reasoning
+as a second, smaller failure surface on the posts that do resolve. We report every
 result this comparison produced, including one that is not flattering
 but not about TruthLens: a subsequent, skeptical audit of our own
 experimental design found that the baselines had been given a cleaner
@@ -1272,15 +1261,25 @@ Fig.~\ref{fig:tl202perclass}) localises the rest: \texttt{FALSE} --
 but commits rarely. \texttt{MISLEADING} is \textbf{never once recovered
 (0/7)}: the local model has no working notion of the ``authentic
 material, false framing'' category that is the dominant real-world
-pattern (80\% of the corpus is provenance-type). Inspection of the 11
+pattern (80\% of the corpus is provenance-type). We inspected each of the 11
 resolved items where a \texttt{FALSE}/\texttt{MISLEADING} claim received
-an affirmative (\texttt{TRUE}/\texttt{MOSTLY\_TRUE}) verdict shows the
-same root cause as the abstentions: the ``claim'' the model extracted
-was a fragment of on-screen dialogue (``These scopes are there!'';
-``Where did you go?''; a recital of the US Pledge of Allegiance), not
-the post's actual assertion. The pipeline then correctly verified a
-trivially-true fragment -- a claim-\emph{coverage} failure
-(Section~\ref{sec:multimodalanalysis}), not a verdict-reasoning failure.
+an affirmative (\texttt{TRUE}/\texttt{MOSTLY\_TRUE}) verdict, comparing
+the claim the pipeline actually verdicted against the item's recorded
+ground-truth claim. \textbf{Nine of the 11 share the same root cause as
+the abstentions}: the ``claim'' the model extracted was a fragment of
+on-screen dialogue, a true incidental side-fact (``Rekha Gupta is the CM
+of Delhi''), a recitation of a fixed text (the US Pledge of Allegiance),
+or the fact-check's own correction rather than the post's assertion --
+the pipeline then correctly verified a trivially-true fragment, a
+claim-\emph{coverage} failure (Section~\ref{sec:multimodalanalysis}).
+\textbf{The remaining two are genuine verdict-stage failures}: item-0116
+(``India has brought down 2 Pakistani Fighter Jets'') and item-0111
+(``India is now the fourth-largest economy in the world'') were faithful
+restatements of the post's own assertion, extracted correctly and then
+mis-verdicted \texttt{TRUE}/\texttt{MOSTLY\_TRUE} against a
+\texttt{FALSE}/\texttt{MISLEADING} ground truth. Coverage dominates this
+error class, but it does not exhaust it. This split is one reviewer's
+item-level judgment on 11 cases and is reported as such.
 
 \begin{table}[!t]
 \caption{Per-class performance on resolved items ($n=67$). Classes with zero support and zero predictions omitted.}
@@ -1343,10 +1342,11 @@ is not the missing piece here.
 This is a first-run, single-configuration floor on a
 deliberately-skewed, single-annotator corpus; it is not a bound on the
 architecture. It establishes three things concretely: (i) with a local
-3B model, \emph{claim extraction} -- not retrieval, not verdict
-reasoning -- is the component that determines whether short-form
-political misinformation gets checked at all, and it fails on roughly
-two-thirds of real posts; (ii) the deterministic safeguards hold up
+3B model, \emph{claim extraction} -- not retrieval -- is the component
+that determines whether short-form political misinformation gets checked
+at all, and it fails on roughly two-thirds of real posts, with verdict
+reasoning a second, smaller failure surface on those that do resolve
+(2 of 11 affirmative-verdicts-on-false; \texttt{MISLEADING} 0/7); (ii) the deterministic safeguards hold up
 where they run (0\% research-failure, high \texttt{FALSE} precision, no
 crash across 193 items); (iii) the \texttt{MISLEADING}/provenance
 category needs explicit modelling that the current text-only extraction
@@ -2063,8 +2063,9 @@ split from 13 to 193 items (202 with the frozen \texttt{dev} set): the
 corpus is then evaluated end-to-end once, in a \$0 local-only
 configuration (Section~\ref{sec:tl202eval}), which surfaces its own
 finding: the local 3B model fails to extract a checkable claim from
-65.3\% of real posts, making claim extraction -- not retrieval or
-verdict reasoning -- the binding constraint. Its construction carries
+65.3\% of real posts, making claim extraction -- not retrieval -- the
+binding constraint on coverage, with verdict reasoning a second, smaller
+failure surface on the posts that do resolve. Its construction carries
 disclosed limitations (single LLM-assisted reviewer; $\sim$88\%
 single-source ground truth; three domain-driven skews), all stated in
 Section~\ref{sec:truthlens202}.
@@ -2381,9 +2382,10 @@ annotations are one LLM-assisted reviewer's work pending a second
 annotator, and the corpus carries a single-source majority and three
 domain-driven skews. Its one firm, transferable finding is diagnostic:
 with a local 3B model, \emph{claim extraction} -- not retrieval (0\%
-infrastructure failure) and not verdict reasoning -- determines whether
-short-form political misinformation gets checked at all, and it fails on
-roughly two-thirds of real posts. Work is paused here; the immediate
+infrastructure failure) -- determines whether short-form political
+misinformation gets checked at all, and it fails on roughly two-thirds
+of real posts; verdict reasoning is a second, smaller failure surface on
+those that do resolve. Work is paused here; the immediate
 open items are the larger-local-model / vision-first / metered-cloud
 ablation on the same held-out split, a second independent annotator, and
 a broader ground-truth base (Section~\ref{sec:futurework}), alongside the
