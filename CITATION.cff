@@ -15,6 +15,7 @@ authors:
     given-names: Aditya
     email: adityarekhe1030@gmail.com
     affiliation: "Independent Researcher"
+    orcid: "https://orcid.org/0009-0003-8009-3074"
 repository-code: "https://github.com/Geek-ASR/truthlens"
 license: MIT
 version: 1.0.0

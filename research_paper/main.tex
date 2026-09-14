@@ -428,8 +428,9 @@ experiments in Sections~\ref{sec:results}--\ref{sec:bce} actually support:
   to an independent professional fact-check via a verbatim evidence quote
   under a review-gated protocol, with 206 documented same-media
   cross-post relationships (Section~\ref{sec:truthlens202}). Its full
-  composition and limitations -- a single LLM-assisted reviewer,
-  $\sim$88\% single-source ground truth, and three domain-driven skews --
+  composition and limitations -- LLM-performed annotation under author
+  direction, $\sim$88\% single-source ground truth, and three
+  domain-driven skews --
   are reported in full. We also contribute the first end-to-end result
   on it (Section~\ref{sec:tl202eval}): a local-only, \$0 configuration
   run over all 193 validation items, reported as a floor -- 34.7\% of
@@ -1001,15 +1002,41 @@ the frozen comparison was run.
 \texttt{validation} items have been run end-to-end, but only in the
 local-only configuration (Section~\ref{sec:tl202eval}); the larger-local
 -model, vision-first, and cloud-escalation configurations are not yet
-measured against this split. \textbf{(2)~Single, LLM-assisted reviewer.}
-The claim phrasing, label mapping, and cross-post/reject decisions were
-produced by one reviewer working with LLM assistance, not by two
-independent human annotators, so no inter-annotator agreement statistic
-is available (and none is fabricated). The verdict itself always traces
-to an independent professional fact-check via the recorded quote, which
-bounds the risk, but the phrasing and mapping are unverified by a second
-human -- a real circularity concern given that an LLM-based system is the
-intended evaluee. A second-annotator pass is the top open item
+measured against this split. \textbf{(2)~Two axes of ground-truth provenance, and a selection
+circularity.} Ground truth here has two independent dimensions that must
+not be collapsed. \emph{Verdict provenance} is uniform: every one of the
+202 items' \texttt{TRUE}/\texttt{FALSE}/\texttt{MISLEADING} verdict is an
+independent professional fact-checking organisation's published finding,
+anchored to a recorded verbatim quotation from its article.
+\emph{Annotation provenance} is not. The 9 \texttt{dev} items were
+labelled directly from the fact-checker's own published ClaimReview
+(\texttt{annotation\_provenance = professional-factcheck-direct}). For
+the 193 \texttt{validation} items, by contrast, the claim phrasing, the
+mapping of the fact-checker's verdict onto this paper's label taxonomy,
+and the promote/defer/reject decision were \textbf{performed by a large
+language model under the author's direction and applied in batch} --
+not drafted by a model and then adjudicated item-by-item by a human.
+165 items carry that provenance
+(\texttt{llm-assisted-review}); the remaining 28 predate the protocol
+(\texttt{pre-protocol-automated}) and are weaker still. We state this
+plainly rather than describing the process as human annotation with
+model assistance, which would overstate the human role. No
+inter-annotator agreement statistic is available and none is fabricated.
+
+A sharper form of the same concern is \textbf{selection}. The screening
+model that decided which of 11{,}544 candidates entered the corpus was
+\texttt{llama3.2} -- the same model subsequently evaluated on it
+(Section~\ref{sec:tl202eval}). The evaluee therefore participated in
+choosing its own test set. The screen accepted a candidate when the
+post's own text asserted the debunked claim, so the bias runs
+\emph{toward} items this model can parse; a random sample of real posts
+should, if anything, be harder. That direction matters for how the
+result is read: the reported 29.9\% bucketed and 22.2\% balanced
+accuracy are best understood as a \textbf{favourably-selected floor},
+not a pessimistic outlier. It does not make the corpus unusable -- the
+verdicts remain independently sourced -- but no number on this split
+should be treated as a validated headline until a second independent
+annotator and a screen drawn from a different model family are in place
 (Section~\ref{sec:futurework}). \textbf{(3)~Source concentration.}
 $\sim$88\% of \texttt{validation} ground truth is Alt News's, because the
 other archives yielded far less under the same bar (Lead Stories: $\sim$77\%
@@ -2066,8 +2093,8 @@ finding: the local 3B model fails to extract a checkable claim from
 65.3\% of real posts, making claim extraction -- not retrieval -- the
 binding constraint on coverage, with verdict reasoning a second, smaller
 failure surface on the posts that do resolve. Its construction carries
-disclosed limitations (single LLM-assisted reviewer; $\sim$88\%
-single-source ground truth; three domain-driven skews), all stated in
+disclosed limitations (LLM-performed annotation under author direction;
+$\sim$88\% single-source ground truth; three domain-driven skews), all stated in
 Section~\ref{sec:truthlens202}.
 
 \section{A Taxonomy of Failure Modes Found in Live Testing}
@@ -2127,11 +2154,11 @@ program's own benchmark construction:
 
 \section{Threats to Validity}
 \label{sec:threats}
-Twelve threats, stated here at the density needed to be checkable; full
+Thirteen threats, stated here at the density needed to be checkable; full
 reasoning for the first ten: Appendix~\ref{sec:appendixthreats}. The last
-two concern the \textsc{TruthLens-202} corpus and its local-only
-evaluation and are detailed in Sections~\ref{sec:truthlens202} and
-\ref{sec:tl202eval}.
+three concern the \textsc{TruthLens-202} corpus, its ground-truth
+provenance, and its local-only evaluation, and are detailed in
+Sections~\ref{sec:truthlens202} and \ref{sec:tl202eval}.
 
 \begin{itemize}
 \item \textbf{Small, non-independent sample.} $n=9$ (6 resolved from
@@ -2169,11 +2196,18 @@ evaluation and are detailed in Sections~\ref{sec:truthlens202} and
   audit} -- a systematic coverage or resolution asymmetry would
   propagate undetected, since no second ground-truth source exists to
   check against.
-\item \textbf{\textsc{TruthLens-202}'s claim/label annotations are a
-  single LLM-assisted reviewer's work, not verified by a second human}
-  (Section~\ref{sec:truthlens202}). Verdicts trace to an independent
-  professional fact-check via a recorded verbatim quote, which bounds
-  the risk, but the claim phrasing and label mapping are unaudited --
+\item \textbf{The evaluee screened its own test set.} The model that
+  decided which of 11{,}544 candidates became \textsc{TruthLens-202}
+  items (\texttt{llama3.2}) is the same model evaluated on the resulting
+  corpus. The screen favours posts whose text that model can parse, so
+  the selection bias runs toward easier items and the reported accuracy
+  should be read as a favourably-selected floor
+  (Section~\ref{sec:truthlens202}).
+\item \textbf{\textsc{TruthLens-202}'s claim phrasing, label mapping and
+  item selection were LLM-performed under author direction, not verified
+  by a second human} (Section~\ref{sec:truthlens202}). Verdicts trace to
+  an independent professional fact-check via a recorded verbatim quote,
+  which bounds the risk, but the annotation layer is unaudited --
   a circularity concern given that an LLM-based system is the intended
   evaluee. The Section~\ref{sec:tl202eval} result is reported with this
   caveat attached and as a floor, not a validated headline; a
@@ -2283,8 +2317,10 @@ Items already acted on in this program are marked; the rest are open.
   metered cloud-escalation tier, reported together as a
   capability-vs.-cost ablation. This is the top result-bearing open item.
 \item \textbf{A second, independent annotator} for the 165 review-gated
-  \textsc{TruthLens-202} claim/label annotations (currently one
-  LLM-assisted reviewer) and the Tier-2 draft judgments underlying
+  \textsc{TruthLens-202} claim/label annotations (currently
+  LLM-performed under author direction), a re-screen drawn from a
+  different model family than the evaluee, and the Tier-2 draft
+  judgments underlying
   Sections~\ref{sec:evidencevalidation}/\ref{sec:multimodalanalysis} --
   the prerequisite before the local-only result is a validated headline
   rather than a floor.
@@ -2378,9 +2414,10 @@ once in a \$0 local-only configuration (Section~\ref{sec:tl202eval}),
 reported as a floor with its limitations stated rather than softened:
 34.7\% of posts reach a verdict, bucketed accuracy on those is 29.9\%
 (below an always-\texttt{FALSE} baseline on balanced accuracy), the
-annotations are one LLM-assisted reviewer's work pending a second
-annotator, and the corpus carries a single-source majority and three
-domain-driven skews. Its one firm, transferable finding is diagnostic:
+annotation layer -- claim phrasing, label mapping and item selection --
+was LLM-performed under author direction pending a second annotator, the
+screening model was the same one later evaluated, and the corpus carries
+a single-source majority and three domain-driven skews. Its one firm, transferable finding is diagnostic:
 with a local 3B model, \emph{claim extraction} -- not retrieval (0\%
 infrastructure failure) -- determines whether short-form political
 misinformation gets checked at all, and it fails on roughly two-thirds
