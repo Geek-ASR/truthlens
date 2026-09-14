@@ -17,16 +17,22 @@ authors:
     affiliation: "Independent Researcher"
     orcid: "https://orcid.org/0009-0003-8009-3074"
 repository-code: "https://github.com/Geek-ASR/truthlens"
-doi: "10.5281/zenodo.22758785"
+doi: "10.5281/zenodo.22758976"
+version: 1.0.1
 identifiers:
   - type: doi
+    value: "10.5281/zenodo.22758975"
+    description: "Software concept DOI - always resolves to the latest release"
+  - type: doi
+    value: "10.5281/zenodo.22758976"
+    description: "Software, v1.0.1"
+  - type: doi
     value: "10.5281/zenodo.22758784"
-    description: "Concept DOI \u2014 always resolves to the latest version"
+    description: "Preprint concept DOI - always resolves to the latest version"
   - type: doi
     value: "10.5281/zenodo.22758785"
     description: "Preprint, dataset and supplementary material, v1.0.0"
 license: MIT
-version: 1.0.0
 date-released: 2026-09-15
 keywords:
   - automated fact-checking

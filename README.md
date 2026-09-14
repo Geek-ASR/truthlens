@@ -1,6 +1,8 @@
 # TruthLens
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22758785.svg)](https://doi.org/10.5281/zenodo.22758785)
+[![Paper DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22758785.svg)](https://doi.org/10.5281/zenodo.22758785)
+[![Software DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22758976.svg)](https://doi.org/10.5281/zenodo.22758976)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 An evidence-first pipeline for fact-checking short-form political video and
 image posts. TruthLens decomposes a post into atomic claims, researches each
@@ -92,5 +94,20 @@ Reproduction notes: `research/REPRODUCIBILITY.md`.
 }
 ```
 
-The concept DOI `10.5281/zenodo.22758784` always resolves to the latest
-version. See also `CITATION.cff`.
+To cite the **software** specifically:
+
+```bibtex
+@software{rekhe2026truthlens_software,
+  author       = {Rekhe, Aditya},
+  title        = {{TruthLens (software)}},
+  year         = {2026},
+  publisher    = {Zenodo},
+  version      = {1.0.1},
+  doi          = {10.5281/zenodo.22758976},
+  url          = {https://doi.org/10.5281/zenodo.22758976}
+}
+```
+
+Concept DOIs always resolve to the latest version:
+`10.5281/zenodo.22758784` (paper) and `10.5281/zenodo.22758975` (software).
+See also `CITATION.cff`.
