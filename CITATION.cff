@@ -1,0 +1,30 @@
+cff-version: 1.2.0
+message: "If you use TruthLens or the TruthLens-202 corpus, please cite the preprint below."
+title: "TruthLens: A Verification-Gated Pipeline for Evidence-Grounded Fact-Checking of Short-Form Political Video"
+abstract: >-
+  TruthLens is an evidence-first pipeline for fact-checking short-form political
+  video and image posts. It decomposes a post into atomic claims, researches each
+  against the open web, and subjects every generated verdict to a deterministic,
+  non-LLM validator before publication. This release includes the preprint, the
+  202-item TruthLens-202 evaluation corpus (URLs, labels and annotations only),
+  and the supplementary results and protocols needed to reproduce the reported
+  numbers.
+type: software
+authors:
+  - family-names: Rekhe
+    given-names: Aditya
+    email: adityarekhe1030@gmail.com
+    affiliation: "Independent Researcher"
+repository-code: "https://github.com/Geek-ASR/truthlens"
+license: MIT
+version: 1.0.0
+date-released: 2026-09-15
+keywords:
+  - automated fact-checking
+  - misinformation detection
+  - claim extraction
+  - short-form video
+  - retrieval-augmented generation
+  - evaluation benchmark
+  - large language models
+  - computational journalism

@@ -1,0 +1,25 @@
+{
+  "title": "TruthLens: A Verification-Gated Pipeline for Evidence-Grounded Fact-Checking of Short-Form Political Video",
+  "upload_type": "software",
+  "creators": [
+    {
+      "name": "Rekhe, Aditya",
+      "affiliation": "Independent Researcher"
+    }
+  ],
+  "license": "MIT",
+  "version": "1.0.0",
+  "language": "eng",
+  "access_right": "open",
+  "keywords": [
+    "automated fact-checking",
+    "misinformation detection",
+    "claim extraction",
+    "short-form video",
+    "retrieval-augmented generation",
+    "evaluation benchmark",
+    "large language models",
+    "computational journalism"
+  ],
+  "description": "<p>Source code for TruthLens, an evidence-first pipeline for fact-checking short-form political video and image posts. The pipeline decomposes a post into atomic claims, researches each against the open web, and subjects every generated verdict to a deterministic, non-LLM validator before publication.</p><p>This software record accompanies the preprint and the TruthLens-202 evaluation corpus. The default configuration runs entirely on local models (Ollama, faster-whisper) with no API key and no per-token cost.</p><p><strong>Status:</strong> preprint and research code. Not peer reviewed.</p>"
+}
