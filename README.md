@@ -1,12 +1,14 @@
 # TruthLens
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22758785.svg)](https://doi.org/10.5281/zenodo.22758785)
+
 An evidence-first pipeline for fact-checking short-form political video and
 image posts. TruthLens decomposes a post into atomic claims, researches each
 against the open web, and subjects every generated verdict to a deterministic,
 non-LLM validator before anything is published.
 
 **Author:** Aditya Rekhe (Independent Researcher)
-**Preprint + dataset:** see the Zenodo record linked in `CITATION.cff`
+**Preprint + dataset:** <https://doi.org/10.5281/zenodo.22758785>
 
 > **Status: research preprint and prototype.** Not peer reviewed, not a
 > production fact-checking service, and not published in any journal or
@@ -76,4 +78,19 @@ Reproduction notes: `research/REPRODUCIBILITY.md`.
 
 ## Citing
 
-See `CITATION.cff`, or cite the Zenodo record directly.
+```bibtex
+@misc{rekhe2026truthlens,
+  author       = {Rekhe, Aditya},
+  title        = {{TruthLens: A Verification-Gated Pipeline for
+                   Evidence-Grounded Fact-Checking of Short-Form
+                   Political Video}},
+  year         = {2026},
+  publisher    = {Zenodo},
+  version      = {1.0.0},
+  doi          = {10.5281/zenodo.22758785},
+  url          = {https://doi.org/10.5281/zenodo.22758785}
+}
+```
+
+The concept DOI `10.5281/zenodo.22758784` always resolves to the latest
+version. See also `CITATION.cff`.

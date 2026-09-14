@@ -17,6 +17,14 @@ authors:
     affiliation: "Independent Researcher"
     orcid: "https://orcid.org/0009-0003-8009-3074"
 repository-code: "https://github.com/Geek-ASR/truthlens"
+doi: "10.5281/zenodo.22758785"
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.22758784"
+    description: "Concept DOI \u2014 always resolves to the latest version"
+  - type: doi
+    value: "10.5281/zenodo.22758785"
+    description: "Preprint, dataset and supplementary material, v1.0.0"
 license: MIT
 version: 1.0.0
 date-released: 2026-09-15
